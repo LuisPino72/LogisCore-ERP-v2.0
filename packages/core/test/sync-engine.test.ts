@@ -36,6 +36,46 @@ const createMemorySyncStorage = () => {
 };
 
 describe("DefaultSyncEngine", () => {
+  it("mueve conflicto transaccional a DLQ sin reintentos", async () => {
+    const { storage, queue, syncErrors } = createMemorySyncStorage();
+    const eventBus = new InMemoryEventBus();
+    const conflictSpy = vi.fn();
+    eventBus.on("SYNC.CONFLICT_DETECTED", conflictSpy);
+
+    const engine = new DefaultSyncEngine({
+      storage,
+      eventBus,
+      processor: {
+        async process() {
+          return err({
+            code: "SYNC_CONFLICT",
+            message: "conflict detected",
+            retryable: false
+          });
+        }
+      },
+      clock: () => new Date("2026-01-01T00:00:00.000Z")
+    });
+
+    await engine.enqueue({
+      id: "q-conflict-1",
+      table: "stock_movements",
+      operation: "create",
+      payload: { quantity: 1 },
+      localId: "mv-1",
+      tenantId: "tenant-demo",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      attempts: 0
+    });
+
+    await engine.processNext();
+
+    expect(queue).toHaveLength(0);
+    expect(syncErrors).toHaveLength(1);
+    expect(syncErrors[0]?.reason).toContain("TRANSACCIONAL_CONFLICT");
+    expect(conflictSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("mueve a DLQ luego de 5 intentos fallidos", async () => {
     const { storage, queue, syncErrors } = createMemorySyncStorage();
     const eventBus = new InMemoryEventBus();

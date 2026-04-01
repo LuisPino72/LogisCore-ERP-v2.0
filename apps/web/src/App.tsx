@@ -1,10 +1,14 @@
 import { CoreSyncStatus } from "@/features/core/components/CoreSyncStatus";
 import { coreService } from "@/features/core/services/core.service.instance";
+import { InventoryPanel } from "@/features/inventory/components/InventoryPanel";
 import { ProductsCatalog } from "@/features/products/components/ProductsCatalog";
 import { productsService } from "@/features/products/services/products.service.instance";
 import { createProductsPurchasesBridge } from "@/features/products/services/products.purchases-bridge";
 import { PurchasesCatalogPanel } from "@/features/purchases/components/PurchasesCatalogPanel";
+import { PurchasesPanel } from "@/features/purchases/components/PurchasesPanel";
 import { TenantBootstrapGate } from "@/features/tenant/components/TenantBootstrapGate";
+import { SalesPanel } from "@/features/sales/components/SalesPanel";
+import { ProductionPanel } from "@/features/production/components/ProductionPanel";
 import { authService } from "@/features/auth/services/auth.service.instance";
 import { tenantService } from "@/features/tenant/services/tenant.service.instance";
 import { useEffect, useMemo, useState } from "react";
@@ -26,6 +30,7 @@ export function App() {
   );
 
   const { state: catalogState, refresh: refreshCatalog } = useProducts({
+    service: productsService,
     tenant: { tenantSlug: tenantSlug ?? "" },
     actor:
       actor ??
@@ -129,11 +134,33 @@ export function App() {
       {!blocked && tenantSlug && actor ? (
         <>
           <PurchasesCatalogPanel
+            tenantSlug={tenantSlug}
+            actor={actor}
             categories={catalogState.categories}
             products={catalogState.products}
             presentations={catalogState.presentations}
           />
+          <PurchasesPanel
+            tenantSlug={tenantSlug}
+            actor={actor}
+            products={catalogState.products}
+          />
           <ProductsCatalog tenantSlug={tenantSlug} actor={actor} />
+          <InventoryPanel
+            tenantSlug={tenantSlug}
+            actor={actor}
+            products={catalogState.products}
+          />
+          <SalesPanel
+            tenantSlug={tenantSlug}
+            actor={actor}
+            products={catalogState.products}
+          />
+          <ProductionPanel
+            tenantSlug={tenantSlug}
+            actor={actor}
+            products={catalogState.products}
+          />
         </>
       ) : null}
       <CoreSyncStatus />

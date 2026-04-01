@@ -59,6 +59,35 @@ export const createTenantService = ({
   supabase,
   eventBus
 }: CreateTenantServiceDependencies): TenantService => {
+  const resolveAllowedWarehouses = async (
+    userId: string
+  ): Promise<Result<string[], AppError>> => {
+    const warehouseAccess = await supabase.rpc<
+      { warehouse_local_id: string }[]
+    >("get_user_allowed_warehouses", {
+      p_user_id: userId
+    });
+
+    if (warehouseAccess.error) {
+      return err(
+        createAppError({
+          code: "WAREHOUSE_ACCESS_RESOLVE_FAILED",
+          message: warehouseAccess.error.message,
+          retryable: true,
+          context: { userId }
+        })
+      );
+    }
+
+    const ids = Array.isArray(warehouseAccess.data)
+      ? warehouseAccess.data
+          .map((item) => item.warehouse_local_id)
+          .filter((item): item is string => Boolean(item))
+      : [];
+
+    return ok(ids);
+  };
+
   const resolveTenantContext: TenantService["resolveTenantContext"] = async (
     userId
   ) => {
@@ -108,10 +137,23 @@ export const createTenantService = ({
       );
     }
 
+    const basePermissions = roleQuery.data.permissions ?? defaultPermissions;
+    const warehouseAccessResult = await resolveAllowedWarehouses(userId);
+    if (!warehouseAccessResult.ok) {
+      return err(warehouseAccessResult.error);
+    }
+
     const userRole: UserRole = {
       role: roleQuery.data.role,
-      permissions: roleQuery.data.permissions ?? defaultPermissions
+      permissions: {
+        ...basePermissions,
+        allowedWarehouseLocalIds: warehouseAccessResult.data
+      }
     };
+    eventBus.emit("AUTH.WAREHOUSE_ACCESS_RESOLVED", {
+      userId,
+      allowedWarehouseLocalIds: userRole.permissions.allowedWarehouseLocalIds
+    });
     eventBus.emit("AUTH.ROLE_DETECTED", {
       userId,
       role: userRole.role,

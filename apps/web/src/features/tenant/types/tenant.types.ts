@@ -14,6 +14,7 @@ export interface RolePermissions {
   canRefundSale: boolean;
   canVoidInvoice: boolean;
   canAdjustStock: boolean;
+  allowedWarehouseLocalIds?: string[];
 }
 
 export interface UserRole {

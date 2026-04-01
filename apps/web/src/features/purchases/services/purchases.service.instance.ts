@@ -1,6 +1,9 @@
-import { eventBus } from "@/lib/core/runtime";
+import { eventBus, syncEngine } from "@/lib/core/runtime";
+import { DexiePurchasesDbAdapter } from "./purchases.db.adapter";
 import { createPurchasesService } from "./purchases.service";
 
 export const purchasesService = createPurchasesService({
-  eventBus
+  eventBus,
+  db: new DexiePurchasesDbAdapter(),
+  syncEngine
 });

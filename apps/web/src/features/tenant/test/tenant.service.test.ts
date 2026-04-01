@@ -10,7 +10,8 @@ const fullPermissions: RolePermissions = {
   canVoidSale: false,
   canRefundSale: false,
   canVoidInvoice: false,
-  canAdjustStock: false
+  canAdjustStock: false,
+  allowedWarehouseLocalIds: []
 };
 
 const createSupabaseMock = ({
@@ -53,6 +54,12 @@ const createSupabaseMock = ({
         error: null
       };
     }
+    if (fn === "get_user_allowed_warehouses") {
+      return {
+        data: [{ warehouse_local_id: "wh-1" }, { warehouse_local_id: "wh-2" }] as T,
+        error: null
+      };
+    }
     return {
       data: null,
       error: { message: "RPC_NOT_MOCKED" }
@@ -81,6 +88,10 @@ describe("tenant.service", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.userRole.role).toBe("owner");
+      expect(result.data.userRole.permissions.allowedWarehouseLocalIds).toEqual([
+        "wh-1",
+        "wh-2"
+      ]);
       expect(result.data.tenant?.tenantSlug).toBe("tenant-demo");
       expect(result.data.subscriptionActive).toBe(true);
     }

@@ -44,6 +44,7 @@ export interface ProductsActorPermissions {
   canRefundSale: boolean;
   canVoidInvoice: boolean;
   canAdjustStock: boolean;
+  allowedWarehouseLocalIds?: string[];
 }
 
 export interface ProductsActorContext {

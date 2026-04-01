@@ -1,20 +1,25 @@
 import { useState } from "react";
 import type { Category, Product, ProductPresentation } from "@/features/products/types/products.types";
 import { usePurchases } from "../hooks/usePurchases";
+import type { PurchasesActorContext } from "../types/purchases.types";
 
 interface PurchasesCatalogPanelProps {
+  tenantSlug: string;
+  actor: PurchasesActorContext;
   categories: Category[];
   products: Product[];
   presentations: ProductPresentation[];
 }
 
 export function PurchasesCatalogPanel({
+  tenantSlug,
+  actor,
   categories,
   products,
   presentations
 }: PurchasesCatalogPanelProps) {
   const { state, requestCreateCategory, requestCreateProduct, requestCreatePresentation } =
-    usePurchases();
+    usePurchases({ tenant: { tenantSlug }, actor });
   const [categoryName, setCategoryName] = useState("");
   const [productName, setProductName] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -48,7 +53,9 @@ export function PurchasesCatalogPanel({
         <button
           type="button"
           disabled={state.isSubmitting}
-          onClick={() => requestCreateCategory({ name: categoryName })}
+          onClick={() => {
+            void requestCreateCategory({ name: categoryName });
+          }}
         >
           Crear categoria
         </button>
@@ -82,14 +89,19 @@ export function PurchasesCatalogPanel({
         <button
           type="button"
           disabled={state.isSubmitting}
-          onClick={() =>
-            requestCreateProduct({
+          onClick={() => {
+            const input = {
               name: productName,
-              categoryId: categoryId || undefined,
-              visible: true,
-              defaultPresentationId: defaultPresentationId || undefined
-            })
-          }
+              visible: true
+            };
+            if (categoryId) {
+              Object.assign(input, { categoryId });
+            }
+            if (defaultPresentationId) {
+              Object.assign(input, { defaultPresentationId });
+            }
+            void requestCreateProduct(input);
+          }}
         >
           Crear producto
         </button>
@@ -122,13 +134,13 @@ export function PurchasesCatalogPanel({
         <button
           type="button"
           disabled={state.isSubmitting}
-          onClick={() =>
-            requestCreatePresentation({
+          onClick={() => {
+            void requestCreatePresentation({
               productLocalId: presentationProductLocalId,
               name: presentationName,
               factor: Number(presentationFactor)
-            })
-          }
+            });
+          }}
         >
           Crear presentacion
         </button>

@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import type { ProductsService } from "../services/products.service";
-import { productsService } from "../services/products.service.instance";
 import type {
   CreateCategoryInput,
   CreateProductInput,
@@ -19,13 +18,13 @@ const initialState: ProductsUiState = {
 };
 
 interface UseProductsOptions {
-  service?: ProductsService;
+  service: ProductsService;
   tenant: ProductsTenantContext;
   actor: ProductsActorContext;
 }
 
 export const useProducts = ({
-  service = productsService,
+  service,
   tenant,
   actor
 }: UseProductsOptions) => {

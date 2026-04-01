@@ -24,6 +24,14 @@ export class DefaultSyncEngine implements SyncEngine {
   private readonly maxAttempts: number;
   private status: SyncStatus = "idle";
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
+  private readonly transactionalTables = new Set([
+    "sales",
+    "stock_movements",
+    "purchases",
+    "invoices",
+    "production_logs",
+    "inventory_counts"
+  ]);
 
   constructor({
     storage,
@@ -73,6 +81,34 @@ export class DefaultSyncEngine implements SyncEngine {
       this.status = "idle";
       this.eventBus.emit("SYNC.STATUS_CHANGED", { status: this.status });
       return ok<"processed" | "skipped">("processed");
+    }
+
+    const errorCode = processed.error.code.toUpperCase();
+    const errorMessage = processed.error.message.toUpperCase();
+    const isConflict =
+      errorCode.includes("CONFLICT") || errorMessage.includes("CONFLICT");
+    const isTransactional = this.transactionalTables.has(nextItem.table);
+
+    if (isConflict && isTransactional) {
+      await this.storage.removeQueueItem(nextItem.id);
+      await this.storage.addSyncError({
+        id: crypto.randomUUID(),
+        queueItemId: nextItem.id,
+        tenantId: nextItem.tenantId,
+        table: nextItem.table,
+        operation: nextItem.operation,
+        payload: nextItem.payload,
+        reason: `TRANSACCIONAL_CONFLICT:${processed.error.message}`,
+        failedAt: this.clock().toISOString()
+      });
+      this.eventBus.emit("SYNC.CONFLICT_DETECTED", {
+        itemId: nextItem.id,
+        table: nextItem.table
+      });
+      this.eventBus.emit("SYNC.DLQ_ITEM_MOVED", { itemId: nextItem.id });
+      this.status = "error";
+      this.eventBus.emit("SYNC.STATUS_CHANGED", { status: this.status });
+      return err(processed.error);
     }
 
     const nextAttempts = nextItem.attempts + 1;

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { eventBus } from "@/lib/core/runtime";
 import { useProducts } from "../hooks/useProducts";
+import { productsService } from "../services/products.service.instance";
 import { ProductsList } from "./ProductsList";
 import type { ProductsActorContext } from "../types/products.types";
 
@@ -11,6 +12,7 @@ interface ProductsCatalogProps {
 
 export function ProductsCatalog({ tenantSlug, actor }: ProductsCatalogProps) {
   const { state, refresh } = useProducts({
+    service: productsService,
     tenant: { tenantSlug },
     actor
   });
