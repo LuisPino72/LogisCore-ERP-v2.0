@@ -86,6 +86,24 @@ const createSyncEngineMock = (): SyncEngine => ({
   getStatus: vi.fn(() => "idle")
 });
 
+const createSupabaseMock = () => ({
+  rpc: vi.fn(async (fn: string) => {
+    if (fn === "secure_soft_delete_category") {
+      return {
+        data: [{ success: true, code: "CATEGORY_SOFT_DELETED", message: "ok" }],
+        error: null
+      };
+    }
+    if (fn === "secure_soft_delete_product") {
+      return {
+        data: [{ success: true, code: "PRODUCT_SOFT_DELETED", message: "ok" }],
+        error: null
+      };
+    }
+    return { data: null, error: { message: "rpc_not_found" } };
+  })
+});
+
 const ownerActor = {
   role: "owner" as const,
   permissions: {
@@ -120,6 +138,7 @@ describe("products.service", () => {
       db,
       syncEngine,
       eventBus: new InMemoryEventBus(),
+      supabase: createSupabaseMock(),
       clock: () => new Date("2026-01-01T00:00:00.000Z"),
       uuid: () => crypto.randomUUID()
     });
@@ -138,7 +157,8 @@ describe("products.service", () => {
     const service = createProductsService({
       db: createProductsDbMock(),
       syncEngine: createSyncEngineMock(),
-      eventBus: new InMemoryEventBus()
+      eventBus: new InMemoryEventBus(),
+      supabase: createSupabaseMock()
     });
 
     const result = await service.createProduct(
@@ -163,7 +183,8 @@ describe("products.service", () => {
     const service = createProductsService({
       db,
       syncEngine,
-      eventBus: new InMemoryEventBus()
+      eventBus: new InMemoryEventBus(),
+      supabase: createSupabaseMock()
     });
 
     const productResult = await service.createProduct(
@@ -203,7 +224,8 @@ describe("products.service", () => {
     const service = createProductsService({
       db: createProductsDbMock(),
       syncEngine: createSyncEngineMock(),
-      eventBus: new InMemoryEventBus()
+      eventBus: new InMemoryEventBus(),
+      supabase: createSupabaseMock()
     });
 
     const result = await service.createCategory(
@@ -229,12 +251,13 @@ describe("products.service", () => {
     }
   });
 
-  it("bloquea borrado logico en cliente y exige edge function", async () => {
+  it("ejecuta borrado de categoria via RPC segura", async () => {
     const db = createProductsDbMock();
     const service = createProductsService({
       db,
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
+      supabase: createSupabaseMock(),
       clock: () => new Date("2026-01-01T00:00:00.000Z"),
       uuid: () => crypto.randomUUID()
     });
@@ -254,12 +277,7 @@ describe("products.service", () => {
       ownerActor,
       categoryResult.data.localId
     );
-    expect(deleteResult.ok).toBe(false);
-    if (!deleteResult.ok) {
-      expect(deleteResult.error.code).toBe(
-        "SENSITIVE_OPERATION_REQUIRES_EDGE_FUNCTION"
-      );
-    }
+    expect(deleteResult.ok).toBe(true);
   });
 
   it("actualiza producto con presentacion por defecto valida", async () => {
@@ -267,7 +285,8 @@ describe("products.service", () => {
     const service = createProductsService({
       db,
       syncEngine: createSyncEngineMock(),
-      eventBus: new InMemoryEventBus()
+      eventBus: new InMemoryEventBus(),
+      supabase: createSupabaseMock()
     });
 
     const productResult = await service.createProduct(

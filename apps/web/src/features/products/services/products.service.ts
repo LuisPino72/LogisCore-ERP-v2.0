@@ -12,6 +12,19 @@ import type {
   ProductsTenantContext
 } from "../types/products.types";
 
+interface RpcResultRow {
+  success: boolean;
+  code: string;
+  message: string;
+}
+
+interface ProductsSupabaseLike {
+  rpc: <T>(fn: string, args?: Record<string, unknown>) => Promise<{
+    data: T | null;
+    error: { message: string } | null;
+  }>;
+}
+
 export interface ProductsDb {
   createCategory(category: Category): Promise<void>;
   createProduct(product: Product): Promise<void>;
@@ -91,6 +104,7 @@ interface ProductsServiceDependencies {
   db: ProductsDb;
   syncEngine: SyncEngine;
   eventBus: EventBus;
+  supabase: ProductsSupabaseLike;
   clock?: () => Date;
   uuid?: () => string;
 }
@@ -99,6 +113,7 @@ export const createProductsService = ({
   db,
   syncEngine,
   eventBus,
+  supabase,
   clock = () => new Date(),
   uuid = () => crypto.randomUUID()
 }: ProductsServiceDependencies): ProductsService => {
@@ -536,15 +551,61 @@ export const createProductsService = ({
       return err(permissionResult.error);
     }
 
-    return err(
-      createAppError({
-        code: "SENSITIVE_OPERATION_REQUIRES_EDGE_FUNCTION",
-        message:
-          "El borrado logico de categorias es una operacion sensible y debe ejecutarse via Edge Function.",
-        retryable: false,
-        context: { tenantSlug: tenant.tenantSlug, categoryLocalId }
-      })
+    const refs = await db.countActiveProductsByCategory(
+      categoryLocalId,
+      tenant.tenantSlug
     );
+    if (refs > 0) {
+      return err(
+        createAppError({
+          code: "CATEGORY_DELETE_BLOCKED_REFERENCES",
+          message:
+            "No se puede eliminar la categoria porque tiene productos activos.",
+          retryable: false,
+          context: { categoryLocalId, references: refs }
+        })
+      );
+    }
+
+    const rpcResponse = await supabase.rpc<RpcResultRow[]>("secure_soft_delete_category", {
+      p_local_id: categoryLocalId
+    });
+
+    if (rpcResponse.error) {
+      return err(
+        createAppError({
+          code: "CATEGORY_DELETE_RPC_FAILED",
+          message: rpcResponse.error.message,
+          retryable: true,
+          context: { categoryLocalId, tenantSlug: tenant.tenantSlug }
+        })
+      );
+    }
+
+    const rpcResult = Array.isArray(rpcResponse.data)
+      ? rpcResponse.data[0]
+      : null;
+
+    if (!rpcResult?.success) {
+      return err(
+        createAppError({
+          code: rpcResult?.code ?? "CATEGORY_DELETE_REJECTED",
+          message:
+            rpcResult?.message ??
+            "No se pudo ejecutar borrado logico seguro para la categoria.",
+          retryable: false,
+          context: { categoryLocalId, tenantSlug: tenant.tenantSlug }
+        })
+      );
+    }
+
+    const now = clock().toISOString();
+    await db.softDeleteCategory(categoryLocalId, tenant.tenantSlug, now);
+    eventBus.emit("CATALOG.CATEGORY_DELETED", {
+      tenantId: tenant.tenantSlug,
+      localId: categoryLocalId
+    });
+    return ok<void>(undefined);
   };
 
   const deleteProduct: ProductsService["deleteProduct"] = async (
@@ -557,15 +618,61 @@ export const createProductsService = ({
       return err(permissionResult.error);
     }
 
-    return err(
-      createAppError({
-        code: "SENSITIVE_OPERATION_REQUIRES_EDGE_FUNCTION",
-        message:
-          "El borrado logico de productos es una operacion sensible y debe ejecutarse via Edge Function.",
-        retryable: false,
-        context: { tenantSlug: tenant.tenantSlug, productLocalId }
-      })
+    const refs = await db.countActivePresentationsByProduct(
+      productLocalId,
+      tenant.tenantSlug
     );
+    if (refs > 0) {
+      return err(
+        createAppError({
+          code: "PRODUCT_DELETE_BLOCKED_REFERENCES",
+          message:
+            "No se puede eliminar el producto porque tiene presentaciones activas.",
+          retryable: false,
+          context: { productLocalId, references: refs }
+        })
+      );
+    }
+
+    const rpcResponse = await supabase.rpc<RpcResultRow[]>("secure_soft_delete_product", {
+      p_local_id: productLocalId
+    });
+
+    if (rpcResponse.error) {
+      return err(
+        createAppError({
+          code: "PRODUCT_DELETE_RPC_FAILED",
+          message: rpcResponse.error.message,
+          retryable: true,
+          context: { productLocalId, tenantSlug: tenant.tenantSlug }
+        })
+      );
+    }
+
+    const rpcResult = Array.isArray(rpcResponse.data)
+      ? rpcResponse.data[0]
+      : null;
+
+    if (!rpcResult?.success) {
+      return err(
+        createAppError({
+          code: rpcResult?.code ?? "PRODUCT_DELETE_REJECTED",
+          message:
+            rpcResult?.message ??
+            "No se pudo ejecutar borrado logico seguro para el producto.",
+          retryable: false,
+          context: { productLocalId, tenantSlug: tenant.tenantSlug }
+        })
+      );
+    }
+
+    const now = clock().toISOString();
+    await db.softDeleteProduct(productLocalId, tenant.tenantSlug, now);
+    eventBus.emit("CATALOG.PRODUCT_DELETED", {
+      tenantId: tenant.tenantSlug,
+      localId: productLocalId
+    });
+    return ok<void>(undefined);
   };
 
   return {
