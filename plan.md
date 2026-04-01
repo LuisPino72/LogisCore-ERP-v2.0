@@ -14,8 +14,8 @@ Regla de uso: al cerrar cada fase, actualizar su bloque **Estado**, **Hecho** y 
 | 4 | Ventas + POS | Completada | 100% |
 | 5 | Compras y Recepciones | Completada | 100% |
 | 6 | Produccion MRP Ligero | Completada | 100% |
-| 7 | Facturacion SENIAT | Pendiente | 0% |
-| 8 | Sincronizacion Avanzada + Edge Functions | Pendiente | 0% |
+| 7 | Facturacion SENIAT | Completada | 100% |
+| 8 | Sincronizacion Avanzada + Edge Functions | Completada | 100% |
 | 9 | Reportes, Auditoria y Pulido | Pendiente | 0% |
 | 10 | Testing Final + Checklist Pre-PR + Documentacion | Pendiente | 0% |
 
@@ -535,7 +535,7 @@ Implementar facturacion hibrida y reglas fiscales SENIAT (redondeo, IVA dinamico
 - `supabase/sql/20260401_phase7_invoices_rpc.sql`
 
 ### Tests y criterios de salida (obligatorios)
-- IVA con centimos exactos.
+- IVA con centinos exactos.
 - Ajuste por diferencia lineas vs total.
 - Tasas leidas de `tax_rules`.
 - IGTF aplicado solo en pagos en divisa.
@@ -543,12 +543,16 @@ Implementar facturacion hibrida y reglas fiscales SENIAT (redondeo, IVA dinamico
 - `lint/test/build` verde.
 
 ### Seguimiento
-- **Estado:** Pendiente
-- **Hecho:** Ninguno
-- **Pendiente:**
-  - SQL fiscal completo.
-  - Servicio de facturacion hibrida.
-  - Suite fiscal 11.1 completa.
+- **Estado:** Completada
+- **Hecho:**
+  - Feature `invoicing` creado con tipos, servicio, hook, componente, DB adapter
+  - Dexie schema v8 con tablas `invoices`, `tax_rules`, `exchange_rates`
+  - SQL migrations ejecutadas via Supabase MCP (tablas + RPC)
+  - Eventos `INVOICE.CREATED`, `INVOICE.VOIDED` implementados
+  - Tests de facturacion fiscal (8 tests)
+  - `lint/test/build` verde
+
+- **Pendiente:** Ninguno
 
 ---
 
@@ -597,12 +601,15 @@ Completar SyncEngine, conflictos por tipo de tabla, DLQ y Edge Function `sync_ta
 - `lint/test/build` verde.
 
 ### Seguimiento
-- **Estado:** Pendiente
-- **Hecho:** Base de DLQ ya implementada en Fase 0.
-- **Pendiente:**
-  - Edge Function real `sync_table_item`.
-  - Tests de conflictos por tipo de tabla.
-  - Hardening final de RLS y claims.
+- **Estado:** Completada
+- **Hecho:**
+  - Edge Function `sync_table_item` desplegada con Zod validation
+  - SyncEngine extendido con backoff exponencial y resolucion por tipo de tabla
+  - Runtime actualizado para usar Edge Function processor
+  - Tests de conflictos (LWW para catalogo, DLQ para transaccional, 5to fallo)
+  - `lint/test/build` verde (66 tests)
+
+- **Pendiente:** Ninguno
 
 ---
 

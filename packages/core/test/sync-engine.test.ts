@@ -144,4 +144,84 @@ describe("DefaultSyncEngine", () => {
     expect(result.ok).toBe(true);
     expect(queue).toHaveLength(0);
   });
+
+  it("resuelve conflicto catalogo con LWW sin mover a DLQ", async () => {
+    const { storage, queue, syncErrors } = createMemorySyncStorage();
+    const eventBus = new InMemoryEventBus();
+    const lwwSpy = vi.fn();
+    eventBus.on("SYNC.CATALOG_CONFLICT_LWW", lwwSpy);
+
+    const engine = new DefaultSyncEngine({
+      storage,
+      eventBus,
+      processor: {
+        async process() {
+          return err({
+            code: "SYNC_CONFLICT",
+            message: "duplicate key on catalog",
+            retryable: false
+          });
+        }
+      },
+      clock: () => new Date("2026-01-01T00:00:00.000Z")
+    });
+
+    await engine.enqueue({
+      id: "q-catalog-1",
+      table: "categories",
+      operation: "create",
+      payload: { name: "Nueva categoria" },
+      localId: "cat-1",
+      tenantId: "tenant-demo",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      attempts: 0
+    });
+
+    await engine.processNext();
+
+    expect(queue).toHaveLength(0);
+    expect(syncErrors).toHaveLength(0);
+    expect(lwwSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("calcula backoff exponencial con jitter", async () => {
+    const { storage } = createMemorySyncStorage();
+    const eventBus = new InMemoryEventBus();
+    const retrySpy = vi.fn();
+    eventBus.on("SYNC.RETRY_SCHEDULED", retrySpy);
+
+    const engine = new DefaultSyncEngine({
+      storage,
+      eventBus,
+      processor: {
+        async process() {
+          return err({
+            code: "SYNC_FAILURE",
+            message: "temporary error",
+            retryable: true
+          });
+        }
+      },
+      baseDelayMs: 100,
+      clock: () => new Date("2026-01-01T00:00:00.000Z")
+    });
+
+    await engine.enqueue({
+      id: "q-retry-1",
+      table: "sales",
+      operation: "create",
+      payload: { total: 50 },
+      localId: "sale-1",
+      tenantId: "tenant-demo",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      attempts: 0
+    });
+
+    await engine.processNext();
+
+    expect(retrySpy).toHaveBeenCalledTimes(1);
+    expect(retrySpy.mock.calls[0][0].attempts).toBe(1);
+    expect(retrySpy.mock.calls[0][0].retryAfter).toBeGreaterThanOrEqual(100);
+    expect(retrySpy.mock.calls[0][0].retryAfter).toBeLessThanOrEqual(300);
+  });
 });

@@ -292,6 +292,94 @@ export interface ProductionLogRecord {
   deletedAt?: string;
 }
 
+export interface InvoiceItemRecord {
+  productLocalId: string;
+  description: string;
+  qty: number;
+  unitPrice: number;
+  taxRate: number;
+  taxAmount: number;
+  subtotal: number;
+  discountPercent?: number;
+  discountAmount?: number;
+}
+
+export interface InvoicePaymentRecord {
+  method: "cash" | "card" | "transfer" | "mobile" | "mixed";
+  currency: "VES" | "USD";
+  amount: number;
+  reference?: string;
+}
+
+export interface InvoiceRecord {
+  localId: string;
+  tenantId: string;
+  saleLocalId?: string;
+  customerId?: string;
+  customerName?: string;
+  customerRif?: string;
+  invoiceNumber?: string;
+  pointOfSale?: string;
+  controlNumber?: string;
+  status: "draft" | "issued" | "voided";
+  currency: "VES" | "USD";
+  exchangeRate: number;
+  subtotal: number;
+  taxTotal: number;
+  discountTotal: number;
+  igtfAmount: number;
+  total: number;
+  items: InvoiceItemRecord[];
+  payments: InvoicePaymentRecord[];
+  notes?: string;
+  issuedAt?: string;
+  voidedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface TaxRuleRecord {
+  localId: string;
+  tenantId: string;
+  name: string;
+  rate: number;
+  type: "iva" | "islr" | "igtf";
+  isWithholding: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface ExchangeRateRecord {
+  localId: string;
+  tenantId: string;
+  fromCurrency: string;
+  toCurrency: string;
+  rate: number;
+  source: string;
+  validFrom: string;
+  validTo?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface ExchangeRateRecord {
+  localId: string;
+  tenantId: string;
+  fromCurrency: string;
+  toCurrency: string;
+  rate: number;
+  source: string;
+  validFrom: string;
+  validTo?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
 export class LogisCoreDexie extends Dexie {
   bootstrap_state!: EntityTable<CoreBootstrapState, "id">;
   sync_queue!: EntityTable<SyncQueueEntity, "id">;
@@ -312,6 +400,9 @@ export class LogisCoreDexie extends Dexie {
   recipes!: EntityTable<RecipeRecord, "localId">;
   production_orders!: EntityTable<ProductionOrderRecord, "localId">;
   production_logs!: EntityTable<ProductionLogRecord, "localId">;
+  invoices!: EntityTable<InvoiceRecord, "localId">;
+  tax_rules!: EntityTable<TaxRuleRecord, "localId">;
+  exchange_rates!: EntityTable<ExchangeRateRecord, "localId">;
 
   constructor() {
     super("logiscore_erp");
@@ -429,6 +520,38 @@ export class LogisCoreDexie extends Dexie {
       production_orders: "&localId, tenantId, recipeLocalId, warehouseLocalId, status, createdAt",
       production_logs:
         "&localId, tenantId, productionOrderLocalId, recipeLocalId, warehouseLocalId, createdAt"
+    });
+    this.version(8).stores({
+      bootstrap_state: "&id, tenantId, userId, bootstrappedAt",
+      sync_queue: "&id, tenantId, table, operation, createdAt, attempts, status",
+      sync_errors: "&id, queueItemId, tenantId, failedAt",
+      categories: "&localId, tenantId, name, createdAt",
+      products:
+        "&localId, tenantId, categoryId, visible, defaultPresentationId, createdAt",
+      product_presentations: "&id, tenantId, productLocalId, name, createdAt",
+      warehouses: "&localId, tenantId, name, code, createdAt",
+      product_size_colors: "&localId, tenantId, productLocalId, size, color, createdAt",
+      stock_movements:
+        "&localId, tenantId, productLocalId, warehouseLocalId, movementType, createdAt",
+      inventory_counts:
+        "&localId, tenantId, warehouseLocalId, productLocalId, status, createdAt",
+      sales: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      suspended_sales: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      box_closings: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      purchases: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      receivings: "&localId, tenantId, purchaseLocalId, warehouseLocalId, createdAt",
+      inventory_lots:
+        "&localId, tenantId, productLocalId, warehouseLocalId, sourceType, sourceLocalId, createdAt",
+      recipes: "&localId, tenantId, productLocalId, createdAt",
+      production_orders: "&localId, tenantId, recipeLocalId, warehouseLocalId, status, createdAt",
+      production_logs:
+        "&localId, tenantId, productionOrderLocalId, recipeLocalId, warehouseLocalId, createdAt",
+      invoices:
+        "&localId, tenantId, saleLocalId, customerId, status, createdAt",
+      tax_rules:
+        "&localId, tenantId, type, isActive, createdAt",
+      exchange_rates:
+        "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt"
     });
   }
 }

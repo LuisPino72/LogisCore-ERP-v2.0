@@ -14,6 +14,7 @@ interface SyncEngineDependencies {
   eventBus: EventBus;
   clock?: () => Date;
   maxAttempts?: number;
+  baseDelayMs?: number;
 }
 
 export class DefaultSyncEngine implements SyncEngine {
@@ -22,6 +23,7 @@ export class DefaultSyncEngine implements SyncEngine {
   private readonly eventBus: EventBus;
   private readonly clock: () => Date;
   private readonly maxAttempts: number;
+  private readonly baseDelayMs: number;
   private status: SyncStatus = "idle";
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
   private readonly transactionalTables = new Set([
@@ -38,13 +40,29 @@ export class DefaultSyncEngine implements SyncEngine {
     processor,
     eventBus,
     clock = () => new Date(),
-    maxAttempts = 5
+    maxAttempts = 5,
+    baseDelayMs = 500
   }: SyncEngineDependencies) {
     this.storage = storage;
     this.processor = processor;
     this.eventBus = eventBus;
     this.clock = clock;
     this.maxAttempts = maxAttempts;
+    this.baseDelayMs = baseDelayMs;
+  }
+
+  private computeBackoffDelay(attempts: number): number {
+    const delay = this.baseDelayMs * Math.pow(2, attempts);
+    const jitter = Math.random() * 0.3 * delay;
+    return Math.min(delay + jitter, 30_000);
+  }
+
+  private isCatalogTable(table: string): boolean {
+    return (
+      !this.transactionalTables.has(table) &&
+      table !== "sync_queue" &&
+      table !== "sync_errors"
+    );
   }
 
   async enqueue(item: Parameters<SyncStorage["addQueueItem"]>[0]) {
@@ -88,6 +106,7 @@ export class DefaultSyncEngine implements SyncEngine {
     const isConflict =
       errorCode.includes("CONFLICT") || errorMessage.includes("CONFLICT");
     const isTransactional = this.transactionalTables.has(nextItem.table);
+    const isCatalog = this.isCatalogTable(nextItem.table);
 
     if (isConflict && isTransactional) {
       await this.storage.removeQueueItem(nextItem.id);
@@ -111,6 +130,19 @@ export class DefaultSyncEngine implements SyncEngine {
       return err(processed.error);
     }
 
+    if (isConflict && isCatalog) {
+      const retryAfter = this.computeBackoffDelay(nextItem.attempts);
+      await this.storage.removeQueueItem(nextItem.id);
+      this.eventBus.emit("SYNC.CATALOG_CONFLICT_LWW", {
+        itemId: nextItem.id,
+        table: nextItem.table,
+        retryAfter
+      });
+      this.status = "idle";
+      this.eventBus.emit("SYNC.STATUS_CHANGED", { status: this.status });
+      return ok<"processed" | "skipped">("processed");
+    }
+
     const nextAttempts = nextItem.attempts + 1;
     if (nextAttempts >= this.maxAttempts) {
       await this.storage.removeQueueItem(nextItem.id);
@@ -131,7 +163,13 @@ export class DefaultSyncEngine implements SyncEngine {
     }
 
     await this.storage.updateQueueAttempts(nextItem.id, nextAttempts);
-    this.status = "error";
+    const retryAfter = this.computeBackoffDelay(nextItem.attempts);
+    this.eventBus.emit("SYNC.RETRY_SCHEDULED", {
+      itemId: nextItem.id,
+      attempts: nextAttempts,
+      retryAfter
+    });
+    this.status = "idle";
     this.eventBus.emit("SYNC.STATUS_CHANGED", { status: this.status });
     return err(processed.error);
   }

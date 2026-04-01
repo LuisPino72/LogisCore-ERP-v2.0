@@ -9,6 +9,7 @@ import { PurchasesPanel } from "@/features/purchases/components/PurchasesPanel";
 import { TenantBootstrapGate } from "@/features/tenant/components/TenantBootstrapGate";
 import { SalesPanel } from "@/features/sales/components/SalesPanel";
 import { ProductionPanel } from "@/features/production/components/ProductionPanel";
+import { InvoicingPanel } from "@/features/invoicing/components/InvoicingPanel";
 import { authService } from "@/features/auth/services/auth.service.instance";
 import { tenantService } from "@/features/tenant/services/tenant.service.instance";
 import { useEffect, useMemo, useState } from "react";
@@ -161,6 +162,7 @@ export function App() {
             actor={actor}
             products={catalogState.products}
           />
+          <InvoicingPanel tenantSlug={tenantSlug} actor={actor} />
         </>
       ) : null}
       <CoreSyncStatus />
