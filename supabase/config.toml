@@ -1,0 +1,4 @@
+project_id = "wijvuslujomodxsigyvv"
+
+[functions.check-subscriptions]
+verify_jwt = true

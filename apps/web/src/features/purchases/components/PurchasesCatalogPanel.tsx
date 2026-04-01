@@ -1,0 +1,142 @@
+import { useState } from "react";
+import type { Category, Product, ProductPresentation } from "@/features/products/types/products.types";
+import { usePurchases } from "../hooks/usePurchases";
+
+interface PurchasesCatalogPanelProps {
+  categories: Category[];
+  products: Product[];
+  presentations: ProductPresentation[];
+}
+
+export function PurchasesCatalogPanel({
+  categories,
+  products,
+  presentations
+}: PurchasesCatalogPanelProps) {
+  const { state, requestCreateCategory, requestCreateProduct, requestCreatePresentation } =
+    usePurchases();
+  const [categoryName, setCategoryName] = useState("");
+  const [productName, setProductName] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [defaultPresentationId, setDefaultPresentationId] = useState("");
+  const [presentationProductLocalId, setPresentationProductLocalId] = useState("");
+  const [presentationName, setPresentationName] = useState("");
+  const [presentationFactor, setPresentationFactor] = useState("1");
+
+  return (
+    <section
+      style={{
+        border: "1px solid #e2e8f0",
+        borderRadius: "8px",
+        background: "#ffffff",
+        padding: "12px",
+        marginTop: "16px",
+        marginBottom: "16px"
+      }}
+    >
+      <h2 style={{ marginTop: 0 }}>Compras: Gestion de Catalogo</h2>
+      <p style={{ marginTop: 0 }}>
+        Regla 7.5 aplicada: categorias y productos se crean desde Compras.
+      </p>
+
+      <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
+        <input
+          value={categoryName}
+          onChange={(event) => setCategoryName(event.target.value)}
+          placeholder="Nueva categoria"
+        />
+        <button
+          type="button"
+          disabled={state.isSubmitting}
+          onClick={() => requestCreateCategory({ name: categoryName })}
+        >
+          Crear categoria
+        </button>
+      </div>
+
+      <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
+        <input
+          value={productName}
+          onChange={(event) => setProductName(event.target.value)}
+          placeholder="Nuevo producto"
+        />
+        <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+          <option value="">Sin categoria</option>
+          {categories.map((category) => (
+            <option key={category.localId} value={category.localId}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={defaultPresentationId}
+          onChange={(event) => setDefaultPresentationId(event.target.value)}
+        >
+          <option value="">Sin presentacion por defecto</option>
+          {presentations.map((presentation) => (
+            <option key={presentation.id} value={presentation.id}>
+              {presentation.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={state.isSubmitting}
+          onClick={() =>
+            requestCreateProduct({
+              name: productName,
+              categoryId: categoryId || undefined,
+              visible: true,
+              defaultPresentationId: defaultPresentationId || undefined
+            })
+          }
+        >
+          Crear producto
+        </button>
+      </div>
+
+      <div style={{ display: "grid", gap: "8px" }}>
+        <select
+          value={presentationProductLocalId}
+          onChange={(event) => setPresentationProductLocalId(event.target.value)}
+        >
+          <option value="">Producto para presentacion</option>
+          {products.map((product) => (
+            <option key={product.localId} value={product.localId}>
+              {product.name}
+            </option>
+          ))}
+        </select>
+        <input
+          value={presentationName}
+          onChange={(event) => setPresentationName(event.target.value)}
+          placeholder="Nombre presentacion"
+        />
+        <input
+          value={presentationFactor}
+          onChange={(event) => setPresentationFactor(event.target.value)}
+          type="number"
+          min="0.0001"
+          step="0.0001"
+        />
+        <button
+          type="button"
+          disabled={state.isSubmitting}
+          onClick={() =>
+            requestCreatePresentation({
+              productLocalId: presentationProductLocalId,
+              name: presentationName,
+              factor: Number(presentationFactor)
+            })
+          }
+        >
+          Crear presentacion
+        </button>
+      </div>
+
+      {state.lastError ? (
+        <p style={{ color: "#b91c1c", marginBottom: 0 }}>{state.lastError.message}</p>
+      ) : null}
+    </section>
+  );
+}
