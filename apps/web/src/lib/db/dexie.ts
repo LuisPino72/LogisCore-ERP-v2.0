@@ -366,18 +366,18 @@ export interface ExchangeRateRecord {
   deletedAt?: string;
 }
 
-export interface ExchangeRateRecord {
+export interface SecurityAuditLogRecord {
   localId: string;
   tenantId: string;
-  fromCurrency: string;
-  toCurrency: string;
-  rate: number;
-  source: string;
-  validFrom: string;
-  validTo?: string;
+  userId?: string;
+  eventType: string;
+  targetTable?: string;
+  targetLocalId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  success: boolean;
+  details?: Record<string, unknown>;
   createdAt: string;
-  updatedAt: string;
-  deletedAt?: string;
 }
 
 export class LogisCoreDexie extends Dexie {
@@ -403,6 +403,7 @@ export class LogisCoreDexie extends Dexie {
   invoices!: EntityTable<InvoiceRecord, "localId">;
   tax_rules!: EntityTable<TaxRuleRecord, "localId">;
   exchange_rates!: EntityTable<ExchangeRateRecord, "localId">;
+  security_audit_log!: EntityTable<SecurityAuditLogRecord, "localId">;
 
   constructor() {
     super("logiscore_erp");
@@ -552,6 +553,40 @@ export class LogisCoreDexie extends Dexie {
         "&localId, tenantId, type, isActive, createdAt",
       exchange_rates:
         "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt"
+    });
+    this.version(9).stores({
+      bootstrap_state: "&id, tenantId, userId, bootstrappedAt",
+      sync_queue: "&id, tenantId, table, operation, createdAt, attempts, status",
+      sync_errors: "&id, queueItemId, tenantId, failedAt",
+      categories: "&localId, tenantId, name, createdAt",
+      products:
+        "&localId, tenantId, categoryId, visible, defaultPresentationId, createdAt",
+      product_presentations: "&id, tenantId, productLocalId, name, createdAt",
+      warehouses: "&localId, tenantId, name, code, createdAt",
+      product_size_colors: "&localId, tenantId, productLocalId, size, color, createdAt",
+      stock_movements:
+        "&localId, tenantId, productLocalId, warehouseLocalId, movementType, createdAt",
+      inventory_counts:
+        "&localId, tenantId, warehouseLocalId, productLocalId, status, createdAt",
+      sales: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      suspended_sales: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      box_closings: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      purchases: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      receivings: "&localId, tenantId, purchaseLocalId, warehouseLocalId, createdAt",
+      inventory_lots:
+        "&localId, tenantId, productLocalId, warehouseLocalId, sourceType, sourceLocalId, createdAt",
+      recipes: "&localId, tenantId, productLocalId, createdAt",
+      production_orders: "&localId, tenantId, recipeLocalId, warehouseLocalId, status, createdAt",
+      production_logs:
+        "&localId, tenantId, productionOrderLocalId, recipeLocalId, warehouseLocalId, createdAt",
+      invoices:
+        "&localId, tenantId, saleLocalId, customerId, status, createdAt",
+      tax_rules:
+        "&localId, tenantId, type, isActive, createdAt",
+      exchange_rates:
+        "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt",
+      security_audit_log:
+        "&localId, tenantId, userId, eventType, createdAt"
     });
   }
 }

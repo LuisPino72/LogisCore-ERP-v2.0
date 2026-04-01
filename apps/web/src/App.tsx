@@ -10,6 +10,8 @@ import { TenantBootstrapGate } from "@/features/tenant/components/TenantBootstra
 import { SalesPanel } from "@/features/sales/components/SalesPanel";
 import { ProductionPanel } from "@/features/production/components/ProductionPanel";
 import { InvoicingPanel } from "@/features/invoicing/components/InvoicingPanel";
+import { ReportsPanel } from "@/features/reports/components/ReportsPanel";
+import type { ReportsActorContext } from "@/features/reports/types/reports.types";
 import { authService } from "@/features/auth/services/auth.service.instance";
 import { tenantService } from "@/features/tenant/services/tenant.service.instance";
 import { useEffect, useMemo, useState } from "react";
@@ -44,7 +46,9 @@ export function App() {
           canVoidSale: false,
           canRefundSale: false,
           canVoidInvoice: false,
-          canAdjustStock: false
+          canAdjustStock: false,
+          canViewReports: true,
+          canExportReports: false
         }
       } as ProductsActorContext)
   });
@@ -163,6 +167,10 @@ export function App() {
             products={catalogState.products}
           />
           <InvoicingPanel tenantSlug={tenantSlug} actor={actor} />
+          <ReportsPanel
+            tenantSlug={tenantSlug}
+            actor={actor as unknown as ReportsActorContext}
+          />
         </>
       ) : null}
       <CoreSyncStatus />

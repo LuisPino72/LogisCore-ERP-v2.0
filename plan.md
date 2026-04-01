@@ -16,8 +16,8 @@ Regla de uso: al cerrar cada fase, actualizar su bloque **Estado**, **Hecho** y 
 | 6 | Produccion MRP Ligero | Completada | 100% |
 | 7 | Facturacion SENIAT | Completada | 100% |
 | 8 | Sincronizacion Avanzada + Edge Functions | Completada | 100% |
-| 9 | Reportes, Auditoria y Pulido | Pendiente | 0% |
-| 10 | Testing Final + Checklist Pre-PR + Documentacion | Pendiente | 0% |
+| 9 | Reportes, Auditoria y Pulido | Completada | 100% |
+| 10 | Testing Final + Checklist Pre-PR + Documentacion | Completada | 100% |
 
 ---
 
@@ -658,12 +658,15 @@ Reportes clave, `security_audit_log`, optimizacion y purge.
 - `lint/test/build` verde.
 
 ### Seguimiento
-- **Estado:** Pendiente
-- **Hecho:** Emision de `SECURITY.AUDIT_LOG_REQUESTED` ya disponible en base.
-- **Pendiente:**
-  - Persistencia real de auditoria.
-  - Vistas/reportes funcionales.
-  - Politicas de purge.
+- **Estado:** Completada
+- **Hecho:**
+  - SQL con `security_audit_log` table + RLS + 5 report views
+  - Feature `reports` completo con types, service, adapter, hook, component
+  - Dexie v9 con tabla `security_audit_log`
+  - Integracion de auditoria en servicios via `logSecurityEvent`
+  - `lint/test/build` verde (66 tests)
+
+- **Pendiente:** Ninguno
 
 ---
 
