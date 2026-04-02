@@ -138,9 +138,9 @@ export const createAuthService = ({
 
   // Recupera la contraseña del usuario
   async resetPassword(email: string) {
-    const resetUrl = `${window.location.origin}/?resetPassword=true`;
+    const redirectUrl = import.meta.env.VITE_APP_URL || window.location.origin;
     const response = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: resetUrl
+      redirectTo: `${redirectUrl}/?resetPassword=true`
     });
 
     if (response.error) {
