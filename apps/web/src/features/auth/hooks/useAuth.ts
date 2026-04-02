@@ -72,5 +72,19 @@ export const useAuth = ({ service }: UseAuthOptions) => {
     });
   }, [service]);
 
-  return { state, loadSession, signIn };
+  /**
+   * Recupera la contraseña del usuario
+   * Llama a resetPassword del servicio
+   */
+  const resetPassword = useCallback(async (email: string) => {
+    setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
+    const result = await service.resetPassword(email);
+    setState((previous) => ({ ...previous, isLoading: false }));
+    if (!result.ok) {
+      setState((previous) => ({ ...previous, lastError: result.error }));
+    }
+    return result;
+  }, [service]);
+
+  return { state, loadSession, signIn, resetPassword };
 };

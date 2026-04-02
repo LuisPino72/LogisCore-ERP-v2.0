@@ -1,7 +1,6 @@
 // Tenant - Gestiona la carga inicial y autenticación del tenant
-import { useEffect } from "react";
-import { AuthSessionCard } from "@/features/auth/components/AuthSessionCard";
-import { LoginForm } from "@/features/auth/components/LoginForm";
+import { useEffect, type ReactNode } from "react";
+import { AuthSessionCard, LoginPage } from "@/features/auth/components/Login";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { BlockedAccessScreen } from "@/features/core/components/BlockedAccessScreen";
 import { useTenantData } from "../hooks/useTenantData";
@@ -11,14 +10,16 @@ interface TenantBootstrapGateProps {
   authService: Parameters<typeof useAuth>[0]["service"];
   tenantService: Parameters<typeof useTenantData>[0]["tenant"];
   coreService: { startSync: () => unknown };
+  renderApp?: (tenantSlug: string, actor: { role: string; permissions: Record<string, unknown> }) => ReactNode;
 }
 
 export function TenantBootstrapGate({
   authService,
   tenantService,
-  coreService
+  coreService,
+  renderApp
 }: TenantBootstrapGateProps) {
-  const { state: authState, loadSession, signIn } = useAuth({ service: authService });
+  const { state: authState, loadSession, signIn, resetPassword } = useAuth({ service: authService });
   const { state, bootstrapTenantData } = useTenantData({
     auth: authService,
     tenant: tenantService
@@ -44,20 +45,18 @@ export function TenantBootstrapGate({
     await signIn(email, password);
   };
 
-  if (authState.isLoading && !authState.session) {
-    return (
-      <p style={{ textAlign: "center", marginTop: 80 }}>
-        Cargando...
-      </p>
-    );
-  }
+  const handleResetPassword = async (email: string) => {
+    return await resetPassword(email);
+  };
 
   if (!authState.session) {
+    const loginError = authState.lastError?.code === "AUTH_SESSION_MISSING" ? null : authState.lastError;
     return (
-      <LoginForm
+      <LoginPage
         onLogin={handleLogin}
+        onResetPassword={handleResetPassword}
         isLoading={authState.isLoading}
-        error={authState.lastError?.message ?? null}
+        error={loginError}
       />
     );
   }
@@ -81,6 +80,13 @@ export function TenantBootstrapGate({
         <SuperAdminPanel />
       </section>
     );
+  }
+
+  if (renderApp && state.tenant?.tenantSlug) {
+    return renderApp(state.tenant.tenantSlug, {
+      role: state.userRole?.role ?? "employee",
+      permissions: (state.userRole?.permissions ?? {}) as Record<string, unknown>
+    });
   }
 
   return (

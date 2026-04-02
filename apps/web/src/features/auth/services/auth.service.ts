@@ -20,12 +20,19 @@ interface SupabaseSignOutResponse {
   error: { message: string } | null;
 }
 
+// Respuesta de Supabase al recuperar contraseña
+interface SupabaseResetPasswordResponse {
+  data: unknown;
+  error: { message: string } | null;
+}
+
 // Abstracción del cliente de autenticación (tipo Supabase)
 export interface AuthSupabaseLike {
   auth: {
-    getSession: () => Promise<SupabaseAuthSessionResponse>; // Obtiene sesión actual
-    signInWithPassword: (options: { email: string; password: string }) => Promise<SupabaseSignInResponse>; // Login
-    signOut: () => Promise<SupabaseSignOutResponse>; // Logout
+    getSession: () => Promise<SupabaseAuthSessionResponse>;
+    signInWithPassword: (options: { email: string; password: string }) => Promise<SupabaseSignInResponse>;
+    signOut: () => Promise<SupabaseSignOutResponse>;
+    resetPasswordForEmail: (email: string, options?: { redirectTo?: string }) => Promise<SupabaseResetPasswordResponse>;
   };
 }
 
@@ -34,6 +41,7 @@ export interface AuthService {
   getActiveSession(): Promise<Result<AuthSession, AppError>>; // Obtener sesión activa
   signIn(email: string, password: string): Promise<Result<AuthSession, AppError>>; // Iniciar sesión
   signOut(): Promise<Result<void, AppError>>; // Cerrar sesión
+  resetPassword(email: string): Promise<Result<void, AppError>>; // Recuperar contraseña
 }
 
 // Dependencias necesarias para crear el servicio
@@ -125,6 +133,27 @@ export const createAuthService = ({
 
     // Emitir evento de logout exitoso
     eventBus.emit("AUTH.SIGNED_OUT", {});
+    return ok<void>(undefined);
+  },
+
+  // Recupera la contraseña del usuario
+  async resetPassword(email: string) {
+    const resetUrl = `${window.location.origin}/?resetPassword=true`;
+    const response = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: resetUrl
+    });
+
+    if (response.error) {
+      return err(
+        createAppError({
+          code: "AUTH_RESET_PASSWORD_FAILED",
+          message: response.error.message,
+          retryable: true
+        })
+      );
+    }
+
+    eventBus.emit("AUTH.RESET_PASSWORD_SENT", { email });
     return ok<void>(undefined);
   }
 });

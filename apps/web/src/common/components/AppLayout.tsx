@@ -1,0 +1,40 @@
+import { useState, type ReactNode } from "react";
+import { Sidebar } from "./Sidebar";
+
+export type ModuleId = "dashboard" | "inventory" | "products" | "purchases" | "sales" | "production" | "invoicing" | "reports";
+
+interface AppLayoutProps {
+  children: ReactNode;
+  activeModule: ModuleId;
+  onModuleChange: (module: ModuleId) => void;
+}
+
+const modules = [
+  { id: "dashboard" as const, label: "Dashboard", icon: null },
+  { id: "inventory" as const, label: "Inventario", icon: null },
+  { id: "products" as const, label: "Productos", icon: null },
+  { id: "purchases" as const, label: "Compras", icon: null },
+  { id: "sales" as const, label: "Ventas", icon: null },
+  { id: "production" as const, label: "Producción", icon: null },
+  { id: "invoicing" as const, label: "Facturación", icon: null },
+  { id: "reports" as const, label: "Reportes", icon: null }
+];
+
+export function AppLayout({ children, activeModule, onModuleChange }: AppLayoutProps) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div className="flex h-screen bg-surface-50">
+      <Sidebar
+        items={modules}
+        activeItem={activeModule}
+        onItemClick={(id) => onModuleChange(id as ModuleId)}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed(!collapsed)}
+      />
+      <main className="flex-1 overflow-auto">
+        {children}
+      </main>
+    </div>
+  );
+}

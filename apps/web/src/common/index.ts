@@ -21,5 +21,7 @@ export * from "./components/FilterPanel";
 export * from "./components/DataTable";
 export * from "./components/ErrorBoundary";
 export * from "./components/NotFound";
+export * from "./components/Sidebar";
+export * from "./components/AppLayout";
 
 export * from "./utils/formatters";
