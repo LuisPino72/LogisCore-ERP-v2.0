@@ -74,11 +74,13 @@ export function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const hash = window.location.hash;
-    const hasRecoveryToken = params.get("type") === "recovery" || 
-                            params.get("access_token") !== null ||
-                            hash.includes("type=recovery") || 
-                            hash.includes("access_token");
-    if (hasRecoveryToken) {
+    const isRecovery = params.get("resetPassword") === "true" || 
+                       params.get("type") === "recovery" || 
+                       params.get("access_token") !== null ||
+                       hash.includes("type=recovery") || 
+                       hash.includes("access_token");
+    if (isRecovery) {
+      console.log("Password reset detected", Object.fromEntries(params));
       setIsPasswordReset(true);
     }
   }, []);
@@ -89,6 +91,7 @@ export function App() {
         supabase={supabase as never}
         onPasswordReset={() => {
           window.location.hash = "";
+          window.location.search = "";
           setIsPasswordReset(false);
         }}
       />
