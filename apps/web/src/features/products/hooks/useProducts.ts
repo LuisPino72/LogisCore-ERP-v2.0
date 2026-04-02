@@ -1,3 +1,8 @@
+/**
+ * Hook de productos
+ * Coordina el estado de UI para gestión de productos, categorías y presentaciones
+ */
+
 import { useCallback, useState } from "react";
 import type { ProductsService } from "../services/products.service";
 import type {
@@ -9,6 +14,7 @@ import type {
   ProductsUiState
 } from "../types/products.types";
 
+/** Estado inicial vacío */
 const initialState: ProductsUiState = {
   isLoading: false,
   categories: [],
@@ -23,6 +29,12 @@ interface UseProductsOptions {
   actor: ProductsActorContext;
 }
 
+/**
+ * Hook para gestionar productos
+ * @param service - Servicio de productos inyectado
+ * @param tenant - Contexto del tenant
+ * @param actor - Contexto del usuario (rol y permisos)
+ */
 export const useProducts = ({
   service,
   tenant,
@@ -30,6 +42,9 @@ export const useProducts = ({
 }: UseProductsOptions) => {
   const [state, setState] = useState<ProductsUiState>(initialState);
 
+  /**
+   * Refresca todos los datos: categorías, productos y presentaciones
+   */
   const refresh = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
     const [categoriesResult, productsResult, presentationsResult] = await Promise.all([
@@ -74,6 +89,9 @@ export const useProducts = ({
     });
   }, [service, tenant]);
 
+  /**
+   * Crea una nueva categoría
+   */
   const createCategory = useCallback(
     async (input: CreateCategoryInput) => {
       const result = await service.createCategory(tenant, actor, input);
@@ -86,6 +104,9 @@ export const useProducts = ({
     [actor, refresh, service, tenant]
   );
 
+  /**
+   * Crea un nuevo producto
+   */
   const createProduct = useCallback(
     async (input: CreateProductInput) => {
       const result = await service.createProduct(tenant, actor, input);
@@ -98,6 +119,9 @@ export const useProducts = ({
     [actor, refresh, service, tenant]
   );
 
+  /**
+   * Crea una nueva presentación (variante) de producto
+   */
   const createPresentation = useCallback(
     async (input: CreateProductPresentationInput) => {
       const result = await service.createPresentation(tenant, actor, input);

@@ -1,11 +1,23 @@
+/**
+ * Componente de lista de productos
+ * Muestra el catálogo de productos, categorías y presentaciones
+ */
+
 import type { Category, Product, ProductPresentation } from "../types/products.types";
 
+/** Props del componente */
 interface ProductsListProps {
   categories: Category[];
   products: Product[];
   presentations: ProductPresentation[];
 }
 
+/**
+ * Lista visual de productos
+ * @param categories - Categorías disponibles
+ * @param products - Productos del catálogo
+ * @param presentations - Presentaciones (variantes) de productos
+ */
 export function ProductsList({
   categories,
   products,

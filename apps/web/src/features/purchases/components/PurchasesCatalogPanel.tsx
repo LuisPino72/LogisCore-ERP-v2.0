@@ -1,3 +1,8 @@
+/**
+ * Panel para gestionar el catálogo de compras y proveedores.
+ * Permite crear categorías, productos y presentaciones desde el módulo de compras.
+ */
+
 import { useState } from "react";
 import type { Category, Product, ProductPresentation } from "@/features/products/types/products.types";
 import { usePurchases } from "../hooks/usePurchases";

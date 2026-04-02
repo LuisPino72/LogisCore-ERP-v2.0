@@ -1,3 +1,12 @@
+/**
+ * Hook personalizado para gestionar la facturación.
+ * Provee estado y métodos para:
+ * - Listar facturas, reglas fiscales y tipos de cambio
+ * - Crear facturas desde ventas
+ * - Anular facturas
+ * Utiliza el patrón Result<T, AppError> para manejo de errores.
+ */
+
 import { useCallback, useState } from "react";
 import { invoicingService } from "../services/invoicing.service.instance";
 import type { InvoicingService } from "../services/invoicing.service";

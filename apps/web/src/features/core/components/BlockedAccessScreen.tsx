@@ -1,3 +1,4 @@
+// Core - Muestra pantalla de acceso bloqueado cuando la suscripción está inactiva
 interface BlockedAccessScreenProps {
   tenantSlug: string | null;
 }

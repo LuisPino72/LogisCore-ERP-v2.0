@@ -1,3 +1,4 @@
+// Reports - Servicio para generar reportes de ventas, kardex y ganancias
 import {
   createAppError,
   err,

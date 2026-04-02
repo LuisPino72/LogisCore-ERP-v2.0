@@ -1,5 +1,11 @@
+/**
+ * Tipos para el módulo de reportes.
+ * Incluye interfaces para reportes de ventas, kardex, utilidad bruta, cierres de caja y auditoría.
+ */
+
 import type { AppError } from "@logiscore/core";
 
+// Reporte de ventas agregadas por día
 export interface SalesByDay {
   saleDate: string;
   totalTransactions: number;

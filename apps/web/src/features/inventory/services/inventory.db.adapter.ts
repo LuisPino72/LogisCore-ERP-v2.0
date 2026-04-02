@@ -1,3 +1,8 @@
+/**
+ * Adaptador de base de datos local para inventario (Dexie/IndexedDB).
+ * Implementa la interfaz InventoryDb con operaciones CRUD y de negocio.
+ */
+
 import {
   db,
   type InventoryCountRecord,
@@ -7,6 +12,7 @@ import {
 } from "@/lib/db/dexie";
 import type { InventoryDb } from "./inventory.service";
 
+// Tipos de movimiento que incrementan el stock
 const incomingMovementTypes = new Set<StockMovementRecord["movementType"]>([
   "purchase_in",
   "adjustment_in",

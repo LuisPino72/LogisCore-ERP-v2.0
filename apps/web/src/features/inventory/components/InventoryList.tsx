@@ -1,3 +1,8 @@
+/**
+ * Componente de presentación para listar datos de inventario.
+ * Muestra almacenes, saldos, conteos, tallas/colores, movimientos recientes y sugerencias de reorden.
+ */
+
 import type {
   InventoryCount,
   ProductSizeColor,

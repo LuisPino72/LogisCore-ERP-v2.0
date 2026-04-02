@@ -1,3 +1,4 @@
+// Reports - Adaptador de base de datos para consultas de reportes
 import { db, type SecurityAuditLogRecord } from "@/lib/db/dexie";
 import type { ReportsDb } from "./reports.service";
 import type {
@@ -8,6 +9,7 @@ import type {
   SalesByProduct
 } from "../types/reports.types";
 
+// Implementa la interfaz ReportsDb usando Dexie/IndexedDB
 export class DexieReportsDbAdapter implements ReportsDb {
   async listSalesByDay(tenantId: string): Promise<SalesByDay[]> {
     const sales = await db.sales

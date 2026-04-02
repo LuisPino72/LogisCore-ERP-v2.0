@@ -1,3 +1,8 @@
+/**
+ * Adaptador de base de datos local para productos (Dexie/IndexedDB).
+ * Implementa la interfaz ProductsDb con operaciones CRUD y de negocio.
+ */
+
 import {
   db,
   type CategoryRecord,
@@ -6,6 +11,7 @@ import {
 } from "@/lib/db/dexie";
 import type { ProductsDb } from "./products.service";
 
+// Implementa la interfaz ProductsDb usando Dexie/IndexedDB
 export class DexieProductsDbAdapter implements ProductsDb {
   async createCategory(category: CategoryRecord): Promise<void> {
     await db.categories.put(category);
@@ -25,6 +31,10 @@ export class DexieProductsDbAdapter implements ProductsDb {
 
   async updateProduct(product: ProductRecord): Promise<void> {
     await db.products.put(product);
+  }
+
+  async updatePresentation(presentation: ProductPresentationRecord): Promise<void> {
+    await db.product_presentations.put(presentation);
   }
 
   async listCategories(tenantId: string): Promise<CategoryRecord[]> {

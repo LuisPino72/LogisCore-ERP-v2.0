@@ -1,3 +1,9 @@
+/**
+ * Componente principal del panel de compras.
+ * Permite crear órdenes de compra, recibir compras y gestionar lotes de inventario.
+ * Escucha eventos del bus para actualización automática.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import type { Product } from "@/features/products/types/products.types";
 import { eventBus } from "@/lib/core/runtime";

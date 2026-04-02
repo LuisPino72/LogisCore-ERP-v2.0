@@ -22,6 +22,9 @@ import type {
   SuspendedSale
 } from "../types/sales.types";
 
+/**
+ * Interfaz para acceder a funciones RPC de Supabase.
+ */
 export interface SalesSupabaseLike {
   rpc: <T>(fn: string, args?: Record<string, unknown>) => Promise<{
     data: T | null;
@@ -44,6 +47,10 @@ interface RpcRow {
   sales_count?: number;
 }
 
+/**
+ * Interfaz del adaptador de base de datos para ventas.
+ * Define las operaciones CRUD básicas sobre ventas, ventas suspendidas y cajas.
+ */
 export interface SalesDb {
   createSale(sale: Sale): Promise<void>;
   listSales(tenantId: string): Promise<Sale[]>;
@@ -75,6 +82,11 @@ export interface SalesDb {
   createStockMovements(movements: StockMovementRecord[]): Promise<void>;
 }
 
+/**
+ * Interfaz del servicio de ventas.
+ * Define todas las operaciones de negocio relacionadas con ventas POS.
+ * Todas las funciones retornan Result<T, AppError> para manejo de errores.
+ */
 export interface SalesService {
   createSuspendedSale(
     tenant: SalesTenantContext,
@@ -298,12 +310,12 @@ export const createSalesService = ({
       localId,
       tenantId: tenant.tenantSlug,
       warehouseLocalId: input.warehouseLocalId,
-      cashierUserId: actor.userId,
+      cashierUserId: actor.userId || "",
       status: "open",
       cart: input.cart,
       paymentsDraft: input.paymentsDraft ?? [],
-      notes: input.notes,
-      expiresAt: input.expiresAt,
+      notes: input.notes || "",
+      expiresAt: input.expiresAt || "",
       createdAt: now,
       updatedAt: now
     };
@@ -404,9 +416,9 @@ export const createSalesService = ({
     const sale: Sale = {
       localId,
       tenantId: tenant.tenantSlug,
-      saleNumber: input.saleNumber,
+      saleNumber: input.saleNumber || "",
       warehouseLocalId: input.warehouseLocalId,
-      cashierUserId: actor.userId,
+      cashierUserId: actor.userId || "",
       status: "completed",
       currency: input.currency,
       exchangeRate: input.exchangeRate,
@@ -418,8 +430,11 @@ export const createSalesService = ({
       changeAmount: paymentTotals.data.changeAmount,
       items: input.items,
       payments: input.payments,
-      suspendedSourceLocalId: input.suspendedSourceLocalId,
-      notes: input.notes,
+      suspendedSourceLocalId: input.suspendedSourceLocalId || "",
+      notes: input.notes || "",
+      salesPersonId: input.salesPersonId || "",
+      posTerminalId: input.posTerminalId || "",
+      customerId: input.customerId || "",
       createdAt: now,
       updatedAt: now
     };
@@ -432,11 +447,11 @@ export const createSalesService = ({
       warehouseLocalId: input.warehouseLocalId,
       movementType: "sale_out",
       quantity: item.qty,
-      unitCost: item.unitCost,
+      unitCost: item.unitCost ?? 0,
       referenceType: "sale",
       referenceLocalId: localId,
       notes: "Salida por venta POS",
-      createdBy: actor.userId,
+      createdBy: actor.userId || "",
       createdAt: now
     }));
     if (stockMovements.length) {
@@ -597,7 +612,7 @@ export const createSalesService = ({
       tenantId: tenant.tenantSlug,
       warehouseLocalId: input.warehouseLocalId,
       openedBy: openBox.openedBy,
-      closedBy: actor.userId,
+      closedBy: actor.userId || "",
       status: "closed",
       openedAt: openBox.openedAt,
       closedAt: now,
@@ -606,6 +621,8 @@ export const createSalesService = ({
       countedAmount: input.countedAmount,
       differenceAmount: rpcRow.difference_amount ?? 0,
       salesCount: rpcRow.sales_count ?? 0,
+      openingReading: "",
+      closingReading: "",
       metadata: input.notes ? { notes: input.notes } : {},
       createdAt: openBox.createdAt,
       updatedAt: now
@@ -613,7 +630,7 @@ export const createSalesService = ({
     await db.closeOpenBoxByWarehouse(tenant.tenantSlug, input.warehouseLocalId, {
       status: "closed",
       closedAt: now,
-      closedBy: actor.userId,
+      closedBy: actor.userId || "",
       expectedAmount: box.expectedAmount,
       countedAmount: box.countedAmount,
       differenceAmount: box.differenceAmount,
@@ -700,10 +717,18 @@ export const createSalesService = ({
       localId,
       tenantId: tenant.tenantSlug,
       warehouseLocalId: input.warehouseLocalId,
-      openedBy: actor.userId,
+      openedBy: actor.userId || "",
+      closedBy: "",
       status: "open",
       openedAt,
+      closedAt: "",
       openingAmount: input.openingAmount,
+      expectedAmount: 0,
+      countedAmount: 0,
+      differenceAmount: 0,
+      salesCount: 0,
+      openingReading: "",
+      closingReading: "",
       metadata: input.notes ? { notes: input.notes } : {},
       createdAt: now,
       updatedAt: now

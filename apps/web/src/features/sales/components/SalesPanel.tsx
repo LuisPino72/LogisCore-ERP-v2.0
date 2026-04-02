@@ -1,3 +1,9 @@
+/**
+ * Componente principal del panel de ventas (POS).
+ * Permite crear ventas, suspenderlas, restaurarlas, abrir y cerrar caja.
+ * Escucha eventos del bus para actualización automática.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { eventBus } from "@/lib/core/runtime";
 import type { Product } from "@/features/products/types/products.types";

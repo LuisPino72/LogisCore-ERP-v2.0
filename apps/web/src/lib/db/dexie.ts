@@ -17,6 +17,7 @@ export interface CategoryRecord {
   name: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 }
 
 export interface ProductPresentationRecord {
@@ -26,6 +27,7 @@ export interface ProductPresentationRecord {
   name: string;
   factor: number;
   barcode?: string;
+  isDefault?: boolean;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -35,9 +37,16 @@ export interface ProductRecord {
   localId: string;
   tenantId: string;
   name: string;
-  categoryId?: string;
+  sku: string;
   visible: boolean;
-  defaultPresentationId?: string;
+  description?: string | null;
+  categoryId?: string | null;
+  weight?: number | null;
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
+  isSerialized?: boolean | null;
+  defaultPresentationId?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -84,11 +93,13 @@ export interface StockMovementRecord {
   warehouseLocalId: string;
   movementType: StockMovementType;
   quantity: number;
-  unitCost?: number;
-  referenceType?: string;
-  referenceLocalId?: string;
+  unitCost: number;
+  referenceType: string;
+  referenceLocalId: string;
+  referenceDocumentType?: string;
+  costLayerId?: string;
   notes?: string;
-  createdBy?: string;
+  createdBy: string;
   createdAt: string;
   deletedAt?: string;
 }
@@ -129,11 +140,14 @@ export interface SalePaymentRecord {
 export interface SaleRecord {
   localId: string;
   tenantId: string;
-  saleNumber?: string;
+  saleNumber: string;
   warehouseLocalId: string;
-  cashierUserId?: string;
+  cashierUserId: string;
+  salesPersonId: string;
+  posTerminalId: string;
+  customerId: string;
   status: "draft" | "completed" | "voided" | "refunded";
-  currency: string;
+  currency: "VES" | "USD";
   exchangeRate: number;
   subtotal: number;
   taxTotal: number;
@@ -143,8 +157,8 @@ export interface SaleRecord {
   changeAmount: number;
   items: SaleItemRecord[];
   payments: SalePaymentRecord[];
-  suspendedSourceLocalId?: string;
-  notes?: string;
+  suspendedSourceLocalId: string;
+  notes: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -154,12 +168,12 @@ export interface SuspendedSaleRecord {
   localId: string;
   tenantId: string;
   warehouseLocalId: string;
-  cashierUserId?: string;
+  cashierUserId: string;
   status: "open" | "resumed" | "cancelled" | "converted";
   cart: SaleItemRecord[];
   paymentsDraft: SalePaymentRecord[];
-  notes?: string;
-  expiresAt?: string;
+  notes: string;
+  expiresAt: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -169,16 +183,18 @@ export interface BoxClosingRecord {
   localId: string;
   tenantId: string;
   warehouseLocalId: string;
-  openedBy?: string;
-  closedBy?: string;
+  openedBy: string;
+  closedBy: string;
   status: "open" | "closed";
   openedAt: string;
-  closedAt?: string;
+  closedAt: string;
   openingAmount: number;
-  expectedAmount?: number;
-  countedAmount?: number;
-  differenceAmount?: number;
-  salesCount?: number;
+  expectedAmount: number;
+  countedAmount: number;
+  differenceAmount: number;
+  salesCount: number;
+  openingReading: string;
+  closingReading: string;
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;

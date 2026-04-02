@@ -1,3 +1,8 @@
+/**
+ * Interfaz del adaptador de base de datos para compras.
+ * Define las operaciones CRUD básicas sobre compras, recepciones y lotes.
+ */
+
 import {
   createAppError,
   err,
@@ -37,6 +42,11 @@ export interface PurchasesDb {
   ): Promise<void>;
 }
 
+/**
+ * Interfaz del servicio de compras.
+ * Define todas las operaciones de negocio relacionadas con compras.
+ * Todas las funciones retornan Result<T, AppError> para manejo de errores.
+ */
 export interface PurchasesService {
   requestCreateCategory(
     input: PurchasesCatalogCreateCategoryCommand

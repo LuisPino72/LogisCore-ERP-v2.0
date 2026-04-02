@@ -1,3 +1,4 @@
+// Tenant - Gestiona la carga inicial y autenticación del tenant
 import { useEffect } from "react";
 import { AuthSessionCard } from "@/features/auth/components/AuthSessionCard";
 import { LoginForm } from "@/features/auth/components/LoginForm";

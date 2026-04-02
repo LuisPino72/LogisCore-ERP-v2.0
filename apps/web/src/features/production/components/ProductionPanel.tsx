@@ -1,3 +1,9 @@
+/**
+ * Componente principal del panel de producción MRP.
+ * Gestiona la creación de recetas (BOM), órdenes de producción,
+ * e inicio/completado de órdenes. Escucha eventos del bus para actualización automática.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import type { Product } from "@/features/products/types/products.types";
 import { eventBus } from "@/lib/core/runtime";

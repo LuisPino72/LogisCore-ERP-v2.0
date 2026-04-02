@@ -1,3 +1,12 @@
+/**
+ * Hook personalizado para gestionar las compras.
+ * Provee estado y métodos para:
+ * - Listar compras, recepciones y lotes de inventario
+ * - Crear órdenes de compra y recibir compras
+ * - Gestionar el catálogo de compras
+ * Utiliza el patrón Result<T, AppError> para manejo de errores.
+ */
+
 import { useCallback, useState } from "react";
 import type { PurchasesService } from "../services/purchases.service";
 import { purchasesService } from "../services/purchases.service.instance";

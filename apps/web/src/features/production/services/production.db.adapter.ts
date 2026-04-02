@@ -1,3 +1,8 @@
+/**
+ * Adaptador de base de datos local para producción (Dexie/IndexedDB).
+ * Implementa la interfaz ProductionDb con operaciones CRUD y de negocio.
+ */
+
 import {
   db,
   type ProductionLogRecord,
@@ -7,6 +12,7 @@ import {
 } from "@/lib/db/dexie";
 import type { ProductionDb } from "./production.service";
 
+// Tipos de movimiento que incrementan el stock
 const incomingMovements = new Set<StockMovementRecord["movementType"]>([
   "purchase_in",
   "adjustment_in",

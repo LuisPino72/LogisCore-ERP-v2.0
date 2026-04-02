@@ -1,3 +1,9 @@
+/**
+ * Componente principal del panel de facturación.
+ * Permite crear facturas desde ventas y anular facturas existentes.
+ * Escucha eventos del bus para actualización automática.
+ */
+
 import { useEffect, useState } from "react";
 import { eventBus } from "@/lib/core/runtime";
 import { useInvoicing } from "../hooks/useInvoicing";

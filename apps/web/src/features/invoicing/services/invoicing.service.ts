@@ -1,3 +1,4 @@
+// Invoicing - Servicio para gestionar facturas, impuestos y tasas de cambio
 import {
   createAppError,
   err,
@@ -18,6 +19,10 @@ import type {
   VoidInvoiceInput
 } from "../types/invoicing.types";
 
+/**
+ * Interfaz del adaptador de base de datos para facturación.
+ * Define las operaciones CRUD básicas sobre facturas, reglas fiscales y tipos de cambio.
+ */
 export interface InvoicingDb {
   createInvoice(invoice: Invoice): Promise<void>;
   listInvoices(tenantId: string): Promise<Invoice[]>;
@@ -37,6 +42,11 @@ export interface InvoicingDb {
   ): Promise<ExchangeRate | undefined>;
 }
 
+/**
+ * Interfaz del servicio de facturación.
+ * Define todas las operaciones de negocio relacionadas con facturación.
+ * Todas las funciones retornan Result<T, AppError> para manejo de errores.
+ */
 export interface InvoicingService {
   createInvoiceFromSale(
     tenant: InvoicingTenantContext,

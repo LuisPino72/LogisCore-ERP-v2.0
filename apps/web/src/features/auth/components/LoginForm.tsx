@@ -1,16 +1,36 @@
-import { useState, type FormEvent } from "react";
-import type { AuthService } from "../services/auth.service";
+/**
+ * Componente de formulario de login
+ * UI para iniciar sesión con email y password
+ */
 
+import { useState, type FormEvent } from "react";
+
+/**
+ * Props del LoginForm
+ * onLogin: Función a ejecutar al enviar el formulario
+ * isLoading: Indica si hay una operación en curso
+ * error: Mensaje de error a mostrar (null si no hay error)
+ */
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
   isLoading: boolean;
   error: string | null;
 }
 
+/**
+ * Formulario de login
+ * @param onLogin - Función que maneja el login
+ * @param isLoading - Estado de carga
+ * @param error - Mensaje de error
+ */
 export function LoginForm({ onLogin, isLoading, error }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  /**
+   * Maneja el envío del formulario
+   * Previene el comportamiento por defecto y llama a onLogin
+   */
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     await onLogin(email, password);

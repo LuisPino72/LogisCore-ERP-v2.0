@@ -1,3 +1,9 @@
+/**
+ * Hook personalizado para gestionar los datos del tenant.
+ * Provee estado y métodos para el bootstrap y carga de datos del tenant.
+ * Utiliza el patrón Result<T, AppError> para manejo de errores.
+ */
+
 import { useCallback, useState } from "react";
 import type { AppError, Result } from "@logiscore/core";
 import type { TenantUiState } from "../types/tenant.types";

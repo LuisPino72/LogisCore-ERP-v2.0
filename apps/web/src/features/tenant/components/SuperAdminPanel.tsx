@@ -1,3 +1,8 @@
+/**
+ * Panel de administración para super-admins.
+ * Muestra información y controles exclusivos para el rol super_admin.
+ */
+
 export function SuperAdminPanel() {
   return (
     <section

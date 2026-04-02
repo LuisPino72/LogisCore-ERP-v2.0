@@ -1,173 +1,183 @@
 # LogisCore ERP - Guía de Desarrollo
 
-> Fuente de verdad operativa del proyecto. Si la implementación, el reporte y esta guía no coinciden, se debe corregir la implementación o actualizar esta guía en el mismo bloque de trabajo.
+> Fuente de verdad operativa. Si la implementación, el reporte y esta guía no coinciden, se debe corregir la implementación o actualizar esta guía en el mismo bloque de trabajo.
 
 ---
 
-## 1. Objetivo y Prioridades Técnicas
+## 1. Objetivo y Stack
 
-LogisCore ERP es un ERP ligero multi-tenant, offline-first. Prioridad técnica:
-
-1. Aislamiento estricto por tenant
-2. Operación estable offline y con sincronización segura
-3. Lógica de negocio consistente en ventas, compras, inventario, producción y facturación
-4. Frontend limpio, servicios claros y backend endurecido
-
----
-
-## 2. Stack
-
+**Objetivo:** ERP ligero multi-tenant, offline-first.
 - **Frontend:** React 19, Vite, TypeScript strict, Tailwind 4
-- **Estado:** Zustand
-- **Offline local:** Dexie
+- **Estado:** Zustand | **Offline:** Dexie
 - **Backend:** Supabase Auth, Postgres, RLS, Edge Functions
-- **Sincronización:** `SyncEngine`
-- **Testing:** Vitest
+- **Sync:** `SyncEngine` | **Testing:** Vitest
 
 ---
 
-## 3. Reglas Canónicas de Identificadores (CRÍTICAS)
+## 2. Reglas Canónicas de Identificadores
 
-| Campo         | Donde vive | Tipo   | Regla                                  |
-| ------------- | ---------- | ------ | -------------------------------------- |
-| `tenant_id`   | Supabase   | uuid   | FK real del tenant                     |
-| `tenant_slug` | Supabase   | text   | Filtro legible por tenant              |
-| `tenantId`    | Dexie      | text   | **SIEMPRE guarda el slug, nunca UUID** |
-| `local_id`    | Supabase   | uuid   | ID generado en cliente                 |
-| `localId`     | Dexie      | string | Mismo valor que `local_id`             |
+| Campo | Donde | Tipo | Regla |
+|-------|-------|------|-------|
+| `tenant_id` | Supabase | uuid | FK real del tenant |
+| `tenant_slug` | Supabase | text | Filtro legible por tenant |
+| `tenantId` | Dexie | text | **SIEMPRE slug, nunca UUID** |
+| `local_id` | Supabase | uuid | ID generado en cliente |
+| `localId` | Dexie | string | Mismo valor que `local_id` |
 
-**Reglas de uso:**
-
-- En cliente: Dexie se filtra por `tenantId = tenant.slug`
-- En frontend: Supabase se filtra por `tenant_slug` cuando aplica al modelo sincronizado
-- Para operaciones admin/auth: usar `tenant.id` solo cuando el backend/Edge Function lo requiera
-- **NUNCA mezclar UUID y slug en nuevos writes a Dexie**
+**En cliente:** Dexie filtra por `tenantId = tenant.slug`
+**En servidor:** Supabase filtra por `tenant_slug`
 
 ---
 
-## 4. Arquitectura Obligatoria
+## 3. Arquitectura
 
-### 4.1 Capa de Servicios (REGLA DE ORO)
-
+### 3.1 Capas (REGLA DE ORO)
 ```
-componente React → hook opcional → servicio → Dexie / SyncEngine / Supabase
+componente → hook → servicio → Dexie / SyncEngine / Supabase
 ```
+- **PROHIBIDO:** acceder directo a Supabase/Dexie desde componentes
+- **PROHIBIDO:** importar servicios entre módulos → usar EventBus
+- **Hooks:** coordinación UI, **NO** lógica de persistencia
+- **Servicios:** lógica de negocio, validación, persistencia, sync
 
-- **PROHIBIDO** acceder directo a Supabase o Dexie desde componentes
-- Los hooks de datos **NO deben** contener lógica de persistencia remota o local
+### 3.2 Manejo de Errores
+Toda función async **DEBE** retornar `Result<T, AppError>`
+- Formato códigos: `{MÓDULO}_{ENTIDAD}_{ACCIÓN}_{CONDICIÓN}`
+- Mensajes en español, enfocados en acción correctiva
+- Propiedad `retryable`: true para errores transitorios, false para validaciones
 
-### 4.2 Manejo de Errores
+### 3.3 Orden de Sync (OBLIGATORIO)
+1. Validar → 2. Preparar payload y `localId` → 3. Encolar sync → 4. Commit Dexie → 5. Emitir eventos
 
-Toda función async de servicio **DEBE** retornar `Result<T, AppError>`
-
-### 4.3 Responsabilidad por Capa
-
-- `components/`: UI y eventos únicamente
-- `hooks/`: coordinación de estado de UI
-- `services/`: lógica de negocio, validación, persistencia, sync
-- `types/`: contratos del módulo
-- `test/`: pruebas del módulo
-
-**Inyección de dependencias (para testing):**
-Los servicios deben recibir `db` y `syncEngine` como dependencias al inicializar.
-
-**Comunicación entre módulos (CONTRATO OBLIGATORIO):**
-- **PROHIBIDO:** Importar servicios de un módulo a otro
-- **OBLIGATORIO:** Usar EventBus para comunicación cruzada
-- **Prefijo de eventos:** `MODULE.ACTION` (ej: `INVENTORY.STOCK_UPDATED`, `SALE.COMPLETED`)
-
-### 4.4 Operaciones Sensibles (NUNCA desde cliente con privilegios)
-
-- Creación de owners, Alta de empleados, Cambio de permisos, Eliminación lógica
-- **Todas resueltas via Edge Functions**
-
----
-
-## 5. Offline-first y Sincronización
-
-### 5.1 Orden Obligatorio (NO MODIFICAR)
-
-1. Validar
-2. Preparar payload y `localId`
-3. Encolar sync antes del commit local cuando el flujo lo requiera
-4. Persistir en Dexie
-5. Emitir eventos de UI
-
-**PROHIBIDO:** llamadas remotas o encolado tardío dentro de transacción Dexie
-
-### 5.2 Transacciones Dexie
-
-- Un solo commit local por operación
-- No anidar transacciones de servicios entre sí
-- Preparar movimientos y datos antes del commit
-
-### 5.3 SyncEngine Responsabilidades
-
-- Cola offline, retry, conflictos, circuito de fallos
-- **Dead Letter Queue:** Si un item falla 5 veces, se mueve a tabla `sync_errors`
-- **Estrategia de resolución de conflictos por tabla:**
-
-| Tipo de tabla | Estrategia | Acción en conflicto |
-|--------------|------------|---------------------|
-| Catálogo (products, categories) | Last Write Wins | Sobrescribir automáticamente |
-| Transaccional (sales, stock_movements) | **NUNCA sobrescribir** | Marcar como `sync_error` |
-| Configuración | Last Write Wins | Sobrescribir con validación |
-
-### 5.4 Tablas Sincronizadas (desde cliente)
-
-**Sincronizan:**
-products, categories, sales, purchases, recipes, production_logs, suppliers, customers, invoices, invoice_settings, movements, taxpayer_info, security_audit_log, suspended_sales, stock_movements, **warehouses**, **product_size_colors**, **inventory_counts**, **production_orders**, **box_closings**, **tax_rules**, **exchange_rates**
-
-**NO sincronizan:**
-user_roles, subscriptions, business_types, invoice_items, inventory_lots, product_presentations
-
-### 5.5 Tipos de Negocio y Plantillas
-
-Los super admins gestionan tipos de negocio con categorías, productos e imágenes predefinidas que se cargan automáticamente al seleccionar el tipo.
-
-### 5.6 Edge Function `sync_table_item`
-
-Debe validar: tabla permitida, operación, payload, `local_id`, `tenant_uuid`, `tenant_slug`, JWT válido.
-
-### 5.7 Relaciones entre Tablas y Flujo de Datos (CRÍTICA)
-
-#### 5.7.1 Estructura Multi-tenant Central
-
-Todas las tablas de negocio tienen `tenant_id` (UUID) → `tenants.id`.
-
-#### 5.7.2 Relaciones Clave
+### 3.4 Relaciones entre Tablas (CRÍTICA)
 
 **Productos y Categorías:**
 - `products.category_id` → `categories.local_id`
 - `products.default_presentation_id` → `product_presentations.id`
 
 **Inventario y Movimientos:**
-- `stock_movements.product_id` → `products.local_id`
+- `stock_movements.product_local_id` → `products.local_id`
+- `stock_movements.warehouse_local_id` → `warehouses.local_id`
 - `inventory_lots.product_id` → `products.id`
 
 **Producción y Recetas:**
-- `recipes.product_id` → `products.local_id`
-- `production_logs.recipe_id` → `recipes.local_id`
-- `recipes.ingredients` y `production_logs.ingredients_used` son JSONB
+- `recipes.product_local_id` → `products.local_id`
+- `production_logs.recipe_local_id` → `recipes.local_id`
+- `recipes.ingredients`, `production_logs.ingredients_used` son JSONB
 
 **Ventas y Facturación:**
 - `sales.customer_id` → `customers.id`
 - `invoices.customer_id` → `customers.id`
-- `invoices.sale_id` → `sales.local_id`
-- **Facturación híbrida:** En Dexie los ítems están embebidos en `invoices.items` (JSONB). El sync los transforma a tabla `invoice_items` en servidor.
+- `invoices.sale_local_id` → `sales.local_id`
+- **Facturación híbrida:** items embebidos en Dexie, transformados a `invoice_items` en servidor
 
 **Patrón de FKs:**
 - Tablas sincronizadas → usan `local_id`
-- Tablas server-side o estáticas → usan `id` (UUID)
+- Tablas server-side → usan `id` (UUID)
 
 ---
 
-## 6. Seguridad y Multi-tenant
+## 4. Sincronización
+
+### 4.1 Tablas que Sincronizan
+`products`, `categories`, `sales`, `purchases`, `recipes`, `production_logs`, `suppliers`, `customers`, `invoices`, `invoice_settings`, `movements`, `taxpayer_info`, `security_audit_log`, `suspended_sales`, `stock_movements`, `warehouses`, `product_size_colors`, `inventory_counts`, `production_orders`, `box_closings`, `tax_rules`, `exchange_rates`, `production_log_lot_traceability`, `sales_commissions`, `product_preferred_suppliers`, `customer_credit_limits`
+
+### 4.2 Tablas que NO Sincronizan
+`user_roles`, `subscriptions`, `business_types`, `invoice_items`, `inventory_lots`, `product_presentations`
+
+### 4.3 Estrategia de Conflictos
+| Tipo de tabla | Estrategia | Acción |
+|---------------|------------|--------|
+| Catálogo (products) | Last Write Wins | Sobrescribir |
+| Transaccional (sales) | **NUNCA** | Marcar `sync_error` |
+| Configuración | Last Write Wins | Validar y sobrescribir |
+
+### 4.4 Dead Letter Queue
+Si item falla 5 veces → mover a tabla `sync_errors`
+
+---
+
+## 5. Base de Datos
+
+### 5.1 Convenciones
+- Tablas: `snake_case`, plural (`stock_movements`)
+- Columnas: `snake_case` (`created_at`, `tenant_id`)
+- Dinero: `NUMERIC(19,4)` - **NUNCA** FLOAT/REAL
+- Fechas: `TIMESTAMPTZ` (UTC)
+- Borrado lógico: `deleted_at` NULL=activo
+
+### 5.2 Tipos de Datos
+
+| Concepto | Tipo Postgres | Regla |
+|----------|---------------|-------|
+| Dinero | `NUMERIC(19,4)` | **NUNCA** FLOAT/REAL |
+| ID (servidor) | `UUID` | gen_random_uuid() |
+| ID (cliente) | `UUID` | crypto.randomUUID() |
+| Fechas | `TIMESTAMPTZ` | UTC en DB |
+| Banderas | `BOOLEAN` | Default FALSE |
+
+### 5.3 Índices Obligatorios
+```sql
+CREATE INDEX idx_[tabla]_tenant_id ON public.[tabla](tenant_id);
+CREATE INDEX idx_[tabla]_created_at ON public.[tabla](created_at DESC);
+CREATE INDEX idx_[tabla]_tenant_created ON public.[tabla](tenant_id, created_at DESC);
+```
+
+### 5.4 Inventario de Tablas
+
+| Tabla | local_id | Sync | Notas |
+|-------|----------|------|-------|
+| **tenants** | No | - | Núcleo |
+| **user_roles** | No | - | permisos JSONB |
+| **products** | Sí | ✓ | sku, is_serialized |
+| **product_presentations** | No | - | is_default |
+| **categories** | Sí | ✓ | |
+| **warehouses** | Sí | ✓ | multi-bodega |
+| **product_size_colors** | Sí | ✓ | tallas/colores |
+| **stock_movements** | Sí | ✓ | ref_doc_type, cost_layer |
+| **inventory_counts** | Sí | ✓ | |
+| **inventory_lots** | No | - | quality_status |
+| **sales** | Sí | ✓ | sales_person_id, pos_terminal_id |
+| **suspended_sales** | Sí | ✓ | |
+| **box_closings** | Sí | ✓ | readings |
+| **purchases** | Sí | ✓ | |
+| **receivings** | Sí | ✓ | |
+| **recipes** | Sí | ✓ | bom_version |
+| **production_orders** | Sí | ✓ | |
+| **production_logs** | Sí | ✓ | |
+| **invoices** | Sí | ✓ | xml/json_seniat |
+| **tax_rules** | Sí | ✓ | jurisdiction |
+| **exchange_rates** | Sí | ✓ | jurisdiction |
+| **production_log_lot_traceability** | Sí | ✓ | nueva |
+| **sales_commissions** | Sí | ✓ | nueva |
+| **product_preferred_suppliers** | Sí | ✓ | nueva |
+| **customer_credit_limits** | Sí | ✓ | nueva |
+
+### 5.5 Edge Functions y RPC
+
+| Función | Tipo | Descripción |
+|---------|------|--------------|
+| `sync_table_item` | Edge | Sincronización de tablas |
+| `check_subscriptions` | RPC | Verificar suscripción |
+| `get_user_primary_role` | RPC | Obtener rol básico |
+| `get_user_primary_role_extended` | RPC | Rol + permisos + email + nombre |
+| `get_stock_balance` | RPC | Stock por producto/bodega |
+| `calculate_commission` | Edge | Calcular comisión de venta |
+| `get_product_stock_by_warehouse` | Edge | Stock por producto/bodega |
+| `validate_inventory_lot_quality` | Edge | Validar estado de lote |
+
+### 5.6 Triggers y Lógica de Servidor
+
+**Regla de Oro:** Mínima lógica en Base de Datos.
+- **✅ Permitido:** updated_at, audit_logs, validaciones críticas de stock
+- **❌ Prohibido:** Cálculos de negocio (subtotales, IVA), lógica de sync
+
+---
+
+## 6. Seguridad
 
 ### 6.1 RLS (REQUISITO MÍNIMO)
-
 Toda tabla nueva debe tener:
-
 ```sql
 ALTER TABLE public.mi_tabla ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mi_tabla FORCE ROW LEVEL SECURITY;
@@ -180,9 +190,8 @@ ON public.nueva_tabla FOR SELECT
 USING ( tenant_id = (SELECT id FROM tenants WHERE slug = current_setting('request.jwt.claim.tenant_slug')) );
 ```
 
-**⚠️ Custom Claims JWT (IMPORTANTE):**
-Crear trigger para agregar `tenant_slug` al JWT:
-
+### 6.2 Custom Claims JWT
+Trigger para agregar `tenant_slug` al JWT:
 ```sql
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -195,98 +204,36 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
-### 6.2 Auditoría de Seguridad
-
+### 6.3 Auditoría de Seguridad
 Eventos sensibles deben registrar: `eventType`, `userId`, `tenantId`, `ipAddress`, `userAgent`, `success`
 
 ---
 
-## 7. Reglas de Negocio Críticas
+## 7. Reglas de Negocio
 
-### 7.1 Inventario y Contabilidad
+### 7.1 Inventario
+- Toda venta/compra/producción debe registrar `stock_movements`
+- Usar chequeos de integridad antes de borrar entidades
+- Multi-bodega: permisos por bodega en `user_roles.permissions.allowedWarehouseLocalIds`
 
-Toda venta, compra o producción que afecte stock debe registrar `stock_movements`.
+### 7.2 Facturación SENIAT
+- Backend: `invoices` + `invoice_items` (relación 1:N)
+- Items embebidos en Dexie, transformados en servidor
+- **Regla de céntimos:** total no puede diferir > 0.01 Bs
+- **Tasas IVA:** leer de `tax_rules`, **NUNCA hardcodear**
+- **Retenciones:** IVA 75%, ISLR según tabla SENIAT
 
-### 7.2 Borrados e Integridad Referencial
+### 7.3 Sistema de Costeo
+- **FIFO:** Costo de unidades más antiguas
+- **Promedio ponderado:** Costo medio de todas las capas
+- **Último costo:** Costo de compra más reciente
+- **Costo estándar:** Costo predefinido (manufacturing)
 
-Siempre usar chequeos de integridad antes de borrar entidades con referencias.
-
-### 7.3 Facturación
-
-**Reglas invariables:**
-- Backend usa `invoices` + `invoice_items` (relación 1:N)
-- Carga remota debe hidratar líneas reales
-- Anulación de factura con venta asociada debe resolver primero la venta
-
-**Modelo local (híbrido):**
-- **Mantener** `items` embebidos en `Invoice` local (Dexie)
-- El sync transforma a tabla separada en servidor
-
-**Cálculo de Impuestos y Redondeo (SENIAT):**
-- **Regla de céntimos legales:** El total de la factura no puede diferir de la suma de las líneas por más de 0.01 Bs
-- **Tasas de IVA:** Leer de tabla `tax_rules` sincronizada, **NUNCA hardcodear**
-- **Retenciones:** IVA 75%, ISLR según tabla SENIAT vigente
-
-### 7.4 Suscripciones
-
-**Sistema server-side:** `subscriptions`, `subscription_notifications`, Edge Function `check-subscriptions`
-
-**Contrato de datos vigente:**
-- `subscriptions` referencia tenant por `tenant_id` (UUID), no por `tenant_slug`.
-- Desde cliente, la verificación debe hacerse por RPC/Edge `check_subscriptions(p_tenant_slug)`; si se usa fallback SQL, primero resolver `tenants.id` por `slug` y luego filtrar `subscriptions.tenant_id`.
-
-**Regla de UI:** Si suscripción no está activa, bloquear acceso con `BlockedAccessScreen`
-
-### 7.5 Gestión de Productos y Presentaciones
-
-**Modelo:** Cada producto puede tener presentaciones (variantes vendibles), stock en unidad base.
-
-**Flujo de creación (INVARIABLE):**
-- **Compras** es módulo principal para crear productos, categorías y proveedores
-- **Inventario** es solo visualización y ajustes de stock, **NO crea productos**
-
-**Visibilidad:**
-- `visible`: aparece en módulo Ventas y POS
-- `defaultPresentationId`: presentación por defecto al agregar al carrito
-
-### 7.6 Sistema de Costeo y Trazabilidad
-
-**Trazabilidad de Seriales (Opcional por Producto):**
-- `track_serials = true` para control individual de unidades serializadas
+### 7.4 Trazabilidad de Seriales (Opcional)
+- `products.is_serialized = true` para control individual
 - Estados: `in_stock` | `allocated` | `sold` | `warranty` | `returned` | `scrapped`
 
-**Motor de Costeo:**
-- **FIFO:** Costo de las unidades más antiguas
-- **Promedio ponderado:** Costo medio de todas las capas
-- **Último costo:** Costo de la compra más reciente
-- **Costo estándar:** Costo predefinido (presupuestado) - para manufacturing
-
-### 7.7 Módulos y Flujos de Negocio (Valery-style + Odoo)
-
-#### 7.7.1 POS (Punto de Venta)
-- Carrito rápido, suspended sales, cierre de caja diario
-- Modo touchscreen, búsqueda por código/nombre
-- Descuentos por línea/total, pagos múltiples
-
-#### 7.7.2 Inventario Avanzado
-- **Multi-bodega:** `warehouses` con permisos por bodega
-- **Tallas/Colores:** `product_size_colors` opcional por producto
-- **Reorden automático:** reglas por producto/warehouse
-
-#### 7.7.3 Compras y Recepciones
-- Purchase → Receiving → Stock → Lotes/Seriales
-
-#### 7.7.4 Producción (MRP Ligero)
-- Recipes (BOM) con ingredientes y rendimiento
-- ProductionOrders con consumo real vs teórico
-
-#### 7.7.5 Reportes
-- Ventas por vendedor/producto/día
-- Valor de inventario (FIFO/promedio)
-- Utilidad bruta, Kardex, Cierre de caja
-
-### 7.8 Permisología Granular (JSONB en user_roles)
-
+### 7.5 Permisos (JSONB en user_roles)
 ```typescript
 interface RolePermissions {
   canApplyDiscount: boolean;
@@ -296,18 +243,33 @@ interface RolePermissions {
   canRefundSale: boolean;
   canVoidInvoice: boolean;
   canAdjustStock: boolean;
-  // ... más permisos
+  canViewReports: boolean;
+  canExportReports: boolean;
+  allowedWarehouseLocalIds?: string[];
 }
 ```
 
-**Instrucción:** Todos los servicios que realizan acciones sensibles deben validar permisos usando el objeto `permissions` del user_roles.
+### 7.6 Módulos y Flujos
+
+**POS:**
+- Carrito rápido, suspended sales, cierre de caja
+- Descuentos por línea/total, pagos múltiples
+- Bi-monetario: mostrar precios en Bs y USD
+
+**Inventario:**
+- Multi-bodega, tallas/colores
+- Conteos de inventario con ajustes automáticos
+- Reorden automático
+
+**Producción (MRP Ligero):**
+- Recipes (BOM) con ingredientes y rendimiento
+- ProductionOrders con consumo real vs teórico
 
 ---
 
-## 8. Cumplimiento Legal y Fiscal Venezuela (SENIAT)
+## 8. Cumplimiento Legal Venezuela
 
-### 8.1 Taxpayer Info Ampliado
-
+### 8.1 Taxpayer Info
 ```typescript
 interface TaxpayerInfo {
   rif: string;
@@ -321,34 +283,14 @@ interface TaxpayerInfo {
 ```
 
 ### 8.2 Facturación SENIAT
-
 **Tipos:** Electrónica (XML+JSON), Impresora Fiscal, Manual
 
-**Flujo:** Generar Invoice → Calcular Impuestos → Generar Documento → Almacenar local → Evento secundario (stock)
-
-### 8.3 Multimoneda y Tasas de Cambio
-
-**Tabla historiada:**
-```sql
-CREATE TABLE public.exchange_rates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID REFERENCES tenants(id),
-  from_currency VARCHAR(3),
-  to_currency VARCHAR(3),
-  rate NUMERIC(20,6),
-  source VARCHAR(50),
-  valid_from TIMESTAMPTZ NOT NULL,
-  valid_to TIMESTAMPTZ
-);
-```
-
-**POS Bi-monetario:**
-- Mostrar precios en Bs y USD simultáneamente
-- Recalcular carrito si cambia la tasa
+### 8.3 Multimoneda
+- Tabla historiada `exchange_rates`
+- POS Bi-monetario: precios en Bs y USD
 - Pagos mixtos (efectivo Bs + USD + transferencia)
 
 ### 8.4 IGTF (3%)
-
 - Aplicar sobre pagos en divisas (USD, EUR, USDT)
 - Afecta redondeo y monto total
 - Generar retención en libros fiscales
@@ -357,60 +299,63 @@ CREATE TABLE public.exchange_rates (
 
 ## 9. Carga de Sesión y Bootstrap
 
-**Flujo esperado:**
-
+**Flujo:**
 1. Auth valida sesión
 2. Trigger agrega `tenant_slug` al JWT
 3. Resolver roles en `user_roles`
 4. Si `super_admin` → Admin Panel
 5. Si `owner/employee` → Resolver tenant
 6. Cargar datos del tenant
-7. Cargar plantillas según `business_type` (tallas/colores, warehouses, recetas)
+7. Cargar plantillas según `business_type`
 8. Iniciar sync
-9. Verificar suscripción
-
-**Reglas:**
-- No usar hooks que hablen directo con Supabase o Dexie
-- `useTenantData` solo coordina UI; la carga real vive en servicio
+9. Verificar suscripción → App o BlockedAccessScreen
 
 ---
 
-## 10. Frontend y UX Técnica
+## 10. Eventos EventBus
 
-- **Notificaciones:** Usar `ToastProvider` / `useToast`. **NUNCA** usar `alert()`
-- **Code Splitting:** Módulos no críticos con `lazy()`
-- **React:** Efectos con dependencias correctas, callbacks estables
+### Catálogo
+- `CATALOG.PRODUCT_CREATED` → { tenantId, localId, visible }
+- `CATALOG.PRODUCT_UPDATED` → { tenantId, localId }
+- `CATALOG.PRESENTATION_CREATED` → { tenantId, id, productLocalId }
+
+### Ventas
+- `SALE.COMPLETED` → { tenantId, localId, total, currency }
+- `SALE.SUSPENDED` → { tenantId, localId }
+- `SALE.SUSPENDED_RESTORED` → { tenantId, originalSuspendedLocalId, newSaleLocalId }
+- `POS.BOX_OPENED` → { tenantId, localId, warehouseLocalId }
+- `POS.BOX_CLOSED` → { tenantId, localId }
+
+### Inventario
+- `INVENTORY.STOCK_UPDATED` → { tenantId, productLocalId, warehouseLocalId, newQuantity }
+- `INVENTORY.STOCK_MOVEMENT_RECORDED` → { tenantId, localId, productLocalId, warehouseLocalId, quantity, movementType }
+- `INVENTORY.REORDER_EVALUATED` → { tenantId, suggestions }
+
+### Producción
+- `PRODUCTION.ORDER_CREATED` → { tenantId, localId }
+- `PRODUCTION.STARTED` → { tenantId, localId }
+- `PRODUCTION.COMPLETED` → { tenantId, localId, productionLogLocalId }
+
+### Facturación
+- `INVOICE.CREATED` → { tenantId, localId, total, currency }
+- `INVOICE.VOIDED` → { tenantId, localId }
+- `SALE.INVOICE_LINKED` → { tenantId, saleLocalId, invoiceLocalId }
+
+### Compras
+- `PURCHASES.PRODUCT_CREATE_REQUESTED` → { name, categoryId?, visible }
+- `PURCHASE.CREATED` → { tenantId, localId }
+- `PURCHASE.RECEIVED` → { tenantId, localId }
+
+### Sincronización
+- `SYNC.QUEUE_ITEM_ENQUEUED` → { itemId }
+- `SYNC.STATUS_CHANGED` → { status }
+- `SYNC.CONFLICT_DETECTED` → { itemId, table }
+- `SYNC.RETRY_SCHEDULED` → { itemId, attempts, retryAfter }
+- `SYNC.DLQ_ITEM_MOVED` → { itemId }
 
 ---
 
-## 11. Testing Mínimo Esperado
-
-Cada cambio relevante debe dejar:
-- `npm run lint` en verde
-- `npm run test` en verde
-- `npm run build` en verde
-
-### 11.1 Tests Obligatorios por Módulo
-
-**Facturación (CRÍTICO):**
-- Test cálculo IVA con céntimos exactos (redondeo SENIAT)
-- Test ajuste de redondeo cuando suma líneas ≠ total
-- Test tasas desde tabla tax_rules (no hardcoded)
-
-**Sincronización:**
-- Test offline → conflicto → resolución por tipo de tabla
-- Test Dead Letter Queue (fallo 5 veces → sync_errors)
-
-**Inventario:**
-- Test stock negativo prohibido
-- Test integridad referencial
-- Test consumo de serials en venta
-
----
-
-## 12. Convenciones de Código y Estructura de Archivos
-
-### 12.1 Estructura por Módulo
+## 11. Estructura de Archivos
 
 ```
 src/features/[modulo]/
@@ -424,7 +369,7 @@ src/features/[modulo]/
 └── test/[modulo].service.test.ts
 ```
 
-### 12.2 Nombres Estrictos
+### Nombres Estrictos
 
 | Tipo | Patrón | Ejemplo |
 |------|--------|---------|
@@ -434,238 +379,9 @@ src/features/[modulo]/
 | Componente | `[Modulo]List.tsx` | `ProductsList.tsx` |
 | Evento | `MODULE.ACTION` | `SALE.COMPLETED` |
 
-### 12.3 Exports Obligatorios
-
-Cada `index.ts` debe exportar tipos, servicios, hooks y componentes.
-
 ---
 
-## 13. Diagramas de Arquitectura
-
-### 13.1 Arquitectura General
-
-```
-┌────────────────────────────────────────────┐
-│           CLIENTE (React)                  │
-├────────────────────────────────────────────┤
-│  Componentes → Hooks → Servicios → Stores │
-│         │                │                 │
-│         ▼                ▼                 │
-│   ┌─────────────┐   ┌─────────────┐        │
-│   │   Dexie     │   │ SyncEngine  │        │
-│   │ (offline)   │   │ (cola sync) │        │
-│   └──────┬──────┘   └──────┬──────┘        │
-└──────────┼────────────────┼────────────────┘
-           │                │
-           ▼                ▼
-┌──────────────────┐ ┌──────────────────────┐
-│ Supabase Client  │ │   Edge Functions     │
-│  (solo lectura)  │ │  (writes seguros)    │
-└────────┬─────────┘ └──────────┬───────────┘
-         │                     │
-         ▼                     ▼
-    POSTGRES + RLS + Supabase Auth
-```
-
-### 13.2 Flujo POS Completo
-
-```
-Abrir Ticket → Agregar Productos → Cliente (opcional)
-       ↓
-Método de Pago → Finalizar Venta → Sale + Encolar Sync + Commit Dexie
-       ↓
-Stock Movements (disminuir stock, consumir serials)
-       ↓
-¿Factura? → Invoice + Calcular IVA + JSON SENIAT → Impresión
-       ↓
-Eventos UI (Inventory_Updated, Sale_Created)
-```
-
-### 13.3 Compra → Recepción
-
-```
-Crear Purchase → Receiving → Actualizar Stock
-       ↓
-Lotes/Seriales → products.cost → SyncEngine
-```
-
-### 13.4 Producción (MRP)
-
-```
-Crear Recipe → ProductionOrder → Validar stock
-       ↓
-Consumir Ingredientes → Completar → Variación costo
-       ↓
-SyncEngine
-```
-
-### 13.5 Sesión y Bootstrap
-
-```
-Auth → JWT con tenant_slug (trigger)
-user_roles → acceso
-Resolver tenant
-Cargar datos + plantillas business_type
-SyncEngine.startPeriodicSync()
-check-subscription → App o BlockedAccessScreen
-```
-
----
-
-## 14. Base de Datos y Backend
-
-### 14.1 Tipos de Datos Obligatorios
-
-| Concepto | Tipo Postgres | Regla |
-|----------|---------------|-------|
-| Dinero | `NUMERIC(19,4)` | **NUNCA** FLOAT/REAL |
-| ID (servidor) | `UUID` | gen_random_uuid() |
-| ID (cliente) | `UUID` | crypto.randomUUID() |
-| Fechas | `TIMESTAMPTZ` | UTC en DB |
-| Banderas | `BOOLEAN` | Default FALSE |
-| Borrado lógico | `TIMESTAMPTZ` | deleted_at NULL=activo |
-
-### 14.2 Convenciones de Nombres
-
-- Tablas: `snake_case`, plural (`stock_movements`)
-- Columnas: `snake_case` (`created_at`, `tenant_id`)
-- Índices: `idx_[tabla]_[columna]` (`idx_products_tenant_id`)
-- FK: `fk_[tabla]_[ref]` (`fk_sales_customer_id`)
-
-### 14.3 Índices Obligatorios
-
-```sql
-CREATE INDEX idx_[tabla]_tenant_id ON public.[tabla](tenant_id);
-CREATE INDEX idx_[tabla]_created_at ON public.[tabla](created_at DESC);
-CREATE INDEX idx_[tabla]_tenant_created ON public.[tabla](tenant_id, created_at DESC);
-```
-
-### 14.4 Contratos de Edge Functions
-
-**Entrada con Zod:**
-```typescript
-const InputSchema = z.object({
-  table: z.enum(['products', 'categories', 'sales']),
-  operation: z.enum(['create', 'update', 'delete']),
-  data: z.record(z.unknown()),
-  localId: z.string().uuid(),
-});
-```
-
-**Reglas:**
-1. Validar JWT: `supabase.auth.getUser()`
-2. Extraer `user_id` y `tenant_slug` del token claims
-3. **NUNCA** confiar en tenant_id del body
-4. Rate limiting obligatorio
-
-### 14.5 Inventario de Tablas
-
-| Tabla | local_id | Sincroniza | Notas |
-|-------|----------|------------|-------|
-| tenants | No | - | Núcleo |
-| products | Sí | ✓ | |
-| categories | Sí | ✓ | |
-| sales, purchases | Sí | ✓ | |
-| invoices | Sí | ✓ | items embebidos local |
-| stock_movements | Sí | ✓ | |
-| recipes, production_logs | Sí | ✓ | |
-| warehouses | Sí | ✓ (plan) | Multi-bodega |
-| product_size_colors | Sí | ✓ (plan) | Tallas/colores |
-| tax_rules | Sí | ✓ | Tasas dinámicas |
-| exchange_rates | Sí | ✓ | Historiado BCV |
-| user_roles | No | - | JSONB permisos |
-
-### 14.6 Triggers y Lógica de Servidor
-
-**Regla de Oro:** Mínima lógica en Base de Datos.
-
-**✅ Permitido:** updated_at, audit_logs, validaciones críticas de stock
-**❌ Prohibido:** Cálculos de negocio (subtotales, IVA), lógica de sync
-
----
-
-## 15. Extensibilidad (Fase 2)
-
-### 15.1 Añadir Nuevo Módulo
-
-Estructura obligatoria según sección 12.1
-
-**Checklist:**
-- [ ] Definir tipos
-- [ ] Crear servicio con `Result<T, AppError>`
-- [ ] Usar Dexie con `tenantId = tenant.slug`
-- [ ] Sincronizar via SyncEngine
-- [ ] Añadir políticas RLS
-- [ ] Tests unitarios
-
----
-
-## 16. Performance y Límites Offline (Fase 2)
-
-| Recurso | Límite |
-|---------|--------|
-| Tamaño DB | 500MB - 1GB |
-| Productos | 50,000/tenant |
-| Sync/mes | 10,000 |
-
-**Purge:**
-- Transacciones > 6 meses → purgar (conservar summary)
-- Imágenes > 30 días → eliminar cache
-- Suspended sales > 7 días → eliminar
-
----
-
-## 17. Comparativa: LogisCore vs Valery vs Odoo
-
-| Característica | LogisCore | Valery | Odoo |
-|----------------|-----------|--------|------|
-| Arquitectura | Offline-first | Online | Online/on-premise |
-| Multi-tenant | Sí | No | Enterprise |
-| Facturación SENIAT | Sí | Sí | Custom |
-| Multi-bodega | Sí (plan) | Sí | Sí |
-| Producción/MRP | Sí | Sí | Sí |
-| POS | Sí | Sí | Sí |
-| Cierre caja | Sí (plan) | Sí | Sí |
-| Costeo | FIFO/Prom/Estandar | FIFO/Prom | Múltiple |
-
----
-
-## 18. Checklist Pre-PR (OBLIGATORIO)
-
-Antes de cualquier PR, verificar:
-
-- [ ] La lógica vive en servicio, no en componente
-- [ ] El servicio retorna `Result<T, AppError>`
-- [ ] No hay acceso directo a Supabase o Dexie desde componentes
-- [ ] Dexie usa `tenantId = tenant.slug`
-- [ ] No hay imports cruzados entre módulos (usar EventBus)
-- [ ] Reglas fiscales leídas de tax_rules (no hardcoded)
-- [ ] Tests de redondeo fiscal pasando
-- [ ] `npm run lint` pasa
-- [ ] `npm run test` pasa
-- [ ] `npm run build` pasa
-
----
-
-## 19. Contratos de Servicios (Referencia Rápida)
-
-### Auth
-```typescript
-interface AuthService {
-  getActiveSession(): Promise<Result<AuthSession, AppError>>;
-  signOut(): Promise<Result<void, AppError>>;
-}
-```
-
-### Tenant
-```typescript
-interface TenantService {
-  resolveTenantContext(userId: string): Promise<Result<TenantContext, AppError>>;
-  resolveUserRole(userId: string): Promise<Result<UserRole, AppError>>;
-  checkSubscription(tenantSlug: string): Promise<Result<boolean, AppError>>;
-  bootstrapTenant(userId: string): Promise<Result<TenantBootstrapResult, AppError>>;
-}
-```
+## 12. Contratos de Servicios
 
 ### Products
 ```typescript
@@ -692,7 +408,7 @@ interface InventoryService {
   getStockBalance(tenant, productLocalId, warehouseLocalId): Promise<Result<number, AppError>>;
   createInventoryCount(tenant, actor, input): Promise<Result<InventoryCount, AppError>>;
   postInventoryCount(tenant, actor, inventoryCountLocalId): Promise<Result<InventoryCount, AppError>>;
-  getReorderSuggestions(tenant): Promise<Result<ReorderSuggestion[], AppError>>;
+  getReorderSuggestions(tenant, actor, options?): Promise<Result<ReorderSuggestion[], AppError>>;
 }
 ```
 
@@ -701,9 +417,9 @@ interface InventoryService {
 interface SalesService {
   createSuspendedSale(tenant, actor, input): Promise<Result<SuspendedSale, AppError>>;
   createPosSale(tenant, actor, input): Promise<Result<Sale, AppError>>;
-  restoreSuspendedSale(tenant, actor, suspendedSaleLocalId): Promise<Result<RestoreSuspendedSaleResult, AppError>>;
+  restoreSuspendedSale(tenant, actor, suspendedLocalId): Promise<Result<RestoreSuspendedSaleResult, AppError>>;
   openBox(tenant, actor, input): Promise<Result<BoxClosing, AppError>>;
-  closeBox(tenant, actor, boxClosingLocalId): Promise<Result<BoxClosing, AppError>>;
+  closeBox(tenant, actor, input): Promise<Result<BoxClosing, AppError>>;
   listSales(tenant): Promise<Result<Sale[], AppError>>;
 }
 ```
@@ -731,266 +447,158 @@ interface InvoicingService {
 }
 ```
 
----
-
-## 20. Eventos EventBus (Referencia)
-
-### Catálogo
-- `CATALOG.CATEGORY_CREATED` → { tenantId, localId }
-- `CATALOG.CATEGORY_UPDATED` → { tenantId, localId }
-- `CATALOG.CATEGORY_DELETED` → { tenantId, localId }
-- `CATALOG.PRODUCT_CREATED` → { tenantId, localId, visible }
-- `CATALOG.PRODUCT_UPDATED` → { tenantId, localId }
-- `CATALOG.PRODUCT_DELETED` → { tenantId, localId }
-- `CATALOG.PRESENTATION_CREATED` → { tenantId, id, productLocalId }
-
-### Ventas
-- `SALE.COMPLETED` → { tenantId, localId, total, currency }
-- `SALE.SUSPENDED` → { tenantId, localId }
-- `SALE.SUSPENDED_RESTORED` → { tenantId, originalSuspendedLocalId, newSaleLocalId }
-- `POS.BOX_OPENED` → { tenantId, localId, warehouseLocalId }
-- `POS.BOX_CLOSED` → { tenantId, localId }
-
-### Inventario
-- `INVENTORY.STOCK_UPDATED` → { tenantId, productLocalId, warehouseLocalId, newQuantity }
-- `INVENTORY.REORDER_EVALUATED` → { tenantId, suggestions }
-- `INVENTORY.REORDER_SUGGESTED` → { tenantId, suggestions }
-- `INVENTORY.STOCK_MOVEMENT_RECORDED` → { tenantId, localId, productLocalId, warehouseLocalId, quantity, movementType }
-
-### Producción
-- `PRODUCTION.ORDER_CREATED` → { tenantId, localId }
-- `PRODUCTION.STARTED` → { tenantId, localId }
-- `PRODUCTION.COMPLETED` → { tenantId, localId, productionLogLocalId }
-
-### Facturación
-- `INVOICE.CREATED` → { tenantId, localId, total, currency }
-- `INVOICE.VOIDED` → { tenantId, localId }
-- `SALE.INVOICE_LINKED` → { tenantId, saleLocalId, invoiceLocalId }
-
-### Compras
-- `PURCHASES.CATEGORY_CREATE_REQUESTED` → { name }
-- `PURCHASES.PRODUCT_CREATE_REQUESTED` → { name, categoryId?, visible, defaultPresentationId? }
-- `PURCHASES.PRESENTATION_CREATE_REQUESTED` → { productLocalId, name, factor, barcode? }
-- `PURCHASE.CREATED` → { tenantId, localId }
-- `PURCHASE.RECEIVED` → { tenantId, localId }
-
-### Autenticación y Tenant
-- `TENANT.RESOLVED` → { tenantSlug }
-- `SUBSCRIPTION.BLOCKED` → {}
-- `AUTH.ROLE_DETECTED` → { userId, role, permissions }
-
-### Sincronización
-- `SYNC.QUEUE_ITEM_ENQUEUED` → { itemId }
-- `SYNC.STATUS_CHANGED` → { status }
-- `SYNC.CONFLICT_DETECTED` → { itemId, table }
-- `SYNC.CATALOG_CONFLICT_LWW` → { itemId, table, retryAfter }
-- `SYNC.RETRY_SCHEDULED` → { itemId, attempts, retryAfter }
-- `SYNC.DLQ_ITEM_MOVED` → { itemId }
-
----
-
-## 21. Permisos Centralizados
-
-Los permisos se validan mediante `ActorContext` con la estructura:
-
+### Tenant
 ```typescript
-interface ActorPermissions {
-  canApplyDiscount: boolean;
-  maxDiscountPercent: number;
-  canApplyCustomPrice: boolean;
-  canVoidSale: boolean;
-  canRefundSale: boolean;
-  canVoidInvoice: boolean;
-  canAdjustStock: boolean;
-  canViewReports: boolean;
-  canExportReports: boolean;
-  allowedWarehouseLocalIds?: string[];
-}
-
-type ActorRole = "owner" | "employee" | "super_admin";
-
-interface ActorContext {
-  role: ActorRole;
-  permissions: ActorPermissions;
+interface TenantService {
+  resolveTenantContext(userId: string): Promise<Result<TenantContext, AppError>>;
+  resolveUserRole(userId: string): Promise<Result<UserRole, AppError>>;
+  checkSubscription(tenantSlug: string): Promise<Result<boolean, AppError>>;
+  bootstrapTenant(userId: string): Promise<Result<TenantBootstrapResult, AppError>>;
 }
 ```
 
-Los servicios de permisos están disponibles en `@/lib/permissions/permissions.types.ts`.
+### Auth
+```typescript
+interface AuthService {
+  getActiveSession(): Promise<Result<AuthSession, AppError>>;
+  signOut(): Promise<Result<void, AppError>>;
+}
+```
+
+### Relations (Compartido)
+```typescript
+interface RelationsService {
+  createSalesCommission(tenantSlug, input): Promise<Result<SalesCommission, AppError>>;
+  listSalesCommissions(tenantSlug): Promise<Result<SalesCommission[], AppError>>;
+  createProductPreferredSupplier(tenantSlug, input): Promise<Result<ProductPreferredSupplier, AppError>>;
+  createCustomerCreditLimit(tenantSlug, input): Promise<Result<CustomerCreditLimit, AppError>>;
+}
+```
 
 ---
 
-## 22. Patrones de Testing Avanzados
+## 13. Testing
 
-Tests de servicios: mockear TODAS las dependencias (db, syncEngine, eventBus, supabase)
-- Verificar ambos casos: ok() y err() para cada método
-- Proveer valores de retorno realistas para métodos mockeados
-- Usar `vi.fn()` para spy en llamadas y verificar argumentos
-- Tests deben ser determinísticos y aislados
+### 13.1 Tests Obligatorios
+- `npm run lint` | `npm run test` | `npm run build`
+- **Facturación:** test redondeo SENIAT (céntimos exactos)
+- **Inventario:** test stock negativo prohibido
 
-Tests de hooks: usar `@testing-library/react` con `renderHook`
-- Probar estado inicial y transiciones de estado
-- Verificar llamadas a métodos del servicio mediante mocks
-- Simular acciones de usuario y verificar efectos en el estado
+### 13.2 Patrones de Testing
 
-Tests de integración: verificar el orden de llamadas y emisión correcta de eventos
-- Confirmar que se sigue el orden: validar → preparar → encolar → commit → eventos
-- Verificar que se emitan los eventos correctos con payload adecuado
-- Probar flujos completos que involucren múltiples servicios mediante EventBus
+**Servicios:** mockear TODAS las dependencias (db, syncEngine, eventBus, supabase)
+- Verificar ambos casos: ok() y err()
+- Usar `vi.fn()` para spy en llamadas
 
----
+**Hooks:** usar `@testing-library/react` con `renderHook`
+- Probar estado inicial y transiciones
 
-## 23. Manejo de Errores Estructurado
-
-Códigos de error: formato `{MÓDULO}_{ENTIDAD}_{ACCIÓN}_{CONDICIÓN}`
-Ejemplos: `PRODUCT_CREATION_FORBIDDEN_MODULE`, `STOCK_NEGATIVE_FORBIDDEN`
-
-Mensajes de error: en español, claros, enfocados en la acción correctiva
-NO exponer detalles internos, stack traces o información de base de datos
-Ejemplo correcto: "El usuario no tiene permisos para gestionar catalogo de productos."
-Ejemplo incorrecto: "Error en línea 124: permission denied for user X"
-
-Propiedad `retryable`: 
-- `true`: errores transitorios (problemas de red, timeouts, conflictos de sincronización)
-- `false`: errores de lógica de negocio, validación fallida, permisos insuficientes
-- Siempre incluir en objetos `AppError` para permitir lógica de reinteligencia adecuada
+**Integración:** verificar orden de llamadas y emisión de eventos
+- Orden: validar → preparar → encolar → commit → eventos
 
 ---
 
-## 24. Patrones de Eventos Refuerzo
+## 14. Errores Estructurados
 
-Nomenclatura estricta: `MODULO.ACCION` (ambas en MAYÚSCULAS, punto como separador)
-Ejemplos correctos: `SALE.COMPLETED`, `INVENTORY.STOCK_UPDATED`, `TENANT.RESOLVED`
+**Códigos:** `{MÓDULO}_{ENTIDAD}_{ACCIÓN}_{CONDICIÓN}`
+- `PRODUCT_CREATION_FORBIDDEN`, `STOCK_NEGATIVE_FORBIDDEN`
 
-Payload de eventos: incluir SIEMPRE los identificadores contextuales
-- `tenantId` (slug) para aislamiento multi-tenant
-- `localId` o identificador de negocio relevante cuando aplique
-- Datos mínimos necesarios para que los suscriptores actúen
-- NUNCA incluir datos sensibles (contraseñas, tokens, información financiera completa)
+**Mensajes:**
+- En español, claros, enfocados en acción correctiva
+- NO exponer detalles internos o stack traces
+- Ejemplo correcto: "El usuario no tiene permisos para gestionar productos"
 
-Consumidores de eventos: deben ser idempotentes y tolerantes a duplicados
-- Verificar si ya procesaron un evento similar basado en identificadores
-- Mantener estado interno solo cuando sea absolutamente necesario
-- Preferir reaccionar a cambios de estado más que a eventos específicos
+**Propiedad retryable:**
+- `true`: errores transitorios (red, timeouts, sync)
+- `false`: validaciones, permisos
 
 ---
 
-## 25. Seguridad Adicional
+## 15. Patrones de Eventos
 
-Validación de entrada: NUNCA confiar en datos recibidos del cliente
-- Validar tipos, rangos, formatos y restricciones de negocio en SERVICIOS
-- Los componentes y hooks pueden hacer validación básica de UX, pero la seguridad está en servicios
-- Usar bibliotecas como Zod o Joi para validaciones complejas cuando sea necesario
-
-Principio de mínimos privilegios: 
-- Servicios deben recibir SOLO las dependencias estrictamente necesarias
-- Evitar pasar objetos completos cuando se necesita solo una propiedad
-- Los hooks de UI nunca deben tener acceso directo a capacidades de escritura
-
-Sanitización de outputs: aunque menos crítica en este stack, considerar:
-- Escapar datos que se muestren en HTML para prevenir XSS
-- Validar URLs antes de redireccionar o hacer fetch
-- Nunca insertar datos sin validar directamente en DOM mediante innerHTML
+- Nomenclatura: `MODULO.ACCION` (MAYÚSCULAS, punto)
+- Payload: siempre incluir `tenantId` y `localId`
+- NO incluir datos sensibles (contraseñas, tokens)
+- Consumidores: idempotentes, tolerantes a duplicados
 
 ---
 
-## 26. Directrices de Rendimiento
+## 16. Rendimiento
 
-Optimización de queries Postgres:
-- USAR índices: siempre filtrar por `tenant_id` en tablas sincronizadas
-- EVITAR `SELECT *`: especificar columnas necesarias explícitamente
-- CONSIDERAR paginación: usar `LIMIT` y `OFFSET` o cursor-based para listas grandes
-- EVITAR funciones en WHERE: que impidan uso de índices (ej: `WHERE UPPER(name) = 'X'`)
+### 16.1 Optimización de Queries
+- **USAR índices:** filtrar por `tenant_id`
+- **EVITAR `SELECT *`:** especificar columnas
+- **CONSIDERAR paginación:** LIMIT/OFFSET o cursor-based
+- **EVITAR funciones en WHERE:** que impidan uso de índices
 
-Eficiencia de SyncEngine:
-- AGRUPAR operaciones relacionadas: encolar múltiplos items en una operación cuando sea posible
-- EVITAR encolados idempotentes: verificar si ya existe un item pendiente similar
-- CONFIGURAR timeouts apropiados: balances entre respuesta rápida y reintentos suficientes
-- MONITOREAR cola: alertar cuando la cantidad de items pendientes supere umbrales
+### 16.2 Eficiencia de SyncEngine
+- AGRUPAR operaciones relacionadas
+- EVITAR encolados idempotentes
+- CONFIGURAR timeouts apropiados
+- MONITOREAR cola
+
+### 16.3 Límites Offline
+| Recurso | Límite |
+|---------|--------|
+| Tamaño DB | 500MB - 1GB |
+| Productos | 50,000/tenant |
+| Sync/mes | 10,000 |
+
+**Purge:**
+- Transacciones > 6 meses
+- Imágenes > 30 días
+- Suspended sales > 7 días
 
 ---
 
-## 27. Guía para Nuevos Módulos
+## 17. Comparativa
 
-Estructura obligatoria (sección 12.1):
+| Característica | LogisCore | Valery | Odoo |
+|----------------|-----------|--------|------|
+| Arquitectura | Offline-first | Online | Online/on-premise |
+| Multi-tenant | Sí | No | Enterprise |
+| Facturación SENIAT | Sí | Sí | Custom |
+| Multi-bodega | Sí | Sí | Sí |
+| Producción/MRP | Sí | Sí | Sí |
+| POS | Sí | Sí | Sí |
+| Cierre caja | Sí | Sí | Sí |
+| Costeo | FIFO/Prom/Estandar | FIFO/Prom | Múltiple |
+
+---
+
+## 18. Checklist Pre-PR
+
+- [ ] Lógica en servicio, no componente
+- [ ] Servicio retorna `Result<T, AppError>`
+- [ ] No acceso directo a Supabase/Dexie desde componentes
+- [ ] Dexie usa `tenantId = tenant.slug`
+- [ ] No imports cruzados entre módulos (usar EventBus)
+- [ ] Reglas fiscales de `tax_rules` (no hardcoded)
+- [ ] Tests de redondeo fiscal pasando
+- [ ] `npm run lint` pasa
+- [ ] `npm run test` pasa
+- [ ] `npm run build` pasa
+
+---
+
+## 19. Buenas Prácticas
+
+1. **Documentación:** explicar el POR QUÉ, no el QUÉ
+2. **Variables:** inglés técnico, concisas (`userInput`, `processingResult`)
+3. **Archivos:** <200 líneas, una responsabilidad clara
+4. **TDD:** test falliente → implementar → refactorizar
+5. **CI:** siempre `lint && test && build` antes de commit
+
+---
+
+## 20. Guía para Nuevos Módulos
+
 1. Definir tipos en `types/[modulo].types.ts`
 2. Crear servicio con `Result<T, AppError>` en `services/[modulo].service.ts`
 3. Crear hook de coordinación UI en `hooks/use[Modulo].ts`
 4. Implementar componentes presentacionales en `components/`
 5. Escribir tests unitarios en `test/[modulo].service.test.ts`
 6. Exportar todo en `index.ts`
+7. Documentar eventos emitidos/consumidos
 
-Orden de implementación recomendado:
-1. Tipos y servicio (lógica de negocio pura)
-2. Tests del servicio (verificar comportamiento)
-3. Hook y componentes (interfaz de usuario)
-4. Tests de hook y componentes (interacción UI)
-5. Integración en la aplicación principal (registro en App.tsx o routing)
-6. Documentación de eventos emitidos/consumidos
-
-Referencia a patrones existentes: copiar y adaptar de módulos similares existentes
-- Servicio: seguir estructura de `products.service.ts` o `sales.service.ts`
-- Hook: seguir estructura de `useProducts.ts` o `useSales.ts`
-- Componentes: seguir patrones de listas y formularios existentes
-- Tests: seguir estructura de `products.service.test.ts`
-
----
-
-## 28. Manejo de Transacciones Complejas
-
-Orquestación de servicios: NUNCA hacer llamadas directas entre servicios
-- USAR EventBus para comunicación entre módulos
-- Publicar eventos que representen hechos de negocio completados
-- Otros servicios se suscriben y reaccionan según corresponda
-
-Compensación de fallos: aprovechar el modelo offline-first
-- El SyncEngine maneja reintentos automáticos y movimiento a DLQ
-- Los servicios deben ser idempotentes o diseñados para manejar procesamiento duplicado
-- Los eventos deben diseñarse para permitir procesamiento seguro múltiples veces
-
-Consistencia eventual: aceptar que las operaciones pueden no ser inmediatas
-- El flujo es: intención del usuario → validación local → encolado → sync remoto → confirmación
-- La UI refleja el estado inmediato local, con indicadores de sincronización cuando corresponde
-- Los conflictos se resuelven según estrategias definidas por tipo de tabla (LWW vs DLQ)
-
----
-
-## 29. Documentación Interna
-
-Comentarios en código: explicar el POR QUÉ, no el QUÉ
-- Comentarios que describen la intención, decisiones de diseño, razones detrás de enfoques
-- Evitar comentarios que simplemente repitan lo que el código ya dice claramente
-- Mantener comentarios actualizados cuando cambie la lógica
-
-Nombres de variables y funciones:
-- Usar inglés técnico consistente con el resto del códigobase
-- Funciones: verbos en infinitivo o forma imperativa clara (calculateTotal, validateInput)
-- Variables: descriptivas pero concisas (userInput, processingResult, isValid)
-- Constantes: UPPER_SNAKE_CASE para valores que nunca cambian
-
-Estructura de archivos:
-- Mantener archivos pequeños y enfocados (ideal: <200 líneas)
-- Una responsabilidad clara por archivo o clase
-- Agrupar funcionalidad relacionada, no capas técnicas (evitar carpeta "utils" genérica)
-- Cuando un archivo crece demasiado, buscar oportunidades para dividir por responsabilidad
-
----
-
-## 30. Buenas Prácticas de Desarrollo
-
-Revisión de código antes de commit:
-- Auto-revisar cambios enfocándose en lógica, no solo en sintaxis
-- Verificar que se siguieran todos los patrones establecidos
-- Confirmar que los tests nuevos cubren casos de uso reales y edge cases
-
-Desarrollo dirigido por pruebas (TDD) cuando sea aplicable:
-- Escribir test falliente antes de implementar funcionalidad
-- Implementar lo mínimo necesario para hacer pasar el test
-- Refactorizar para mejorar diseño manteniendo tests verdes
-- Repetir ciclo
-
-Integración continua: aprovechar el pipeline existente
-- Siempre ejecutar `npm run lint && npm run test && npm run build` antes de commit
-- Corregir inmediatamente cualquier fallo en el pipeline
-- Mantener la rama principal siempre en estado desplegable
-
----
+**Referencia:** copiar y adaptar de módulos existentes (products, sales, inventory)

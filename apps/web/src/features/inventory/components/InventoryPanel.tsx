@@ -1,3 +1,9 @@
+/**
+ * Componente principal del panel de inventario.
+ * Orchestrates la carga de datos y subscripción a eventos del bus de eventos.
+ * Escucha eventos de inventario para actualizar automáticamente la vista.
+ */
+
 import { useEffect } from "react";
 import { eventBus } from "@/lib/core/runtime";
 import type { Product } from "@/features/products/types/products.types";

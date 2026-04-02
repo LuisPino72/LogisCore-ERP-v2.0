@@ -1,3 +1,8 @@
+/**
+ * Componente de formulario para crear productos
+ * UI para crear categorías, productos y presentaciones
+ */
+
 import { useState } from "react";
 import type {
   Category,
@@ -8,6 +13,9 @@ import type {
   ProductPresentation
 } from "../types/products.types";
 
+/**
+ * Props del formulario de productos
+ */
 interface ProductsFormProps {
   categories: Category[];
   products: Product[];
@@ -17,6 +25,9 @@ interface ProductsFormProps {
   onCreatePresentation: (input: CreateProductPresentationInput) => Promise<void>;
 }
 
+/**
+ * Formulario para crear elementos del catálogo
+ */
 export function ProductsForm({
   categories,
   products,
@@ -27,6 +38,7 @@ export function ProductsForm({
 }: ProductsFormProps) {
   const [categoryName, setCategoryName] = useState("");
   const [productName, setProductName] = useState("");
+  const [productSku, setProductSku] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedDefaultPresentationId, setSelectedDefaultPresentationId] =
     useState("");
@@ -67,6 +79,11 @@ export function ProductsForm({
           onChange={(event) => setProductName(event.target.value)}
           placeholder="Nuevo producto"
         />
+        <input
+          value={productSku}
+          onChange={(event) => setProductSku(event.target.value)}
+          placeholder="SKU (codigo)"
+        />
         <select
           value={selectedCategoryId}
           onChange={(event) => setSelectedCategoryId(event.target.value)}
@@ -94,8 +111,9 @@ export function ProductsForm({
           onClick={() =>
             onCreateProduct({
               name: productName,
-              categoryId: selectedCategoryId || undefined,
-              defaultPresentationId: selectedDefaultPresentationId || undefined,
+              sku: productSku || crypto.randomUUID(),
+              categoryId: selectedCategoryId || "",
+              defaultPresentationId: selectedDefaultPresentationId || "",
               visible: true,
               sourceModule: "purchases"
             })

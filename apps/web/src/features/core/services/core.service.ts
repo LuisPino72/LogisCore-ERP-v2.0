@@ -1,3 +1,9 @@
+/**
+ * Interfaz del servicio core.
+ * Define las operaciones de negocio principales: bootstrap, sincronización y tenant.
+ * Todas las funciones retornan Result<T, AppError> para manejo de errores.
+ */
+
 import { createAppError, err, ok, type AppError, type CoreDb, type EventBus, type Result, type SyncEngine, type SyncStatus } from "@logiscore/core";
 import type { TenantContext } from "../types/core.types";
 

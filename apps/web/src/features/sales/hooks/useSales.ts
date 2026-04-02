@@ -1,3 +1,8 @@
+/**
+ * Hook de ventas
+ * Coordina el estado de UI para ventas POS, suspended sales y caja
+ */
+
 import { useCallback, useState } from "react";
 import type { SalesService } from "../services/sales.service";
 import type {
@@ -25,6 +30,9 @@ interface UseSalesOptions {
   actor: SalesActorContext;
 }
 
+/**
+ * Hook para gestionar ventas
+ */
 export const useSales = ({
   service,
   tenant,
@@ -32,6 +40,9 @@ export const useSales = ({
 }: UseSalesOptions) => {
   const [state, setState] = useState<SalesUiState>(initialState);
 
+  /**
+   * Refresca ventas, ventas suspendidas y cierres de caja
+   */
   const refresh = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
     const [salesResult, suspendedResult, closingsResult] = await Promise.all([
@@ -74,6 +85,9 @@ export const useSales = ({
     });
   }, [service, tenant]);
 
+  /**
+   * Crea una venta suspendida (ticket)
+   */
   const createSuspendedSale = useCallback(
     async (input: CreateSuspendedSaleInput) => {
       const result = await service.createSuspendedSale(tenant, actor, input);
@@ -86,6 +100,9 @@ export const useSales = ({
     [actor, refresh, service, tenant]
   );
 
+  /**
+   * Crea una venta POS completada
+   */
   const createPosSale = useCallback(
     async (input: CreatePosSaleInput) => {
       const result = await service.createPosSale(tenant, actor, input);
@@ -98,6 +115,10 @@ export const useSales = ({
     [actor, refresh, service, tenant]
   );
 
+  /**
+   * Restaura una venta suspendida y la convierte en venta POS
+   * @returns Datos para restaurar el carrito, o null si falla
+   */
   const restoreSuspendedSale = useCallback(
     async (suspendedLocalId: string): Promise<RestoreSuspendedSaleResult | null> => {
       const result = await service.restoreSuspendedSale(
@@ -115,6 +136,9 @@ export const useSales = ({
     [actor, service, tenant]
   );
 
+  /**
+   * Cierra una caja
+   */
   const closeBox = useCallback(
     async (input: CloseBoxInput) => {
       const result = await service.closeBox(tenant, actor, input);
@@ -127,6 +151,9 @@ export const useSales = ({
     [actor, refresh, service, tenant]
   );
 
+  /**
+   * Abre una caja
+   */
   const openBox = useCallback(
     async (input: OpenBoxInput) => {
       const result = await service.openBox(tenant, actor, input);

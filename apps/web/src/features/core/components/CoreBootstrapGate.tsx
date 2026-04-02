@@ -1,8 +1,10 @@
+// Core - Gestiona el flujo de inicialización (loading/error/blocked/success)
 import { useEffect } from "react";
 import { BlockedAccessScreen } from "./BlockedAccessScreen";
 import { useCore } from "../hooks/useCore";
 import { coreService } from "../services/core.service.instance";
 
+// Gestiona estados de bootstrap: bootstrapping, error, blocked, success
 export function CoreBootstrapGate() {
   const { state, bootstrap, clearLastError } = useCore({ service: coreService });
 

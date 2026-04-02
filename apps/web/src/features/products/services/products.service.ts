@@ -1,3 +1,8 @@
+/**
+ * Servicio principal para gestionar productos, categorías y presentaciones.
+ * Implementa la lógica de negocio para todas las operaciones de productos.
+ */
+
 import { createAppError, err, ok, type AppError, type EventBus, type Result, type SyncEngine } from "@logiscore/core";
 import type {
   Category,
@@ -7,6 +12,7 @@ import type {
   CreateProductPresentationInput,
   UpdateCategoryInput,
   UpdateProductInput,
+  UpdateProductPresentationInput,
   Product,
   ProductPresentation,
   ProductsTenantContext
@@ -18,12 +24,21 @@ interface RpcResultRow {
   message: string;
 }
 
-interface ProductsSupabaseLike {
+interface ProductsSupabaseRpcResult {
   rpc: <T>(fn: string, args?: Record<string, unknown>) => Promise<{
     data: T | null;
     error: { message: string } | null;
   }>;
 }
+
+interface ProductsSupabaseClient {
+  rpc<T>(fn: string, args?: Record<string, unknown>): Promise<{
+    data: T | null;
+    error: Error | null;
+  }>;
+}
+
+export type ProductsSupabaseLike = ProductsSupabaseRpcResult | ProductsSupabaseClient;
 
 export interface ProductsDb {
   createCategory(category: Category): Promise<void>;
@@ -31,6 +46,7 @@ export interface ProductsDb {
   createPresentation(presentation: ProductPresentation): Promise<void>;
   updateCategory(category: Category): Promise<void>;
   updateProduct(product: Product): Promise<void>;
+  updatePresentation(presentation: ProductPresentation): Promise<void>;
   listCategories(tenantId: string): Promise<Category[]>;
   listProducts(tenantId: string): Promise<Product[]>;
   listPresentations(tenantId: string): Promise<ProductPresentation[]>;
@@ -88,6 +104,11 @@ export interface ProductsService {
   listPresentations(
     tenant: ProductsTenantContext
   ): Promise<Result<ProductPresentation[], AppError>>;
+  updatePresentation(
+    tenant: ProductsTenantContext,
+    actor: ProductsActorContext,
+    input: UpdateProductPresentationInput
+  ): Promise<Result<ProductPresentation, AppError>>;
   deleteCategory(
     tenant: ProductsTenantContext,
     actor: ProductsActorContext,
@@ -104,7 +125,7 @@ interface ProductsServiceDependencies {
   db: ProductsDb;
   syncEngine: SyncEngine;
   eventBus: EventBus;
-  supabase: ProductsSupabaseLike;
+  supabase: ProductsSupabaseLike | null;
   clock?: () => Date;
   uuid?: () => string;
 }
@@ -204,105 +225,119 @@ export const createProductsService = ({
     return ok(category);
   };
 
-  const createProduct: ProductsService["createProduct"] = async (
-    tenant,
-    actor,
-    input
-  ) => {
-    const permissionResult = assertCatalogPermissions(actor);
-    if (!permissionResult.ok) {
-      return err(permissionResult.error);
-    }
+    const createProduct: ProductsService["createProduct"] = async (
+      tenant,
+      actor,
+      input
+    ) => {
+      const permissionResult = assertCatalogPermissions(actor);
+      if (!permissionResult.ok) {
+        return err(permissionResult.error);
+      }
 
-    if (!input.name.trim()) {
-      return err(
-        createAppError({
-          code: "PRODUCT_NAME_REQUIRED",
-          message: "El nombre del producto es obligatorio.",
-          retryable: false
-        })
-      );
-    }
-
-    if (input.sourceModule !== "purchases") {
-      return err(
-        createAppError({
-          code: "PRODUCT_CREATION_FORBIDDEN_MODULE",
-          message:
-            "Los productos solo se crean desde el modulo Compras (regla 7.5).",
-          retryable: false
-        })
-      );
-    }
-
-    if (input.categoryId) {
-      const category = await db.getCategoryById(input.categoryId, tenant.tenantSlug);
-      if (!category) {
+      if (!input.name.trim()) {
         return err(
           createAppError({
-            code: "PRODUCT_CATEGORY_NOT_FOUND",
-            message: "La categoria del producto no existe para el tenant actual.",
-            retryable: false,
-            context: { categoryId: input.categoryId }
+            code: "PRODUCT_NAME_REQUIRED",
+            message: "El nombre del producto es obligatorio.",
+            retryable: false
           })
         );
       }
-    }
 
-    if (input.defaultPresentationId) {
-      return err(
-        createAppError({
-          code: "PRODUCT_DEFAULT_PRESENTATION_REQUIRES_EXISTING_PRODUCT",
-          message:
-            "No se puede definir presentacion por defecto al crear producto; actualice el producto luego de crear presentaciones.",
-          retryable: false
-        })
-      );
-    }
+      if (input.sourceModule !== "purchases") {
+        return err(
+          createAppError({
+            code: "PRODUCT_CREATION_FORBIDDEN_MODULE",
+            message:
+              "Los productos solo se crean desde el modulo Compras (regla 7.5).",
+            retryable: false
+          })
+        );
+      }
 
-    const now = clock().toISOString();
-    const product = {
-      localId: uuid(),
-      tenantId: tenant.tenantSlug,
-      name: input.name.trim(),
-      visible: input.visible,
-      createdAt: now,
-      updatedAt: now,
-      ...(input.categoryId !== undefined && { categoryId: input.categoryId }),
-      ...(input.defaultPresentationId !== undefined && { defaultPresentationId: input.defaultPresentationId })
+      if (input.categoryId) {
+        const category = await db.getCategoryById(input.categoryId, tenant.tenantSlug);
+        if (!category) {
+          return err(
+            createAppError({
+              code: "PRODUCT_CATEGORY_NOT_FOUND",
+              message: "La categoria del producto no existe para el tenant actual.",
+              retryable: false,
+              context: { categoryId: input.categoryId }
+            })
+          );
+        }
+      }
+
+      if (input.defaultPresentationId) {
+        return err(
+          createAppError({
+            code: "PRODUCT_DEFAULT_PRESENTATION_REQUIRES_EXISTING_PRODUCT",
+            message:
+              "No se puede definir presentacion por defecto al crear producto; actualice el producto luego de crear presentaciones.",
+            retryable: false
+          })
+        );
+      }
+
+      const now = clock().toISOString();
+      const product: Product = {
+        localId: uuid(),
+        tenantId: tenant.tenantSlug,
+        name: input.name.trim(),
+        description: input.description ?? null,
+        categoryId: input.categoryId ?? null,
+        sku: input.sku,
+        weight: input.weight ?? null,
+        length: input.length ?? null,
+        width: input.width ?? null,
+        height: input.height ?? null,
+        isSerialized: input.isSerialized ?? null,
+        visible: input.visible,
+        defaultPresentationId: input.defaultPresentationId ?? null,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      const syncResult = await syncEngine.enqueue({
+        id: uuid(),
+        table: "products",
+        operation: "create",
+        payload: {
+          local_id: product.localId,
+          tenant_slug: tenant.tenantSlug,
+          name: product.name,
+          description: product.description,
+          sku: product.sku,
+          weight: product.weight,
+          length: product.length,
+          width: product.width,
+          height: product.height,
+          is_serialized: product.isSerialized,
+          category_id: product.categoryId,
+          visible: product.visible,
+          default_presentation_id: product.defaultPresentationId,
+          created_at: product.createdAt,
+          updated_at: product.updatedAt
+        },
+        localId: product.localId,
+        tenantId: tenant.tenantSlug,
+        createdAt: now,
+        attempts: 0
+      });
+      if (!syncResult.ok) {
+        return err(syncResult.error);
+      }
+
+      await db.createProduct(product);
+      eventBus.emit("CATALOG.PRODUCT_CREATED", {
+        tenantId: tenant.tenantSlug,
+        localId: product.localId,
+        visible: product.visible
+      });
+      return ok(product);
     };
-
-    const syncResult = await syncEngine.enqueue({
-      id: uuid(),
-      table: "products",
-      operation: "create",
-      payload: {
-        local_id: product.localId,
-        tenant_slug: tenant.tenantSlug,
-        name: product.name,
-        category_id: product.categoryId,
-        visible: product.visible,
-        default_presentation_id: product.defaultPresentationId,
-        created_at: product.createdAt,
-        updated_at: product.updatedAt
-      },
-      localId: product.localId,
-      tenantId: tenant.tenantSlug,
-      createdAt: now,
-      attempts: 0
-    });
-    if (!syncResult.ok) {
-      return err(syncResult.error);
-    }
-
-    await db.createProduct(product);
-    eventBus.emit("CATALOG.PRODUCT_CREATED", {
-      tenantId: tenant.tenantSlug,
-      localId: product.localId,
-      visible: product.visible
-    });
-    return ok(product);
-  };
 
   const updateCategory: ProductsService["updateCategory"] = async (
     tenant,
@@ -360,171 +395,186 @@ export const createProductsService = ({
     return ok(updated);
   };
 
-  const updateProduct: ProductsService["updateProduct"] = async (
-    tenant,
-    actor,
-    input
-  ) => {
-    const permissionResult = assertCatalogPermissions(actor);
-    if (!permissionResult.ok) {
-      return err(permissionResult.error);
-    }
+    const updateProduct: ProductsService["updateProduct"] = async (
+      tenant,
+      actor,
+      input
+    ) => {
+      const permissionResult = assertCatalogPermissions(actor);
+      if (!permissionResult.ok) {
+        return err(permissionResult.error);
+      }
 
-    const existing = await db.getProductById(input.localId, tenant.tenantSlug);
-    if (!existing) {
-      return err(
-        createAppError({
-          code: "PRODUCT_NOT_FOUND",
-          message: "Producto no encontrado para el tenant actual.",
-          retryable: false,
-          context: { localId: input.localId }
-        })
-      );
-    }
-
-    if (input.categoryId) {
-      const category = await db.getCategoryById(input.categoryId, tenant.tenantSlug);
-      if (!category) {
+      const existing = await db.getProductById(input.localId, tenant.tenantSlug);
+      if (!existing) {
         return err(
           createAppError({
-            code: "PRODUCT_CATEGORY_NOT_FOUND",
-            message: "La categoria del producto no existe para el tenant actual.",
+            code: "PRODUCT_NOT_FOUND",
+            message: "Producto no encontrado para el tenant actual.",
             retryable: false,
-            context: { categoryId: input.categoryId }
+            context: { localId: input.localId }
           })
         );
       }
-    }
 
-    if (input.defaultPresentationId) {
-      const presentation = await db.getPresentationById(
-        input.defaultPresentationId,
-        tenant.tenantSlug
-      );
-      if (!presentation) {
-        return err(
-          createAppError({
-            code: "PRODUCT_DEFAULT_PRESENTATION_NOT_FOUND",
-            message: "La presentacion por defecto no existe para el tenant actual.",
-            retryable: false,
-            context: { defaultPresentationId: input.defaultPresentationId }
-          })
-        );
+      if (input.categoryId) {
+        const category = await db.getCategoryById(input.categoryId, tenant.tenantSlug);
+        if (!category) {
+          return err(
+            createAppError({
+              code: "PRODUCT_CATEGORY_NOT_FOUND",
+              message: "La categoria del producto no existe para el tenant actual.",
+              retryable: false,
+              context: { categoryId: input.categoryId }
+            })
+          );
+        }
       }
-      if (presentation.productLocalId !== existing.localId) {
-        return err(
-          createAppError({
-            code: "PRODUCT_DEFAULT_PRESENTATION_MISMATCH",
-            message:
-              "La presentacion por defecto no pertenece al producto actual.",
-            retryable: false,
-            context: { defaultPresentationId: input.defaultPresentationId }
-          })
+
+      if (input.defaultPresentationId) {
+        const presentation = await db.getPresentationById(
+          input.defaultPresentationId,
+          tenant.tenantSlug
         );
+        if (!presentation) {
+          return err(
+            createAppError({
+              code: "PRODUCT_DEFAULT_PRESENTATION_NOT_FOUND",
+              message: "La presentacion por defecto no existe para el tenant actual.",
+              retryable: false,
+              context: { defaultPresentationId: input.defaultPresentationId }
+            })
+          );
+        }
+        if (presentation.productLocalId !== existing.localId) {
+          return err(
+            createAppError({
+              code: "PRODUCT_DEFAULT_PRESENTATION_MISMATCH",
+              message:
+                "La presentacion por defecto no pertenece al producto actual.",
+              retryable: false,
+              context: { defaultPresentationId: input.defaultPresentationId }
+            })
+          );
+        }
       }
-    }
 
-    const now = clock().toISOString();
-    const updated = {
-      ...existing,
-      name: input.name.trim(),
-      visible: input.visible,
-      updatedAt: now,
-      ...(input.categoryId !== undefined && { categoryId: input.categoryId }),
-      ...(input.defaultPresentationId !== undefined && { defaultPresentationId: input.defaultPresentationId })
-    } as Product;
+      const now = clock().toISOString();
+      const updated = {
+        ...existing,
+        name: input.name.trim(),
+        description: input.description ?? existing.description,
+        categoryId: input.categoryId ?? existing.categoryId,
+        sku: input.sku ?? existing.sku,
+        weight: input.weight ?? existing.weight,
+        length: input.length ?? existing.length,
+        width: input.width ?? existing.width,
+        height: input.height ?? existing.height,
+        isSerialized: input.isSerialized ?? existing.isSerialized,
+        visible: input.visible,
+        updatedAt: now,
+        ...(input.defaultPresentationId !== undefined && { defaultPresentationId: input.defaultPresentationId })
+      } as Product;
 
-    const syncResult = await syncEngine.enqueue({
-      id: uuid(),
-      table: "products",
-      operation: "update",
-      payload: {
-        local_id: updated.localId,
-        tenant_slug: tenant.tenantSlug,
-        name: updated.name,
-        category_id: updated.categoryId,
-        visible: updated.visible,
-        default_presentation_id: updated.defaultPresentationId,
-        updated_at: updated.updatedAt
-      },
-      localId: updated.localId,
-      tenantId: tenant.tenantSlug,
-      createdAt: now,
-      attempts: 0
-    });
-    if (!syncResult.ok) {
-      return err(syncResult.error);
-    }
+      const syncResult = await syncEngine.enqueue({
+        id: uuid(),
+        table: "products",
+        operation: "update",
+        payload: {
+          local_id: updated.localId,
+          tenant_slug: tenant.tenantSlug,
+          name: updated.name,
+          description: updated.description,
+          sku: updated.sku,
+          weight: updated.weight,
+          length: updated.length,
+          width: updated.width,
+          height: updated.height,
+          is_serialized: updated.isSerialized,
+          category_id: updated.categoryId,
+          visible: updated.visible,
+          default_presentation_id: updated.defaultPresentationId,
+          updated_at: updated.updatedAt
+        },
+        localId: updated.localId,
+        tenantId: tenant.tenantSlug,
+        createdAt: now,
+        attempts: 0
+      });
+      if (!syncResult.ok) {
+        return err(syncResult.error);
+      }
 
-    await db.updateProduct(updated);
-    eventBus.emit("CATALOG.PRODUCT_UPDATED", {
-      tenantId: tenant.tenantSlug,
-      localId: updated.localId
-    });
-    return ok(updated);
-  };
-
-  const createPresentation: ProductsService["createPresentation"] = async (
-    tenant,
-    actor,
-    input
-  ) => {
-    const permissionResult = assertCatalogPermissions(actor);
-    if (!permissionResult.ok) {
-      return err(permissionResult.error);
-    }
-
-    if (!input.name.trim()) {
-      return err(
-        createAppError({
-          code: "PRESENTATION_NAME_REQUIRED",
-          message: "El nombre de la presentacion es obligatorio.",
-          retryable: false
-        })
-      );
-    }
-    if (input.factor <= 0) {
-      return err(
-        createAppError({
-          code: "PRESENTATION_FACTOR_INVALID",
-          message: "El factor de presentacion debe ser mayor a 0.",
-          retryable: false
-        })
-      );
-    }
-
-    const product = await db.getProductById(input.productLocalId, tenant.tenantSlug);
-    if (!product) {
-      return err(
-        createAppError({
-          code: "PRESENTATION_PRODUCT_NOT_FOUND",
-          message: "El producto de la presentacion no existe para el tenant actual.",
-          retryable: false,
-          context: { productLocalId: input.productLocalId }
-        })
-      );
-    }
-
-    const now = clock().toISOString();
-    const presentation = {
-      id: uuid(),
-      tenantId: tenant.tenantSlug,
-      productLocalId: input.productLocalId,
-      name: input.name.trim(),
-      factor: input.factor,
-      createdAt: now,
-      updatedAt: now,
-      ...(input.barcode !== undefined && { barcode: input.barcode })
+      await db.updateProduct(updated);
+      eventBus.emit("CATALOG.PRODUCT_UPDATED", {
+        tenantId: tenant.tenantSlug,
+        localId: updated.localId
+      });
+      return ok(updated);
     };
 
-    await db.createPresentation(presentation);
-    eventBus.emit("CATALOG.PRESENTATION_CREATED", {
-      tenantId: tenant.tenantSlug,
-      id: presentation.id,
-      productLocalId: input.productLocalId
-    });
-    return ok(presentation);
-  };
+    const createPresentation: ProductsService["createPresentation"] = async (
+      tenant,
+      actor,
+      input
+    ) => {
+      const permissionResult = assertCatalogPermissions(actor);
+      if (!permissionResult.ok) {
+        return err(permissionResult.error);
+      }
+
+      if (!input.name.trim()) {
+        return err(
+          createAppError({
+            code: "PRESENTATION_NAME_REQUIRED",
+            message: "El nombre de la presentacion es obligatorio.",
+            retryable: false
+          })
+        );
+      }
+      if (input.factor <= 0) {
+        return err(
+          createAppError({
+            code: "PRESENTATION_FACTOR_INVALID",
+            message: "El factor de presentacion debe ser mayor a 0.",
+            retryable: false
+          })
+        );
+      }
+
+      const product = await db.getProductById(input.productLocalId, tenant.tenantSlug);
+      if (!product) {
+        return err(
+          createAppError({
+            code: "PRESENTATION_PRODUCT_NOT_FOUND",
+            message: "El producto de la presentacion no existe para el tenant actual.",
+            retryable: false,
+            context: { productLocalId: input.productLocalId }
+          })
+        );
+      }
+
+      const now = clock().toISOString();
+      const presentation = {
+        id: uuid(),
+        tenantId: tenant.tenantSlug,
+        productLocalId: input.productLocalId,
+        name: input.name.trim(),
+        factor: input.factor,
+        createdAt: now,
+        updatedAt: now,
+        ...(input.barcode !== undefined && { barcode: input.barcode }),
+        ...(input.isDefault !== undefined && { isDefault: input.isDefault })
+      };
+
+      await db.createPresentation(presentation);
+      eventBus.emit("CATALOG.PRESENTATION_CREATED", {
+        tenantId: tenant.tenantSlug,
+        id: presentation.id,
+        productLocalId: input.productLocalId
+      });
+      return ok(presentation);
+    };
 
   const listCategories: ProductsService["listCategories"] = async (tenant) => {
     const categories = await db.listCategories(tenant.tenantSlug);
@@ -563,6 +613,17 @@ export const createProductsService = ({
             "No se puede eliminar la categoria porque tiene productos activos.",
           retryable: false,
           context: { categoryLocalId, references: refs }
+        })
+      );
+    }
+
+    if (!supabase) {
+      return err(
+        createAppError({
+          code: "CATEGORY_DELETE_NO_CONNECTION",
+          message: "No hay conexión a Supabase.",
+          retryable: true,
+          context: { categoryLocalId, tenantSlug: tenant.tenantSlug }
         })
       );
     }
@@ -608,83 +669,170 @@ export const createProductsService = ({
     return ok<void>(undefined);
   };
 
-  const deleteProduct: ProductsService["deleteProduct"] = async (
-    tenant,
-    actor,
-    productLocalId
-  ) => {
-    const permissionResult = assertCatalogPermissions(actor);
-    if (!permissionResult.ok) {
-      return err(permissionResult.error);
-    }
+    const deleteProduct: ProductsService["deleteProduct"] = async (
+      tenant,
+      actor,
+      productLocalId
+    ) => {
+      const permissionResult = assertCatalogPermissions(actor);
+      if (!permissionResult.ok) {
+        return err(permissionResult.error);
+      }
 
-    const refs = await db.countActivePresentationsByProduct(
-      productLocalId,
-      tenant.tenantSlug
-    );
-    if (refs > 0) {
-      return err(
-        createAppError({
-          code: "PRODUCT_DELETE_BLOCKED_REFERENCES",
-          message:
-            "No se puede eliminar el producto porque tiene presentaciones activas.",
-          retryable: false,
-          context: { productLocalId, references: refs }
-        })
+      const refs = await db.countActivePresentationsByProduct(
+        productLocalId,
+        tenant.tenantSlug
       );
-    }
+      if (refs > 0) {
+        return err(
+          createAppError({
+            code: "PRODUCT_DELETE_BLOCKED_REFERENCES",
+            message:
+              "No se puede eliminar el producto porque tiene presentaciones activas.",
+            retryable: false,
+            context: { productLocalId, references: refs }
+          })
+        );
+      }
 
-    const rpcResponse = await supabase.rpc<RpcResultRow[]>("secure_soft_delete_product", {
-      p_local_id: productLocalId
-    });
+      if (!supabase) {
+        return err(
+          createAppError({
+            code: "PRODUCT_DELETE_NO_CONNECTION",
+            message: "No hay conexión a Supabase.",
+            retryable: true,
+            context: { productLocalId, tenantSlug: tenant.tenantSlug }
+          })
+        );
+      }
 
-    if (rpcResponse.error) {
-      return err(
-        createAppError({
-          code: "PRODUCT_DELETE_RPC_FAILED",
-          message: rpcResponse.error.message,
-          retryable: true,
-          context: { productLocalId, tenantSlug: tenant.tenantSlug }
-        })
-      );
-    }
+      const rpcResponse = await supabase.rpc<RpcResultRow[]>("secure_soft_delete_product", {
+        p_local_id: productLocalId
+      });
 
-    const rpcResult = Array.isArray(rpcResponse.data)
-      ? rpcResponse.data[0]
-      : null;
+      if (rpcResponse.error) {
+        return err(
+          createAppError({
+            code: "PRODUCT_DELETE_RPC_FAILED",
+            message: rpcResponse.error.message,
+            retryable: true,
+            context: { productLocalId, tenantSlug: tenant.tenantSlug }
+          })
+        );
+      }
 
-    if (!rpcResult?.success) {
-      return err(
-        createAppError({
-          code: rpcResult?.code ?? "PRODUCT_DELETE_REJECTED",
-          message:
-            rpcResult?.message ??
-            "No se pudo ejecutar borrado logico seguro para el producto.",
-          retryable: false,
-          context: { productLocalId, tenantSlug: tenant.tenantSlug }
-        })
-      );
-    }
+      const rpcResult = Array.isArray(rpcResponse.data)
+        ? rpcResponse.data[0]
+        : null;
 
-    const now = clock().toISOString();
-    await db.softDeleteProduct(productLocalId, tenant.tenantSlug, now);
-    eventBus.emit("CATALOG.PRODUCT_DELETED", {
-      tenantId: tenant.tenantSlug,
-      localId: productLocalId
-    });
-    return ok<void>(undefined);
+      if (!rpcResult?.success) {
+        return err(
+          createAppError({
+            code: rpcResult?.code ?? "PRODUCT_DELETE_REJECTED",
+            message:
+              rpcResult?.message ??
+              "No se pudo ejecutar borrado logico seguro para el producto.",
+            retryable: false,
+            context: { productLocalId, tenantSlug: tenant.tenantSlug }
+          })
+        );
+      }
+
+      const now = clock().toISOString();
+      await db.softDeleteProduct(productLocalId, tenant.tenantSlug, now);
+      eventBus.emit("CATALOG.PRODUCT_DELETED", {
+        tenantId: tenant.tenantSlug,
+        localId: productLocalId
+      });
+      return ok<void>(undefined);
+    };
+
+    const updatePresentation: ProductsService["updatePresentation"] = async (
+      tenant,
+      actor,
+      input
+    ) => {
+      const permissionResult = assertCatalogPermissions(actor);
+      if (!permissionResult.ok) {
+        return err(permissionResult.error);
+      }
+
+      const existing = await db.getPresentationById(input.id, tenant.tenantSlug);
+      if (!existing) {
+        return err(
+          createAppError({
+            code: "PRESENTATION_NOT_FOUND",
+            message: "Presentacion no encontrada para el tenant actual.",
+            retryable: false,
+            context: { id: input.id }
+          })
+        );
+      }
+
+      if (input.factor <= 0) {
+        return err(
+          createAppError({
+            code: "PRESENTATION_FACTOR_INVALID",
+            message: "El factor de presentacion debe ser mayor a 0.",
+            retryable: false
+          })
+        );
+      }
+
+      const now = clock().toISOString();
+      const updated = {
+        ...existing,
+        name: input.name.trim(),
+        factor: input.factor,
+        updatedAt: now,
+        ...(input.barcode !== undefined && { barcode: input.barcode }),
+        ...(input.isDefault !== undefined && { isDefault: input.isDefault })
+      };
+
+      const syncResult = await syncEngine.enqueue({
+        id: uuid(),
+        table: "product_presentations",
+        operation: "update",
+        payload: {
+          id: updated.id,
+          tenant_slug: tenant.tenantSlug,
+          product_local_id: updated.productLocalId,
+          name: updated.name,
+          factor: updated.factor,
+          barcode: updated.barcode,
+          is_default: updated.isDefault,
+          created_at: updated.createdAt,
+          updated_at: updated.updatedAt
+        },
+        localId: updated.id,
+        tenantId: tenant.tenantSlug,
+        createdAt: now,
+        attempts: 0
+      });
+      if (!syncResult.ok) {
+        return err(syncResult.error);
+      }
+
+      await db.updatePresentation(updated);
+      eventBus.emit("CATALOG.PRESENTATION_UPDATED", {
+        tenantId: tenant.tenantSlug,
+        id: updated.id,
+        productLocalId: updated.productLocalId
+      });
+      return ok(updated);
+    };
+
+    return {
+      createCategory,
+      createProduct,
+      createPresentation,
+      updateCategory,
+      updateProduct,
+      listCategories,
+      listProducts,
+      listPresentations,
+      updatePresentation,
+      deleteCategory,
+      deleteProduct
+    };
   };
-
-  return {
-    createCategory,
-    createProduct,
-    createPresentation,
-    updateCategory,
-    updateProduct,
-    listCategories,
-    listProducts,
-    listPresentations,
-    deleteCategory,
-    deleteProduct
-  };
-};

@@ -1,3 +1,4 @@
+// Core - Instancia singleton del servicio core con todas sus dependencias
 import { db, DexieCoreDbAdapter } from "@/lib/db/dexie";
 import { eventBus, syncEngine } from "@/lib/core/runtime";
 import { supabase } from "@/lib/supabase/client";

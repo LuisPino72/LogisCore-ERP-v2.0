@@ -11,6 +11,8 @@ const fullPermissions: RolePermissions = {
   canRefundSale: false,
   canVoidInvoice: false,
   canAdjustStock: false,
+  canViewReports: true,
+  canExportReports: true,
   allowedWarehouseLocalIds: []
 };
 
@@ -29,8 +31,22 @@ const createSupabaseMock = ({
           void column;
           void value;
           if (table === "tenants") {
+            if (column === "owner_user_id") {
+              return {
+                data: { id: "tenant-uuid", slug: "tenant-demo" } as T,
+                error: null
+              };
+            }
+            if (column === "slug") {
+              return {
+                data: { id: "tenant-uuid" } as T,
+                error: null
+              };
+            }
+          }
+          if (table === "subscriptions") {
             return {
-              data: { id: "tenant-uuid", slug: "tenant-demo" } as T,
+              data: { status: subscriptionActive ? "active" : "inactive" } as T,
               error: null
             };
           }
@@ -40,11 +56,17 @@ const createSupabaseMock = ({
     })
   }),
   rpc: async <T>(fn: string, args?: Record<string, unknown>) => {
-    void fn;
     void args;
-    if (fn === "get_user_primary_role") {
+    if (fn === "get_user_primary_role_extended") {
       return {
-        data: { role, permissions: fullPermissions } as T,
+        data: {
+          role,
+          permissions: fullPermissions,
+          email: "test@email.com",
+          full_name: "Test User",
+          last_login_at: null,
+          is_active: true
+        } as T,
         error: null
       };
     }
@@ -66,9 +88,9 @@ const createSupabaseMock = ({
     };
   },
   functions: {
-    invoke: async <T>(fn: string, options?: { body?: unknown }) => {
-      void fn;
-      void options;
+    invoke: async <T>(_fn: string, _options?: { body?: unknown }) => {
+      void _fn;
+      void _options;
       return {
         data: { isActive: subscriptionActive } as T,
         error: null

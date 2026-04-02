@@ -1,3 +1,9 @@
+/**
+ * Interfaz del servicio de tenant.
+ * Define todas las operaciones de negocio relacionadas con tenants.
+ * Todas las funciones retornan Result<T, AppError> para manejo de errores.
+ */
+
 import { createAppError, err, ok, type AppError, type EventBus, type Result } from "@logiscore/core";
 import type {
   RolePermissions,
@@ -52,7 +58,9 @@ const defaultPermissions: RolePermissions = {
   canVoidSale: false,
   canRefundSale: false,
   canVoidInvoice: false,
-  canAdjustStock: false
+  canAdjustStock: false,
+  canViewReports: false,
+  canExportReports: false
 };
 
 export const createTenantService = ({
@@ -118,11 +126,15 @@ export const createTenantService = ({
     return ok(tenant);
   };
 
-  const resolveUserRole: TenantService["resolveUserRole"] = async (userId) => {
+    const resolveUserRole: TenantService["resolveUserRole"] = async (userId) => {
     const roleQuery = await supabase.rpc<{
       role: UserRole["role"];
       permissions: RolePermissions | null;
-    }>("get_user_primary_role", {
+      email: string;
+      full_name: string;
+      last_login_at: string | null;
+      is_active: boolean;
+    }>("get_user_primary_role_extended", {
       p_user_id: userId
     });
 
@@ -148,7 +160,11 @@ export const createTenantService = ({
       permissions: {
         ...basePermissions,
         allowedWarehouseLocalIds: warehouseAccessResult.data
-      }
+      },
+      email: roleQuery.data.email,
+      fullName: roleQuery.data.full_name,
+      lastLoginAt: roleQuery.data.last_login_at ?? null,
+      isActive: roleQuery.data.is_active
     };
     eventBus.emit("AUTH.WAREHOUSE_ACCESS_RESOLVED", {
       userId,

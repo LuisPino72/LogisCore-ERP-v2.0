@@ -1,3 +1,8 @@
+/**
+ * Adaptador de base de datos local para facturación (Dexie/IndexedDB).
+ * Implementa la interfaz InvoicingDb con operaciones CRUD y de negocio.
+ */
+
 import { db, type InvoiceRecord, type TaxRuleRecord, type ExchangeRateRecord } from "@/lib/db/dexie";
 import type { InvoicingDb } from "./invoicing.service";
 

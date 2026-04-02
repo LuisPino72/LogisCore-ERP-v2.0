@@ -1,3 +1,13 @@
+/**
+ * Hook personalizado para gestionar el inventario.
+ * Provee estado y métodos para interacturar con el servicio de inventario:
+ * - Listar almacenes, movimientos, conteos y tallas/colores
+ * - Crear almacenes, movimientos de stock, conteos de inventario
+ * - Publicar conteos de inventario
+ * - Evaluar sugerencias de reorden
+ * Utiliza el patrón Result<T, AppError> para manejo de errores.
+ */
+
 import { useCallback, useState } from "react";
 import { inventoryService } from "../services/inventory.service.instance";
 import type { InventoryService } from "../services/inventory.service";

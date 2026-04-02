@@ -1,3 +1,8 @@
+/**
+ * Servicio principal para gestionar inventarios, almacenes y movimientos de stock.
+ * Implementa la lógica de negocio para todas las operaciones de inventario.
+ */
+
 import {
   createAppError,
   err,
@@ -21,6 +26,10 @@ import type {
   Warehouse
 } from "../types/inventory.types";
 
+/**
+ * Interfaz del adaptador de base de datos para inventario.
+ * Define las operaciones CRUD básicas sobre almacenes, movimientos y conteos.
+ */
 export interface InventoryDb {
   createWarehouse(warehouse: Warehouse): Promise<void>;
   listWarehouses(tenantId: string): Promise<Warehouse[]>;
@@ -47,6 +56,11 @@ export interface InventoryDb {
   ): Promise<void>;
 }
 
+/**
+ * Interfaz del servicio de inventario.
+ * Define todas las operaciones de negocio relacionadas con el inventario.
+ * Todas las funciones retornan Result<T, AppError> para manejo de errores.
+ */
 export interface InventoryService {
   createWarehouse(
     tenant: InventoryTenantContext,
@@ -185,10 +199,16 @@ export const createInventoryService = ({
       localId: uuid(),
       tenantId: tenant.tenantSlug,
       name: input.name.trim(),
-      code: input.code?.trim() || undefined,
       isActive: true,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      ...(input.code?.trim() && { code: input.code.trim() }),
+      ...(input.address?.trim() && { address: input.address.trim() }),
+      ...(input.contactPerson?.trim() && { contactPerson: input.contactPerson.trim() }),
+      ...(input.phone?.trim() && { phone: input.phone.trim() }),
+      ...(input.capacityVolumen !== undefined && { capacityVolumen: input.capacityVolumen }),
+      ...(input.capacityPeso !== undefined && { capacityPeso: input.capacityPeso }),
+      ...(input.isDefault !== undefined && { isDefault: input.isDefault })
     };
 
     const syncResult = await syncEngine.enqueue({
@@ -248,9 +268,10 @@ export const createInventoryService = ({
       localId: uuid(),
       tenantId: tenant.tenantSlug,
       productLocalId: input.productLocalId,
-      size: input.size?.trim() || undefined,
-      color: input.color?.trim() || undefined,
-      skuSuffix: input.skuSuffix?.trim() || undefined,
+      size: input.size?.trim() || "",
+      color: input.color?.trim() || "",
+      skuSuffix: input.skuSuffix?.trim() || "",
+      barcode: input.barcode?.trim() || "",
       createdAt: now,
       updatedAt: now
     };
@@ -263,9 +284,10 @@ export const createInventoryService = ({
         local_id: item.localId,
         tenant_slug: tenant.tenantSlug,
         product_local_id: item.productLocalId,
-        size: item.size,
-        color: item.color,
-        sku_suffix: item.skuSuffix,
+        size: item.size || null,
+        color: item.color || null,
+        sku_suffix: item.skuSuffix || null,
+        barcode: item.barcode || null,
         created_at: item.createdAt,
         updated_at: item.updatedAt
       },
@@ -360,12 +382,14 @@ export const createInventoryService = ({
       warehouseLocalId: input.warehouseLocalId,
       movementType: input.movementType,
       quantity: input.quantity,
-      unitCost: input.unitCost,
-      referenceType: input.referenceType,
-      referenceLocalId: input.referenceLocalId,
-      notes: input.notes,
-      createdBy: actor.userId,
-      createdAt: now
+      createdAt: now,
+      ...(input.unitCost !== undefined && { unitCost: input.unitCost }),
+      ...(input.referenceType && { referenceType: input.referenceType }),
+      ...(input.referenceLocalId && { referenceLocalId: input.referenceLocalId }),
+      ...(input.referenceDocumentType && { referenceDocumentType: input.referenceDocumentType }),
+      ...(input.costLayerId && { costLayerId: input.costLayerId }),
+      ...(input.notes && { notes: input.notes }),
+      ...(actor.userId && { createdBy: actor.userId })
     };
 
     const syncResult = await syncEngine.enqueue({
@@ -382,6 +406,8 @@ export const createInventoryService = ({
         unit_cost: movement.unitCost,
         reference_type: movement.referenceType,
         reference_local_id: movement.referenceLocalId,
+        reference_document_type: movement.referenceDocumentType,
+        cost_layer_id: movement.costLayerId,
         notes: movement.notes,
         created_by: movement.createdBy,
         created_at: movement.createdAt
@@ -452,9 +478,9 @@ export const createInventoryService = ({
       countedQty: input.countedQty,
       differenceQty: input.countedQty - expectedQty,
       status: "draft",
-      reason: input.reason,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      ...(input.reason && { reason: input.reason })
     };
 
     const syncResult = await syncEngine.enqueue({
@@ -529,9 +555,9 @@ export const createInventoryService = ({
       ...existing,
       status: "posted",
       differenceQty,
-      countedBy: actor.userId,
       countedAt: now,
-      updatedAt: now
+      updatedAt: now,
+      ...(actor.userId && { countedBy: actor.userId })
     };
 
     let movement: StockMovement | undefined;
@@ -562,11 +588,11 @@ export const createInventoryService = ({
         warehouseLocalId: existing.warehouseLocalId,
         movementType,
         quantity: Math.abs(differenceQty),
-        notes: existing.reason ?? "Ajuste por conteo de inventario",
         referenceType: "inventory_count",
         referenceLocalId: existing.localId,
-        createdBy: actor.userId,
-        createdAt: now
+        createdAt: now,
+        ...(existing.reason && { notes: existing.reason }),
+        ...(actor.userId && { createdBy: actor.userId })
       };
     }
 
@@ -685,7 +711,12 @@ export const createInventoryService = ({
       if (value > minStock) {
         continue;
       }
-      const [productLocalId, warehouseLocalId] = key.split(":");
+      const parts = key.split(":");
+      if (parts.length !== 2) {
+        continue;
+      }
+      const productLocalId = parts[0] as string;
+      const warehouseLocalId = parts[1] as string;
       suggestions.push({
         productLocalId,
         warehouseLocalId,

@@ -1,9 +1,19 @@
+/**
+ * Componente que muestra la sesión activa
+ * Muestra información del usuario logueado
+ */
+
 import type { AuthSession } from "../types/auth.types";
 
+/** Props: sesión activa del usuario */
 interface AuthSessionCardProps {
   session: AuthSession;
 }
 
+/**
+ * Tarjeta que muestra la sesión actual
+ * @param session - Sesión activa con userId y email
+ */
 export function AuthSessionCard({ session }: AuthSessionCardProps) {
   return (
     <section

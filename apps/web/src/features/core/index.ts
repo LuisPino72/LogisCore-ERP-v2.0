@@ -1,3 +1,4 @@
+// Core - Punto de entrada que re-exporta todos los módulos públicos
 export * from "./types/core.types";
 export * from "./services/core.service";
 export * from "./hooks/useCore";

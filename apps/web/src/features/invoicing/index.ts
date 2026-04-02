@@ -1,3 +1,4 @@
+// Invoicing - Punto de entrada que re-exporta todos los módulos públicos
 export * from "./types/invoicing.types";
 export * from "./services/invoicing.service";
 export * from "./hooks/useInvoicing";

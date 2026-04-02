@@ -1,3 +1,4 @@
+// Products - Bridge para sincronizar productos con el módulo de compras
 import type { EventBus } from "@logiscore/core";
 import type {
   ProductsActorContext,
@@ -58,9 +59,10 @@ export const createProductsPurchasesBridge = ({
       }
       await productsService.createProduct(context.tenant, context.actor, {
         name: payload.name,
-        categoryId: payload.categoryId,
+        sku: crypto.randomUUID(),
+        categoryId: payload.categoryId || "",
         visible: payload.visible,
-        defaultPresentationId: payload.defaultPresentationId,
+        defaultPresentationId: payload.defaultPresentationId || "",
         sourceModule: "purchases"
       });
     });

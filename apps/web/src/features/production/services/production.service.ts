@@ -1,3 +1,8 @@
+/**
+ * Interfaz del adaptador de base de datos para producción.
+ * Define las operaciones CRUD básicas sobre recetas, órdenes y logs de producción.
+ */
+
 import {
   createAppError,
   err,
@@ -51,6 +56,11 @@ export interface ProductionDb {
   ): Promise<number>;
 }
 
+/**
+ * Interfaz del servicio de producción.
+ * Define todas las operaciones de negocio relacionadas con producción MRP.
+ * Todas las funciones retornan Result<T, AppError> para manejo de errores.
+ */
 export interface ProductionService {
   createRecipe(
     tenant: ProductionTenantContext,
@@ -172,6 +182,7 @@ export const createProductionService = ({
       productLocalId: input.productLocalId,
       name: input.name.trim(),
       yieldQty: input.yieldQty,
+      bomVersion: input.bomVersion || "1.0",
       ingredients: input.ingredients,
       createdAt: now,
       updatedAt: now
@@ -187,6 +198,7 @@ export const createProductionService = ({
         product_local_id: recipe.productLocalId,
         name: recipe.name,
         yield_qty: recipe.yieldQty,
+        bom_version: recipe.bomVersion,
         ingredients: recipe.ingredients,
         created_at: recipe.createdAt,
         updated_at: recipe.updatedAt
@@ -468,11 +480,12 @@ export const createProductionService = ({
         warehouseLocalId: order.warehouseLocalId,
         movementType: "production_out" as const,
         quantity: ingredient.requiredQty,
+        unitCost: 0,
         referenceType: "production_order",
         referenceLocalId: order.localId,
         notes: "Consumo por orden de produccion",
         createdAt: now,
-        ...(actor.userId ? { createdBy: actor.userId } : {})
+        createdBy: actor.userId || ""
       })),
       {
         localId: uuid(),
@@ -481,11 +494,12 @@ export const createProductionService = ({
         warehouseLocalId: order.warehouseLocalId,
         movementType: "production_in",
         quantity: input.producedQty,
+        unitCost: 0,
         referenceType: "production_order",
         referenceLocalId: order.localId,
         notes: "Entrada de producto terminado por produccion",
         createdAt: now,
-        ...(actor.userId ? { createdBy: actor.userId } : {})
+        createdBy: actor.userId || ""
       }
     ];
 

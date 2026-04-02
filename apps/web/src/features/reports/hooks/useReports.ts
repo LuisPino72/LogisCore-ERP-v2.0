@@ -1,3 +1,12 @@
+/**
+ * Hook personalizado para gestionar los reportes.
+ * Provee estado y métodos para:
+ * - Cargar reportes de ventas, kardex, utilidad bruta y cierres de caja
+ * - Registrar eventos de auditoría
+ * - Cargar logs de auditoría
+ * Utiliza el patrón Result<T, AppError> para manejo de errores.
+ */
+
 import { useCallback, useState } from "react";
 import { reportsService } from "../services/reports.service.instance";
 import type { ReportsService } from "../services/reports.service";

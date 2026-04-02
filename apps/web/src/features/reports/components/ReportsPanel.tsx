@@ -1,3 +1,15 @@
+/**
+ * Componente principal del panel de reportes.
+ * Muestra diferentes reportes del sistema:
+ * - Ventas por día
+ * - Ventas por producto
+ * - Kardex de productos
+ * - Utilidad bruta
+ * - Cierres de caja
+ * - Auditoría (solo para owner y super_admin)
+ * Utiliza el hook useReports para cargar y mostrar los datos.
+ */
+
 import { useState } from "react";
 import { useReports } from "../hooks/useReports";
 import type { ReportsActorContext } from "../types/reports.types";

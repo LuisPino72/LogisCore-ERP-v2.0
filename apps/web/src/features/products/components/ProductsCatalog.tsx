@@ -1,3 +1,9 @@
+/**
+ * Componente principal del catálogo de productos.
+ * Muestra el catálogo completo de productos con categorías y presentaciones.
+ * Escucha eventos del bus para actualización automática.
+ */
+
 import { useEffect } from "react";
 import { eventBus } from "@/lib/core/runtime";
 import { useProducts } from "../hooks/useProducts";

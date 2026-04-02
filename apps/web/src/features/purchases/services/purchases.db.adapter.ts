@@ -1,3 +1,8 @@
+/**
+ * Adaptador de base de datos local para compras (Dexie/IndexedDB).
+ * Implementa la interfaz PurchasesDb con operaciones CRUD y de negocio.
+ */
+
 import {
   db,
   type InventoryLotRecord,
@@ -7,6 +12,7 @@ import {
 } from "@/lib/db/dexie";
 import type { PurchasesDb } from "./purchases.service";
 
+// Implementa la interfaz PurchasesDb usando Dexie/IndexedDB
 export class DexiePurchasesDbAdapter implements PurchasesDb {
   async createPurchase(purchase: PurchaseRecord): Promise<void> {
     await db.purchases.put(purchase);

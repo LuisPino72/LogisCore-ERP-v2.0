@@ -1,3 +1,8 @@
+/**
+ * Instancia singleton del servicio de facturación.
+ * Configura el servicio con el adaptador de base de datos local y motores de sincronización.
+ */
+
 import { eventBus, syncEngine } from "@/lib/core/runtime";
 import { DexieInvoicingDbAdapter } from "./invoicing.db.adapter";
 import { createInvoicingService } from "./invoicing.service";

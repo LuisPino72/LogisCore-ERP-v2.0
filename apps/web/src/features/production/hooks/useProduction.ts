@@ -1,3 +1,12 @@
+/**
+ * Hook personalizado para gestionar la producción.
+ * Provee estado y métodos para:
+ * - Listar recetas, órdenes y logs de producción
+ * - Crear recetas y órdenes de producción
+ * - Iniciar y completar órdenes de producción
+ * Utiliza el patrón Result<T, AppError> para manejo de errores.
+ */
+
 import { useCallback, useState } from "react";
 import { productionService } from "../services/production.service.instance";
 import type { ProductionService } from "../services/production.service";

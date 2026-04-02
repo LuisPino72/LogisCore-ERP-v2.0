@@ -1,3 +1,8 @@
+/**
+ * Adaptador de base de datos local para ventas (Dexie/IndexedDB).
+ * Implementa la interfaz SalesDb con operaciones CRUD y de negocio.
+ */
+
 import {
   db,
   type BoxClosingRecord,
@@ -7,6 +12,7 @@ import {
 } from "@/lib/db/dexie";
 import type { SalesDb } from "./sales.service";
 
+// Implementa la interfaz SalesDb usando Dexie/IndexedDB
 export class DexieSalesDbAdapter implements SalesDb {
   async createSale(sale: SaleRecord): Promise<void> {
     await db.sales.put(sale);

@@ -1,6 +1,14 @@
+/**
+ * Componente de formulario para operaciones de inventario.
+ * Permite crear almacenes, registrar tallas/colores de productos,
+ * registrar movimientos de stock y crear/publicar conteos de inventario.
+ */
+
 import { useState } from "react";
 import type { Product } from "@/features/products/types/products.types";
 import type {
+  CreateProductSizeColorInput,
+  CreateWarehouseInput,
   InventoryCount,
   StockMovementType,
   Warehouse
@@ -10,13 +18,8 @@ interface InventoryFormProps {
   products: Product[];
   warehouses: Warehouse[];
   counts: InventoryCount[];
-  onCreateWarehouse: (input: { name: string; code?: string }) => Promise<void>;
-  onCreateSizeColor: (input: {
-    productLocalId: string;
-    size?: string;
-    color?: string;
-    skuSuffix?: string;
-  }) => Promise<void>;
+  onCreateWarehouse: (input: CreateWarehouseInput) => Promise<void>;
+  onCreateSizeColor: (input: CreateProductSizeColorInput) => Promise<void>;
   onRecordMovement: (input: {
     productLocalId: string;
     warehouseLocalId: string;
@@ -88,7 +91,7 @@ export function InventoryForm({
           onClick={() =>
             onCreateWarehouse({
               name: warehouseName,
-              code: warehouseCode || undefined
+              ...(warehouseCode && { code: warehouseCode })
             })
           }
         >
@@ -112,8 +115,8 @@ export function InventoryForm({
           onClick={() =>
             onCreateSizeColor({
               productLocalId: sizeColorProduct,
-              size: size || undefined,
-              color: color || undefined
+              ...(size && { size }),
+              ...(color && { color })
             })
           }
         >

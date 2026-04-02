@@ -15,6 +15,11 @@ const initialState: CoreUiState = {
   lastError: null
 };
 
+/**
+ * Hook personalizado para gestionar el módulo core.
+ * Provee estado y métodos para el bootstrap de sesión y sincronización.
+ * Utiliza el patrón Result<T, AppError> para manejo de errores.
+ */
 export const useCore = ({ service }: UseCoreOptions) => {
   const [state, setState] = useState<CoreUiState>(initialState);
 
