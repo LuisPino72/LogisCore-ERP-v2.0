@@ -12,6 +12,25 @@
 - **Backend:** Supabase Auth, Postgres, RLS, Edge Functions
 - **Sync:** `SyncEngine` | **Testing:** Vitest
 
+### 1.1 Sistema de Diseño
+
+**Paleta de marca:**
+- Primary: `#10b981` (green-500)
+- Escala completa via Tailwind: `brand-50` → `brand-950`
+
+**Variables CSS en `index.css`:**
+- Colores semánticos: `bg-surface-*`, `text-content-*`
+- NO hardcodear colores hex en componentes
+
+**Reglas Tailwind:**
+- Usar `@apply` solo para utilities compuestas
+- Preferir clases utilitarias sobre styles inline
+- Tokens en `@theme` de Tailwind 4
+
+**Reglas de diseño:**
+- Diseño responsive (mobile-first)
+- Componentes de la carpeta `common/` antes de crear nuevos
+
 ---
 
 ## 2. Reglas Canónicas de Identificadores
@@ -355,7 +374,38 @@ interface TaxpayerInfo {
 
 ---
 
-## 11. Estructura de Archivos
+## 11 Carpeta Común (`src/common/`)
+
+**Objetivo:** Componentes, tipos y utilidades compartidas por toda la app.
+
+**Estructura:**
+```
+src/common/
+├── components/    # UI components reutilizables
+├── stores/        # Zustand stores globales
+├── types/         # Tipos globales (no específicos de módulo)
+├── utils/         # Funciones utilitarias
+└── index.ts       # Exports públicos
+```
+
+**Reglas:**
+- Componentes SIN lógica de negocio (solo presentación)
+- Props con tipos definidos en el mismo archivo
+- Usar la carpeta común ANTES de crear componentes duplicados
+- Exports centralizados en `index.ts`
+
+**Componentes disponibles:**
+- UI: Avatar, Badge, Tooltip, Tabs, Accordion, EmptyState, Skeleton
+- Form: FormField, Input, Textarea, Select, DatePicker
+- Table: DataTable, Pagination, SearchInput, FilterPanel
+- State: ErrorBoundary, NotFound
+- Overlay: Modal, Toast, ConfirmDialog
+
+**Stores globales:**
+- `useToastStore`: notificaciones toast
+- `useModalStore`: gestión de modales
+
+## 12. Estructura de Archivos
 
 ```
 src/features/[modulo]/
@@ -381,7 +431,7 @@ src/features/[modulo]/
 
 ---
 
-## 12. Contratos de Servicios
+## 13. Contratos de Servicios
 
 ### Products
 ```typescript
@@ -477,9 +527,9 @@ interface RelationsService {
 
 ---
 
-## 13. Testing
+## 14. Testing
 
-### 13.1 Tests Obligatorios
+### 14.1 Tests Obligatorios
 - `npm run lint` | `npm run test` | `npm run build`
 - **Facturación:** test redondeo SENIAT (céntimos exactos)
 - **Inventario:** test stock negativo prohibido
@@ -498,7 +548,7 @@ interface RelationsService {
 
 ---
 
-## 14. Errores Estructurados
+## 15. Errores Estructurados
 
 **Códigos:** `{MÓDULO}_{ENTIDAD}_{ACCIÓN}_{CONDICIÓN}`
 - `PRODUCT_CREATION_FORBIDDEN`, `STOCK_NEGATIVE_FORBIDDEN`
@@ -514,7 +564,7 @@ interface RelationsService {
 
 ---
 
-## 15. Patrones de Eventos
+## 16. Patrones de Eventos
 
 - Nomenclatura: `MODULO.ACCION` (MAYÚSCULAS, punto)
 - Payload: siempre incluir `tenantId` y `localId`
@@ -523,21 +573,21 @@ interface RelationsService {
 
 ---
 
-## 16. Rendimiento
+## 17. Rendimiento
 
-### 16.1 Optimización de Queries
+### 17.1 Optimización de Queries
 - **USAR índices:** filtrar por `tenant_id`
 - **EVITAR `SELECT *`:** especificar columnas
 - **CONSIDERAR paginación:** LIMIT/OFFSET o cursor-based
 - **EVITAR funciones en WHERE:** que impidan uso de índices
 
-### 16.2 Eficiencia de SyncEngine
+### 17.2 Eficiencia de SyncEngine
 - AGRUPAR operaciones relacionadas
 - EVITAR encolados idempotentes
 - CONFIGURAR timeouts apropiados
 - MONITOREAR cola
 
-### 16.3 Límites Offline
+### 17.3 Límites Offline
 | Recurso | Límite |
 |---------|--------|
 | Tamaño DB | 500MB - 1GB |
@@ -551,7 +601,7 @@ interface RelationsService {
 
 ---
 
-## 17. Comparativa
+## 18. Comparativa
 
 | Característica | LogisCore | Valery | Odoo |
 |----------------|-----------|--------|------|
@@ -566,7 +616,7 @@ interface RelationsService {
 
 ---
 
-## 18. Checklist Pre-PR
+## 19. Checklist Pre-PR
 
 - [ ] Lógica en servicio, no componente
 - [ ] Servicio retorna `Result<T, AppError>`
@@ -575,13 +625,16 @@ interface RelationsService {
 - [ ] No imports cruzados entre módulos (usar EventBus)
 - [ ] Reglas fiscales de `tax_rules` (no hardcoded)
 - [ ] Tests de redondeo fiscal pasando
+- [ ] Usar componentes de `common/` cuando existan
+- [ ] Tokens de diseño de Tailwind (no hardcoded)
+- [ ] Diseño responsive (mobile-first)
 - [ ] `npm run lint` pasa
 - [ ] `npm run test` pasa
 - [ ] `npm run build` pasa
 
 ---
 
-## 19. Buenas Prácticas
+## 20. Buenas Prácticas
 
 1. **Documentación:** explicar el POR QUÉ, no el QUÉ
 2. **Variables:** inglés técnico, concisas (`userInput`, `processingResult`)
@@ -591,7 +644,7 @@ interface RelationsService {
 
 ---
 
-## 20. Guía para Nuevos Módulos
+## 21. Guía para Nuevos Módulos
 
 1. Definir tipos en `types/[modulo].types.ts`
 2. Crear servicio con `Result<T, AppError>` en `services/[modulo].service.ts`
@@ -600,5 +653,8 @@ interface RelationsService {
 5. Escribir tests unitarios en `test/[modulo].service.test.ts`
 6. Exportar todo en `index.ts`
 7. Documentar eventos emitidos/consumidos
+8. con sumir los componentes de `common/` cuando existan
+9. usar los tokens de diseño de Tailwind (no hardcoded)
+10. diseño responsive (mobile-first)
 
 **Referencia:** copiar y adaptar de módulos existentes (products, sales, inventory)
