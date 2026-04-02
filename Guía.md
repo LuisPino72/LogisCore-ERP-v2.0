@@ -644,3 +644,353 @@ Antes de cualquier PR, verificar:
 - [ ] `npm run lint` pasa
 - [ ] `npm run test` pasa
 - [ ] `npm run build` pasa
+
+---
+
+## 19. Contratos de Servicios (Referencia Rápida)
+
+### Auth
+```typescript
+interface AuthService {
+  getActiveSession(): Promise<Result<AuthSession, AppError>>;
+  signOut(): Promise<Result<void, AppError>>;
+}
+```
+
+### Tenant
+```typescript
+interface TenantService {
+  resolveTenantContext(userId: string): Promise<Result<TenantContext, AppError>>;
+  resolveUserRole(userId: string): Promise<Result<UserRole, AppError>>;
+  checkSubscription(tenantSlug: string): Promise<Result<boolean, AppError>>;
+  bootstrapTenant(userId: string): Promise<Result<TenantBootstrapResult, AppError>>;
+}
+```
+
+### Products
+```typescript
+interface ProductsService {
+  createCategory(tenant, actor, input): Promise<Result<Category, AppError>>;
+  createProduct(tenant, actor, input): Promise<Result<Product, AppError>>;
+  createPresentation(tenant, actor, input): Promise<Result<ProductPresentation, AppError>>;
+  listCategories(tenant): Promise<Result<Category[], AppError>>;
+  listProducts(tenant): Promise<Result<Product[], AppError>>;
+  updateCategory(tenant, actor, input): Promise<Result<Category, AppError>>;
+  updateProduct(tenant, actor, input): Promise<Result<Product, AppError>>;
+  deleteCategory(tenant, actor, categoryLocalId): Promise<Result<void, AppError>>;
+  deleteProduct(tenant, actor, productLocalId): Promise<Result<void, AppError>>;
+}
+```
+
+### Inventory
+```typescript
+interface InventoryService {
+  createWarehouse(tenant, actor, input): Promise<Result<Warehouse, AppError>>;
+  listWarehouses(tenant): Promise<Result<Warehouse[], AppError>>;
+  createProductSizeColor(tenant, actor, input): Promise<Result<ProductSizeColor, AppError>>;
+  recordStockMovement(tenant, actor, input): Promise<Result<StockMovement, AppError>>;
+  getStockBalance(tenant, productLocalId, warehouseLocalId): Promise<Result<number, AppError>>;
+  createInventoryCount(tenant, actor, input): Promise<Result<InventoryCount, AppError>>;
+  postInventoryCount(tenant, actor, inventoryCountLocalId): Promise<Result<InventoryCount, AppError>>;
+  getReorderSuggestions(tenant): Promise<Result<ReorderSuggestion[], AppError>>;
+}
+```
+
+### Sales
+```typescript
+interface SalesService {
+  createSuspendedSale(tenant, actor, input): Promise<Result<SuspendedSale, AppError>>;
+  createPosSale(tenant, actor, input): Promise<Result<Sale, AppError>>;
+  restoreSuspendedSale(tenant, actor, suspendedSaleLocalId): Promise<Result<RestoreSuspendedSaleResult, AppError>>;
+  openBox(tenant, actor, input): Promise<Result<BoxClosing, AppError>>;
+  closeBox(tenant, actor, boxClosingLocalId): Promise<Result<BoxClosing, AppError>>;
+  listSales(tenant): Promise<Result<Sale[], AppError>>;
+}
+```
+
+### Production
+```typescript
+interface ProductionService {
+  createRecipe(tenant, actor, input): Promise<Result<Recipe, AppError>>;
+  createProductionOrder(tenant, actor, input): Promise<Result<ProductionOrder, AppError>>;
+  startProductionOrder(tenant, actor, productionOrderLocalId): Promise<Result<ProductionOrder, AppError>>;
+  completeProductionOrder(tenant, actor, productionOrderLocalId): Promise<Result<ProductionLog, AppError>>;
+  listRecipes(tenant): Promise<Result<Recipe[], AppError>>;
+  listProductionOrders(tenant): Promise<Result<ProductionOrder[], AppError>>;
+}
+```
+
+### Invoicing
+```typescript
+interface InvoicingService {
+  createInvoice(tenant, actor, input): Promise<Result<Invoice, AppError>>;
+  voidInvoice(tenant, actor, invoiceLocalId): Promise<Result<Invoice, AppError>>;
+  listInvoices(tenant): Promise<Result<Invoice[], AppError>>;
+  listTaxRules(tenant): Promise<Result<TaxRule[], AppError>>;
+  listExchangeRates(tenant): Promise<Result<ExchangeRate[], AppError>>;
+}
+```
+
+---
+
+## 20. Eventos EventBus (Referencia)
+
+### Catálogo
+- `CATALOG.CATEGORY_CREATED` → { tenantId, localId }
+- `CATALOG.CATEGORY_UPDATED` → { tenantId, localId }
+- `CATALOG.CATEGORY_DELETED` → { tenantId, localId }
+- `CATALOG.PRODUCT_CREATED` → { tenantId, localId, visible }
+- `CATALOG.PRODUCT_UPDATED` → { tenantId, localId }
+- `CATALOG.PRODUCT_DELETED` → { tenantId, localId }
+- `CATALOG.PRESENTATION_CREATED` → { tenantId, id, productLocalId }
+
+### Ventas
+- `SALE.COMPLETED` → { tenantId, localId, total, currency }
+- `SALE.SUSPENDED` → { tenantId, localId }
+- `SALE.SUSPENDED_RESTORED` → { tenantId, originalSuspendedLocalId, newSaleLocalId }
+- `POS.BOX_OPENED` → { tenantId, localId, warehouseLocalId }
+- `POS.BOX_CLOSED` → { tenantId, localId }
+
+### Inventario
+- `INVENTORY.STOCK_UPDATED` → { tenantId, productLocalId, warehouseLocalId, newQuantity }
+- `INVENTORY.REORDER_EVALUATED` → { tenantId, suggestions }
+- `INVENTORY.REORDER_SUGGESTED` → { tenantId, suggestions }
+- `INVENTORY.STOCK_MOVEMENT_RECORDED` → { tenantId, localId, productLocalId, warehouseLocalId, quantity, movementType }
+
+### Producción
+- `PRODUCTION.ORDER_CREATED` → { tenantId, localId }
+- `PRODUCTION.STARTED` → { tenantId, localId }
+- `PRODUCTION.COMPLETED` → { tenantId, localId, productionLogLocalId }
+
+### Facturación
+- `INVOICE.CREATED` → { tenantId, localId, total, currency }
+- `INVOICE.VOIDED` → { tenantId, localId }
+- `SALE.INVOICE_LINKED` → { tenantId, saleLocalId, invoiceLocalId }
+
+### Compras
+- `PURCHASES.CATEGORY_CREATE_REQUESTED` → { name }
+- `PURCHASES.PRODUCT_CREATE_REQUESTED` → { name, categoryId?, visible, defaultPresentationId? }
+- `PURCHASES.PRESENTATION_CREATE_REQUESTED` → { productLocalId, name, factor, barcode? }
+- `PURCHASE.CREATED` → { tenantId, localId }
+- `PURCHASE.RECEIVED` → { tenantId, localId }
+
+### Autenticación y Tenant
+- `TENANT.RESOLVED` → { tenantSlug }
+- `SUBSCRIPTION.BLOCKED` → {}
+- `AUTH.ROLE_DETECTED` → { userId, role, permissions }
+
+### Sincronización
+- `SYNC.QUEUE_ITEM_ENQUEUED` → { itemId }
+- `SYNC.STATUS_CHANGED` → { status }
+- `SYNC.CONFLICT_DETECTED` → { itemId, table }
+- `SYNC.CATALOG_CONFLICT_LWW` → { itemId, table, retryAfter }
+- `SYNC.RETRY_SCHEDULED` → { itemId, attempts, retryAfter }
+- `SYNC.DLQ_ITEM_MOVED` → { itemId }
+
+---
+
+## 21. Permisos Centralizados
+
+Los permisos se validan mediante `ActorContext` con la estructura:
+
+```typescript
+interface ActorPermissions {
+  canApplyDiscount: boolean;
+  maxDiscountPercent: number;
+  canApplyCustomPrice: boolean;
+  canVoidSale: boolean;
+  canRefundSale: boolean;
+  canVoidInvoice: boolean;
+  canAdjustStock: boolean;
+  canViewReports: boolean;
+  canExportReports: boolean;
+  allowedWarehouseLocalIds?: string[];
+}
+
+type ActorRole = "owner" | "employee" | "super_admin";
+
+interface ActorContext {
+  role: ActorRole;
+  permissions: ActorPermissions;
+}
+```
+
+Los servicios de permisos están disponibles en `@/lib/permissions/permissions.types.ts`.
+
+---
+
+## 22. Patrones de Testing Avanzados
+
+Tests de servicios: mockear TODAS las dependencias (db, syncEngine, eventBus, supabase)
+- Verificar ambos casos: ok() y err() para cada método
+- Proveer valores de retorno realistas para métodos mockeados
+- Usar `vi.fn()` para spy en llamadas y verificar argumentos
+- Tests deben ser determinísticos y aislados
+
+Tests de hooks: usar `@testing-library/react` con `renderHook`
+- Probar estado inicial y transiciones de estado
+- Verificar llamadas a métodos del servicio mediante mocks
+- Simular acciones de usuario y verificar efectos en el estado
+
+Tests de integración: verificar el orden de llamadas y emisión correcta de eventos
+- Confirmar que se sigue el orden: validar → preparar → encolar → commit → eventos
+- Verificar que se emitan los eventos correctos con payload adecuado
+- Probar flujos completos que involucren múltiples servicios mediante EventBus
+
+---
+
+## 23. Manejo de Errores Estructurado
+
+Códigos de error: formato `{MÓDULO}_{ENTIDAD}_{ACCIÓN}_{CONDICIÓN}`
+Ejemplos: `PRODUCT_CREATION_FORBIDDEN_MODULE`, `STOCK_NEGATIVE_FORBIDDEN`
+
+Mensajes de error: en español, claros, enfocados en la acción correctiva
+NO exponer detalles internos, stack traces o información de base de datos
+Ejemplo correcto: "El usuario no tiene permisos para gestionar catalogo de productos."
+Ejemplo incorrecto: "Error en línea 124: permission denied for user X"
+
+Propiedad `retryable`: 
+- `true`: errores transitorios (problemas de red, timeouts, conflictos de sincronización)
+- `false`: errores de lógica de negocio, validación fallida, permisos insuficientes
+- Siempre incluir en objetos `AppError` para permitir lógica de reinteligencia adecuada
+
+---
+
+## 24. Patrones de Eventos Refuerzo
+
+Nomenclatura estricta: `MODULO.ACCION` (ambas en MAYÚSCULAS, punto como separador)
+Ejemplos correctos: `SALE.COMPLETED`, `INVENTORY.STOCK_UPDATED`, `TENANT.RESOLVED`
+
+Payload de eventos: incluir SIEMPRE los identificadores contextuales
+- `tenantId` (slug) para aislamiento multi-tenant
+- `localId` o identificador de negocio relevante cuando aplique
+- Datos mínimos necesarios para que los suscriptores actúen
+- NUNCA incluir datos sensibles (contraseñas, tokens, información financiera completa)
+
+Consumidores de eventos: deben ser idempotentes y tolerantes a duplicados
+- Verificar si ya procesaron un evento similar basado en identificadores
+- Mantener estado interno solo cuando sea absolutamente necesario
+- Preferir reaccionar a cambios de estado más que a eventos específicos
+
+---
+
+## 25. Seguridad Adicional
+
+Validación de entrada: NUNCA confiar en datos recibidos del cliente
+- Validar tipos, rangos, formatos y restricciones de negocio en SERVICIOS
+- Los componentes y hooks pueden hacer validación básica de UX, pero la seguridad está en servicios
+- Usar bibliotecas como Zod o Joi para validaciones complejas cuando sea necesario
+
+Principio de mínimos privilegios: 
+- Servicios deben recibir SOLO las dependencias estrictamente necesarias
+- Evitar pasar objetos completos cuando se necesita solo una propiedad
+- Los hooks de UI nunca deben tener acceso directo a capacidades de escritura
+
+Sanitización de outputs: aunque menos crítica en este stack, considerar:
+- Escapar datos que se muestren en HTML para prevenir XSS
+- Validar URLs antes de redireccionar o hacer fetch
+- Nunca insertar datos sin validar directamente en DOM mediante innerHTML
+
+---
+
+## 26. Directrices de Rendimiento
+
+Optimización de queries Postgres:
+- USAR índices: siempre filtrar por `tenant_id` en tablas sincronizadas
+- EVITAR `SELECT *`: especificar columnas necesarias explícitamente
+- CONSIDERAR paginación: usar `LIMIT` y `OFFSET` o cursor-based para listas grandes
+- EVITAR funciones en WHERE: que impidan uso de índices (ej: `WHERE UPPER(name) = 'X'`)
+
+Eficiencia de SyncEngine:
+- AGRUPAR operaciones relacionadas: encolar múltiplos items en una operación cuando sea posible
+- EVITAR encolados idempotentes: verificar si ya existe un item pendiente similar
+- CONFIGURAR timeouts apropiados: balances entre respuesta rápida y reintentos suficientes
+- MONITOREAR cola: alertar cuando la cantidad de items pendientes supere umbrales
+
+---
+
+## 27. Guía para Nuevos Módulos
+
+Estructura obligatoria (sección 12.1):
+1. Definir tipos en `types/[modulo].types.ts`
+2. Crear servicio con `Result<T, AppError>` en `services/[modulo].service.ts`
+3. Crear hook de coordinación UI en `hooks/use[Modulo].ts`
+4. Implementar componentes presentacionales en `components/`
+5. Escribir tests unitarios en `test/[modulo].service.test.ts`
+6. Exportar todo en `index.ts`
+
+Orden de implementación recomendado:
+1. Tipos y servicio (lógica de negocio pura)
+2. Tests del servicio (verificar comportamiento)
+3. Hook y componentes (interfaz de usuario)
+4. Tests de hook y componentes (interacción UI)
+5. Integración en la aplicación principal (registro en App.tsx o routing)
+6. Documentación de eventos emitidos/consumidos
+
+Referencia a patrones existentes: copiar y adaptar de módulos similares existentes
+- Servicio: seguir estructura de `products.service.ts` o `sales.service.ts`
+- Hook: seguir estructura de `useProducts.ts` o `useSales.ts`
+- Componentes: seguir patrones de listas y formularios existentes
+- Tests: seguir estructura de `products.service.test.ts`
+
+---
+
+## 28. Manejo de Transacciones Complejas
+
+Orquestación de servicios: NUNCA hacer llamadas directas entre servicios
+- USAR EventBus para comunicación entre módulos
+- Publicar eventos que representen hechos de negocio completados
+- Otros servicios se suscriben y reaccionan según corresponda
+
+Compensación de fallos: aprovechar el modelo offline-first
+- El SyncEngine maneja reintentos automáticos y movimiento a DLQ
+- Los servicios deben ser idempotentes o diseñados para manejar procesamiento duplicado
+- Los eventos deben diseñarse para permitir procesamiento seguro múltiples veces
+
+Consistencia eventual: aceptar que las operaciones pueden no ser inmediatas
+- El flujo es: intención del usuario → validación local → encolado → sync remoto → confirmación
+- La UI refleja el estado inmediato local, con indicadores de sincronización cuando corresponde
+- Los conflictos se resuelven según estrategias definidas por tipo de tabla (LWW vs DLQ)
+
+---
+
+## 29. Documentación Interna
+
+Comentarios en código: explicar el POR QUÉ, no el QUÉ
+- Comentarios que describen la intención, decisiones de diseño, razones detrás de enfoques
+- Evitar comentarios que simplemente repitan lo que el código ya dice claramente
+- Mantener comentarios actualizados cuando cambie la lógica
+
+Nombres de variables y funciones:
+- Usar inglés técnico consistente con el resto del códigobase
+- Funciones: verbos en infinitivo o forma imperativa clara (calculateTotal, validateInput)
+- Variables: descriptivas pero concisas (userInput, processingResult, isValid)
+- Constantes: UPPER_SNAKE_CASE para valores que nunca cambian
+
+Estructura de archivos:
+- Mantener archivos pequeños y enfocados (ideal: <200 líneas)
+- Una responsabilidad clara por archivo o clase
+- Agrupar funcionalidad relacionada, no capas técnicas (evitar carpeta "utils" genérica)
+- Cuando un archivo crece demasiado, buscar oportunidades para dividir por responsabilidad
+
+---
+
+## 30. Buenas Prácticas de Desarrollo
+
+Revisión de código antes de commit:
+- Auto-revisar cambios enfocándose en lógica, no solo en sintaxis
+- Verificar que se siguieran todos los patrones establecidos
+- Confirmar que los tests nuevos cubren casos de uso reales y edge cases
+
+Desarrollo dirigido por pruebas (TDD) cuando sea aplicable:
+- Escribir test falliente antes de implementar funcionalidad
+- Implementar lo mínimo necesario para hacer pasar el test
+- Refactorizar para mejorar diseño manteniendo tests verdes
+- Repetir ciclo
+
+Integración continua: aprovechar el pipeline existente
+- Siempre ejecutar `npm run lint && npm run test && npm run build` antes de commit
+- Corregir inmediatamente cualquier fallo en el pipeline
+- Mantener la rama principal siempre en estado desplegable
+
+---

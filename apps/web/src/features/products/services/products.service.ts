@@ -261,15 +261,15 @@ export const createProductsService = ({
     }
 
     const now = clock().toISOString();
-    const product: Product = {
+    const product = {
       localId: uuid(),
       tenantId: tenant.tenantSlug,
       name: input.name.trim(),
-      categoryId: input.categoryId,
       visible: input.visible,
-      defaultPresentationId: input.defaultPresentationId,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      ...(input.categoryId !== undefined && { categoryId: input.categoryId }),
+      ...(input.defaultPresentationId !== undefined && { defaultPresentationId: input.defaultPresentationId })
     };
 
     const syncResult = await syncEngine.enqueue({
@@ -425,14 +425,14 @@ export const createProductsService = ({
     }
 
     const now = clock().toISOString();
-    const updated: Product = {
+    const updated = {
       ...existing,
       name: input.name.trim(),
-      categoryId: input.categoryId,
       visible: input.visible,
-      defaultPresentationId: input.defaultPresentationId,
-      updatedAt: now
-    };
+      updatedAt: now,
+      ...(input.categoryId !== undefined && { categoryId: input.categoryId }),
+      ...(input.defaultPresentationId !== undefined && { defaultPresentationId: input.defaultPresentationId })
+    } as Product;
 
     const syncResult = await syncEngine.enqueue({
       id: uuid(),
@@ -506,15 +506,15 @@ export const createProductsService = ({
     }
 
     const now = clock().toISOString();
-    const presentation: ProductPresentation = {
+    const presentation = {
       id: uuid(),
       tenantId: tenant.tenantSlug,
       productLocalId: input.productLocalId,
       name: input.name.trim(),
       factor: input.factor,
-      barcode: input.barcode,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      ...(input.barcode !== undefined && { barcode: input.barcode })
     };
 
     await db.createPresentation(presentation);
