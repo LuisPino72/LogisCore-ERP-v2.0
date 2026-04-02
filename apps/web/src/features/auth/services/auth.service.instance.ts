@@ -1,8 +1,10 @@
 import { supabase } from "@/lib/supabase/client";
 import { eventBus } from "@/lib/core/runtime";
-import { createAuthService } from "./auth.service";
+import { createAuthService, type AuthSupabaseLike } from "./auth.service";
+
+const supabaseClient: AuthSupabaseLike = supabase as AuthSupabaseLike;
 
 export const authService = createAuthService({
-  supabase,
+  supabase: supabaseClient,
   eventBus
 });

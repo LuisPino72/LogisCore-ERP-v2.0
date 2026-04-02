@@ -34,5 +34,24 @@ export const useAuth = ({ service }: UseAuthOptions) => {
     });
   }, [service]);
 
-  return { state, loadSession };
+  const signIn = useCallback(async (email: string, password: string) => {
+    setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
+    const result = await service.signIn(email, password);
+    if (!result.ok) {
+      setState((previous) => ({
+        ...previous,
+        isLoading: false,
+        lastError: result.error
+      }));
+      return;
+    }
+
+    setState({
+      isLoading: false,
+      session: result.data,
+      lastError: null
+    });
+  }, [service]);
+
+  return { state, loadSession, signIn };
 };

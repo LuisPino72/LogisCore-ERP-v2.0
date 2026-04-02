@@ -8,6 +8,11 @@ interface SupabaseAuthSessionResponse {
   error: { message: string } | null;
 }
 
+interface SupabaseSignInResponse {
+  data: { session: { user: { id: string; email?: string } } | null } | null;
+  error: { message: string } | null;
+}
+
 interface SupabaseSignOutResponse {
   error: { message: string } | null;
 }
@@ -15,12 +20,14 @@ interface SupabaseSignOutResponse {
 export interface AuthSupabaseLike {
   auth: {
     getSession: () => Promise<SupabaseAuthSessionResponse>;
+    signInWithPassword: (options: { email: string; password: string }) => Promise<SupabaseSignInResponse>;
     signOut: () => Promise<SupabaseSignOutResponse>;
   };
 }
 
 export interface AuthService {
   getActiveSession(): Promise<Result<AuthSession, AppError>>;
+  signIn(email: string, password: string): Promise<Result<AuthSession, AppError>>;
   signOut(): Promise<Result<void, AppError>>;
 }
 
@@ -35,7 +42,7 @@ export const createAuthService = ({
 }: CreateAuthServiceDependencies): AuthService => ({
   async getActiveSession() {
     const sessionResponse = await supabase.auth.getSession();
-    if (sessionResponse.error || !sessionResponse.data.session) {
+    if (sessionResponse.error || !sessionResponse.data?.session) {
       const authError = createAppError({
         code: "AUTH_SESSION_MISSING",
         message:
@@ -48,9 +55,33 @@ export const createAuthService = ({
 
     const session: AuthSession = {
       userId: sessionResponse.data.session.user.id,
-      email: sessionResponse.data.session.user.email
+      ...(sessionResponse.data.session.user.email && { email: sessionResponse.data.session.user.email })
     };
     eventBus.emit("AUTH.SESSION_RESOLVED", session);
+    return ok(session);
+  },
+
+  async signIn(email: string, password: string) {
+    const signInResponse = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (signInResponse.error || !signInResponse.data?.session) {
+      const authError = createAppError({
+        code: "AUTH_SIGNIN_FAILED",
+        message: signInResponse.error?.message ?? "Credenciales inválidas.",
+        retryable: false
+      });
+      eventBus.emit("AUTH.SIGNIN_FAILED", { error: authError });
+      return err(authError);
+    }
+
+    const session: AuthSession = {
+      userId: signInResponse.data.session.user.id,
+      ...(signInResponse.data.session.user.email && { email: signInResponse.data.session.user.email })
+    };
+    eventBus.emit("AUTH.SIGNIN_SUCCESS", session);
     return ok(session);
   },
 

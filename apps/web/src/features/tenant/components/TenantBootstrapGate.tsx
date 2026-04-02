@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { AuthSessionCard } from "@/features/auth/components/AuthSessionCard";
+import { LoginForm } from "@/features/auth/components/LoginForm";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { BlockedAccessScreen } from "@/features/core/components/BlockedAccessScreen";
 import { useTenantData } from "../hooks/useTenantData";
@@ -16,7 +17,7 @@ export function TenantBootstrapGate({
   tenantService,
   coreService
 }: TenantBootstrapGateProps) {
-  const { state: authState, loadSession } = useAuth({ service: authService });
+  const { state: authState, loadSession, signIn } = useAuth({ service: authService });
   const { state, bootstrapTenantData } = useTenantData({
     auth: authService,
     tenant: tenantService
@@ -25,25 +26,47 @@ export function TenantBootstrapGate({
   useEffect(() => {
     void (async () => {
       await loadSession();
+    })();
+  }, [loadSession]);
+
+  useEffect(() => {
+    if (!authState.session) {
+      return;
+    }
+    void (async () => {
       await bootstrapTenantData();
       coreService.startSync();
     })();
-  }, [bootstrapTenantData, coreService, loadSession]);
+  }, [authState.session, bootstrapTenantData, coreService]);
+
+  const handleLogin = async (email: string, password: string) => {
+    await signIn(email, password);
+  };
+
+  if (authState.isLoading && !authState.session) {
+    return (
+      <p style={{ textAlign: "center", marginTop: 80 }}>
+        Cargando...
+      </p>
+    );
+  }
+
+  if (!authState.session) {
+    return (
+      <LoginForm
+        onLogin={handleLogin}
+        isLoading={authState.isLoading}
+        error={authState.lastError?.message ?? null}
+      />
+    );
+  }
 
   if (authState.isLoading || state.isLoading) {
     return <p>Bootstrap inicial: auth, tenant, permisos y suscripcion...</p>;
   }
 
-  if (authState.lastError) {
-    return <p style={{ color: "#b91c1c" }}>{authState.lastError.message}</p>;
-  }
-
   if (state.lastError) {
     return <p style={{ color: "#b91c1c" }}>{state.lastError.message}</p>;
-  }
-
-  if (!authState.session) {
-    return <p>No hay sesion activa.</p>;
   }
 
   if (state.isBlocked) {
