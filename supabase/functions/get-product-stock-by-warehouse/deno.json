@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-env --allow-read index.ts"
+  },
+  "imports": {
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2.49.1"
+  },
+  "compilerOptions": {
+    "allowJs": true
+  }
+}

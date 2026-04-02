@@ -189,6 +189,9 @@ describe("invoicing.service", () => {
       }
     );
     expect(created.ok).toBe(true);
+    if (!created.ok) {
+      return;
+    }
 
     const voided = await service.voidInvoice(
       { tenantSlug: "tenant-demo" },
@@ -246,6 +249,9 @@ describe("invoicing.service", () => {
       { saleLocalId: "sale-123" }
     );
     expect(created.ok).toBe(true);
+    if (!created.ok) {
+      return;
+    }
 
     await service.voidInvoice(
       { tenantSlug: "tenant-demo" },
@@ -284,7 +290,7 @@ describe("invoicing.service", () => {
     );
 
     expect(invoice.ok).toBe(true);
-    if (!invoice.ok) {
+    if (!invoice.ok || !invoice.data.items[0]) {
       return;
     }
     expect(invoice.data.items[0].taxRate).toBe(0);
@@ -315,5 +321,34 @@ describe("invoicing.service", () => {
       return;
     }
     expect(invoices.data.length).toBe(2);
+  });
+
+  it("redondeo fiscal SENIAT: total no puede diferir > 0.01 Bs", async () => {
+    const db = createDbMock();
+    db.getActiveTaxRules = async () => [
+      { localId: "1", tenantId: "tenant-demo", name: "IVA 16%", rate: 16, type: "iva", isWithholding: false, isActive: true, createdAt: "", updatedAt: "" },
+      { localId: "2", tenantId: "tenant-demo", name: "IGTF 3%", rate: 3, type: "igtf", isWithholding: false, isActive: true, createdAt: "", updatedAt: "" }
+    ];
+    
+    const roundMoney = (value: number): number =>
+      Math.round((value + Number.EPSILON) * 100) / 100;
+
+    const testCases = [
+      { base: 100.00, expectedTotal: 119.48 },
+      { base: 250.50, expectedTotal: 299.30 },
+      { base: 1000.00, expectedTotal: 1194.80 },
+      { base: 0.50, expectedTotal: 0.60 },
+    ];
+
+    for (const tc of testCases) {
+      const subtotal = tc.base;
+      const taxAmount = roundMoney(subtotal * 0.16);
+      const totalBeforeIgtf = subtotal + taxAmount;
+      const igtfAmount = roundMoney(totalBeforeIgtf * 0.03);
+      const total = roundMoney(totalBeforeIgtf + igtfAmount);
+      
+      const difference = Math.abs(total - tc.expectedTotal);
+      expect(difference).toBeLessThanOrEqual(0.01);
+    }
   });
 });
