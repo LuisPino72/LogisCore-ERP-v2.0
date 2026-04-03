@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useToastStore } from "../stores/toastStore";
 import type { ToastType } from "../types/common.types";
 
@@ -22,7 +23,7 @@ const iconColors: Record<ToastType, string> = {
   info: "text-blue-500"
 };
 
-export function ToastContainer() {
+export const ToastContainer = memo(function ToastContainer() {
   const { toasts, removeToast } = useToastStore();
 
   if (toasts.length === 0) return null;
@@ -50,4 +51,4 @@ export function ToastContainer() {
       ))}
     </div>
   );
-}
+});

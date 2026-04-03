@@ -12,6 +12,18 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: "dist"
+    outDir: "dist",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-dexie': ['dexie'],
+          'vendor-zustand': ['zustand'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600,
+    minify: 'esbuild',
   }
 });

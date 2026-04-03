@@ -76,7 +76,7 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
       }}
     >
       <h2 style={{ marginTop: 0 }}>Reportes y Auditoria</h2>
-      {state.lastError ? <p style={{ color: "#b91c1c" }}>{state.lastError.message}</p> : null}
+      {state.lastError ? <p className="text-red-700">{state.lastError.message}</p> : null}
 
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
         <button

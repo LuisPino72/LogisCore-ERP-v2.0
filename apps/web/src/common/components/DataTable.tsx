@@ -1,3 +1,5 @@
+import { memo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { TableColumn, SortState } from "../types/common.types";
 
 export interface DataTableProps<T> {
@@ -10,7 +12,7 @@ export interface DataTableProps<T> {
   loading?: boolean;
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export const DataTable = memo(function DataTable<T extends Record<string, unknown>>({
   columns,
   data,
   sort,
@@ -19,6 +21,17 @@ export function DataTable<T extends Record<string, unknown>>({
   emptyMessage = "No hay datos",
   loading
 }: DataTableProps<T>) {
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const shouldVirtualize = data.length > 100;
+  
+  const rowVirtualizer = useVirtualizer({
+    count: data.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 48,
+    overscan: 10,
+    enabled: shouldVirtualize
+  });
+
   const getValue = (row: T, key: string): unknown => {
     const keys = key.split(".");
     let value: unknown = row;
@@ -34,10 +47,30 @@ export function DataTable<T extends Record<string, unknown>>({
     right: "text-right"
   };
 
+  const renderRow = (row: T, rowIndex: number, key: string) => (
+    <tr
+      key={key}
+      className={`hover:bg-surface-50 transition-colors ${onRowClick ? "cursor-pointer" : ""}`}
+      onClick={() => onRowClick?.(row)}
+    >
+      {columns.map((col) => {
+        const value = getValue(row, col.key);
+        return (
+          <td
+            key={col.key}
+            className={`px-4 py-3 text-sm text-content-primary ${alignClasses[col.align ?? "left"]}`}
+          >
+            {col.render ? col.render(value, row) : String(value ?? "")}
+          </td>
+        );
+      })}
+    </tr>
+  );
+
   return (
     <div className="overflow-x-auto border border-surface-200 rounded-lg">
       <table className="w-full">
-        <thead className="bg-surface-50">
+        <thead className="bg-surface-50 sticky top-0 z-10">
           <tr>
             {columns.map((col) => (
               <th
@@ -70,29 +103,54 @@ export function DataTable<T extends Record<string, unknown>>({
                 {emptyMessage}
               </td>
             </tr>
+          ) : shouldVirtualize ? (
+            <tr>
+              <td colSpan={columns.length} className="p-0">
+                <div
+                  ref={tableContainerRef}
+                  className="overflow-auto"
+                  style={{ height: "500px" }}
+                >
+                  <table className="w-full">
+                    <tbody>
+                      {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                        const row = data[virtualRow.index];
+                        if (!row) return null;
+                        return (
+                          <tr
+                            key={virtualRow.key}
+                            data-index={virtualRow.index}
+                            className={`hover:bg-surface-50 transition-colors absolute w-full ${onRowClick ? "cursor-pointer" : ""}`}
+                            style={{
+                              transform: `translateY(${virtualRow.start}px)`,
+                              height: `${virtualRow.size}px`
+                            }}
+                            onClick={() => onRowClick?.(row)}
+                          >
+                            {columns.map((col) => {
+                              const value = getValue(row, col.key);
+                              return (
+                                <td
+                                  key={col.key}
+                                  className={`px-4 py-3 text-sm text-content-primary ${alignClasses[col.align ?? "left"]}`}
+                                >
+                                  {col.render ? col.render(value, row) : String(value ?? "")}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
           ) : (
-            data.map((row, rowIndex) => (
-              <tr
-                key={rowIndex}
-                className={`hover:bg-surface-50 transition-colors ${onRowClick ? "cursor-pointer" : ""}`}
-                onClick={() => onRowClick?.(row)}
-              >
-                {columns.map((col) => {
-                  const value = getValue(row, col.key);
-                  return (
-                    <td
-                      key={col.key}
-                      className={`px-4 py-3 text-sm text-content-primary ${alignClasses[col.align ?? "left"]}`}
-                    >
-                      {col.render ? col.render(value, row) : String(value ?? "")}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))
+            data.map((row, rowIndex) => renderRow(row, rowIndex, `row-${rowIndex}`))
           )}
         </tbody>
       </table>
     </div>
   );
-}
+});

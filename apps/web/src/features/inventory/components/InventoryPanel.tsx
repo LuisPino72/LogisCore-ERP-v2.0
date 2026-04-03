@@ -66,7 +66,7 @@ export function InventoryPanel({ tenantSlug, actor, products }: InventoryPanelPr
   return (
     <section style={{ marginTop: "16px" }}>
       {state.lastError ? (
-        <p style={{ color: "#b91c1c" }}>{state.lastError.message}</p>
+        <p className="text-red-700">{state.lastError.message}</p>
       ) : null}
       <InventoryForm
         products={products}

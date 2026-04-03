@@ -59,7 +59,7 @@ export function ProductsCatalog({ tenantSlug, actor }: ProductsCatalogProps) {
   return (
     <section>
       {state.lastError ? (
-        <p style={{ color: "#b91c1c" }}>{state.lastError.message}</p>
+        <p className="text-red-700">{state.lastError.message}</p>
       ) : null}
       <ProductsList
         categories={state.categories}

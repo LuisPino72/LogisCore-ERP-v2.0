@@ -79,7 +79,7 @@ export function TenantBootstrapGate({
   }
 
   if (state.lastError) {
-    return <p style={{ color: "#b91c1c" }}>{state.lastError.message}</p>;
+    return <p className="text-red-700">{state.lastError.message}</p>;
   }
 
   if (state.isBlocked) {
@@ -152,15 +152,8 @@ export function TenantBootstrapGate({
   return (
     <section>
       <AuthSessionCard session={authState.session} />
-      <section
-        style={{
-          border: "1px solid #93c5fd",
-          borderRadius: "8px",
-          background: "#dbeafe",
-          padding: "12px"
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>Tenant cargado</h2>
+      <section className="border border-blue-300 bg-blue-50 rounded-lg p-3">
+        <h2 className="mt-0">Tenant cargado</h2>
         <p style={{ margin: 0 }}>
           Slug:
           {" "}

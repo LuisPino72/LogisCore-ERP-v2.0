@@ -152,7 +152,7 @@ export function PurchasesCatalogPanel({
       </div>
 
       {state.lastError ? (
-        <p style={{ color: "#b91c1c", marginBottom: 0 }}>{state.lastError.message}</p>
+        <p className="text-red-700 mb-0">{state.lastError.message}</p>
       ) : null}
     </section>
   );

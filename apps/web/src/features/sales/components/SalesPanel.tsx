@@ -146,7 +146,7 @@ export function SalesPanel({
     >
       <h2 style={{ marginTop: 0 }}>Ventas + POS</h2>
       {state.lastError ? (
-        <p style={{ color: "#b91c1c" }}>{state.lastError.message}</p>
+        <p className="text-red-700">{state.lastError.message}</p>
       ) : null}
 
       <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>

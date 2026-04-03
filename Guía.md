@@ -191,6 +191,37 @@ CREATE INDEX idx_[tabla]_tenant_created ON public.[tabla](tenant_id, created_at 
 - **✅ Permitido:** updated_at, audit_logs, validaciones críticas de stock
 - **❌ Prohibido:** Cálculos de negocio (subtotales, IVA), lógica de sync
 
+### 5.7 Requisitos de Edge Functions
+
+**Seguridad obligatoria:**
+- Usar `SET LOCAL search_path = 'public'` en todas las funciones SQL
+- **NUNCA** usar SERVICE_ROLE_KEY para queries que deben respetar RLS
+- Siempre verificar ownership del tenant antes de acceder datos
+
+```typescript
+// ❌ INCORRECTO - Bypass de RLS
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// ✅ CORRECTO - Usar cliente autenticado
+const supabase = createClient(supabaseUrl, authToken);
+```
+
+**Estructura de respuesta:**
+```typescript
+interface EdgeFunctionResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+```
+
+**Validación de entrada:**
+- Usar Zod para validar input schema
+- Verificar tenant_slug pertenece al usuario
+
 ---
 
 ## 6. Seguridad
@@ -581,18 +612,57 @@ interface RelationsService {
 - **CONSIDERAR paginación:** LIMIT/OFFSET o cursor-based
 - **EVITAR funciones en WHERE:** que impidan uso de índices
 
-### 17.2 Eficiencia de SyncEngine
+### 17.2 Límites de Bundle y Carga
+
+**Configuración de build obligatoria:**
+```typescript
+// vite.config.ts
+build: {
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        'vendor-react': ['react', 'react-dom'],
+        'vendor-supabase': ['@supabase/supabase-js'],
+        'vendor-dexie': ['dexie'],
+      }
+    }
+  },
+  chunkSizeWarningLimit: 600,  // Excluir chunks de libs grandes (PDF)
+  minify: 'terser',
+}
+```
+
+**Límites:**
+| Métrica | Límite | Acción si se excede |
+|---------|--------|---------------------|
+| Initial bundle | < 300KB | Implementar lazy loading |
+| Chunk individual | < 600KB | Excluir de warning |
+| Tiempo carga | < 3s | Optimizar crítico path |
+
+**Lazy loading obligatorio:**
+```typescript
+// App.tsx - Cargar módulos bajo demanda
+const SalesPanel = lazy(() => import("@/features/sales/components/SalesPanel"));
+const InventoryPanel = lazy(() => import("@/features/inventory/components/InventoryPanel"));
+
+// Usar con Suspense
+<Suspense fallback={<Loading />}>
+  <ModuleRenderer />
+</Suspense>
+```
+
+### 17.4 Eficiencia de SyncEngine
 - AGRUPAR operaciones relacionadas
 - EVITAR encolados idempotentes
 - CONFIGURAR timeouts apropiados
 - MONITOREAR cola
 
-### 17.3 Límites Offline
+### 17.5 Límites Offline
 | Recurso | Límite |
 |---------|--------|
 | Tamaño DB | 500MB - 1GB |
 | Productos | 50,000/tenant |
-| Sync/mes | 10,000 |
+| Sync/mes | 20,000 |
 
 **Purge:**
 - Transacciones > 6 meses

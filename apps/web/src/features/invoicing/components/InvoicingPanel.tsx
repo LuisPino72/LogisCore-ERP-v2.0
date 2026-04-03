@@ -55,7 +55,7 @@ export function InvoicingPanel({ tenantSlug, actor }: InvoicingPanelProps) {
       }}
     >
       <h2 style={{ marginTop: 0 }}>Facturacion SENIAT</h2>
-      {state.lastError ? <p style={{ color: "#b91c1c" }}>{state.lastError.message}</p> : null}
+      {state.lastError ? <p className="text-red-700">{state.lastError.message}</p> : null}
 
       <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
         <h3 style={{ margin: 0 }}>Crear factura desde venta</h3>
