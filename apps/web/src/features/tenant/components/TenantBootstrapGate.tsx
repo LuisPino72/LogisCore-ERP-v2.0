@@ -75,7 +75,8 @@ export function TenantBootstrapGate({
   }
 
   if (authState.isLoading || state.isLoading) {
-    return <p>Bootstrap inicial: auth, tenant, permisos y suscripcion...</p>;
+    console.log("[RENDER] Bootstrap state - authLoading:", authState.isLoading, "tenantLoading:", state.isLoading, "session:", !!authState.session);
+    return <p>Cargando aplicación LogisCore v3... (si esto dura más de 10s, limpia cache)</p>;
   }
 
   if (state.lastError) {
