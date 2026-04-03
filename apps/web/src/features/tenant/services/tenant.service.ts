@@ -141,6 +141,8 @@ export const createTenantService = ({
   };
 
     const resolveUserRole: TenantService["resolveUserRole"] = async (userId) => {
+    console.log("[DEBUG resolveUserRole] Fetching role for userId:", userId);
+    
     const roleQuery = await supabase
       .from("user_roles")
       .select("role, permissions, email, full_name, last_login_at, is_active, tenant_id")
@@ -155,7 +157,18 @@ export const createTenantService = ({
         tenant_id: string | null;
       }>();
 
+    console.log("[DEBUG resolveUserRole] Raw query result:", JSON.stringify(roleQuery));
+
+    if (roleQuery.error) {
+      console.error("[DEBUG resolveUserRole] Query error:", roleQuery.error);
+    }
+    if (!roleQuery.data) {
+      console.warn("[DEBUG resolveUserRole] No data returned for userId:", userId);
+    }
+
     if (roleQuery.error || !roleQuery.data) {
+      console.error("[DEBUG resolveUserRole] Query error:", roleQuery.error);
+      console.warn("[DEBUG resolveUserRole] No data for userId:", userId);
       return err(
         createAppError({
           code: "ROLE_RESOLVE_FAILED",
