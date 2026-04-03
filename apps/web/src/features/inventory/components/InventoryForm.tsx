@@ -72,7 +72,7 @@ export function InventoryForm({
   const [countQty, setCountQty] = useState("0");
 
   return (
-    <section style={{ border: "1px solid #e2e8f0", padding: "12px", borderRadius: "8px" }}>
+    <section style={{ border: "1px solid var(--border)", padding: "12px", borderRadius: "8px" }}>
       <h2 style={{ marginTop: 0 }}>Inventario y Bodegas</h2>
 
       <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>

@@ -7,9 +7,9 @@ export function SuperAdminPanel() {
   return (
     <section
       style={{
-        border: "1px solid #a3e635",
+        border: "1px solid var(--color-brand-300)",
         borderRadius: "8px",
-        background: "#f7fee7",
+        background: "var(--color-brand-50)",
         padding: "12px",
         marginBottom: "16px"
       }}

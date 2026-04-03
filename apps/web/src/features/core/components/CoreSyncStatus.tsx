@@ -9,7 +9,7 @@ export function CoreSyncStatus() {
     <section
       style={{
         marginTop: "16px",
-        background: "#e2e8f0",
+        background: "var(--color-surface-100)",
         borderRadius: "8px",
         padding: "12px"
       }}

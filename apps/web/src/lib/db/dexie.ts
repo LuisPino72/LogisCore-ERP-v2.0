@@ -99,7 +99,7 @@ export interface StockMovementRecord {
   referenceDocumentType?: string;
   costLayerId?: string;
   notes?: string;
-  createdBy: string;
+  createdBy?: string;
   createdAt: string;
   deletedAt?: string;
 }

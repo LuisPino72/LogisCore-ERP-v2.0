@@ -48,7 +48,7 @@ export function InvoicingPanel({ tenantSlug, actor }: InvoicingPanelProps) {
   return (
     <section
       style={{
-        border: "1px solid #e2e8f0",
+        border: "1px solid var(--border)",
         borderRadius: "8px",
         padding: "12px",
         marginTop: "16px"

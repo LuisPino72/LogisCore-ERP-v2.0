@@ -138,7 +138,7 @@ export function SalesPanel({
   return (
     <section
       style={{
-        border: "1px solid #e2e8f0",
+        border: "1px solid var(--border)",
         borderRadius: "8px",
         padding: "12px",
         marginTop: "16px"
@@ -223,7 +223,7 @@ export function SalesPanel({
         >
           Agregar linea
         </button>
-        <div style={{ display: "grid", gap: "8px", borderTop: "1px solid #e2e8f0", paddingTop: "8px" }}>
+        <div style={{ display: "grid", gap: "8px", borderTop: "1px solid var(--border)", paddingTop: "8px" }}>
           <strong>Pagos</strong>
           <select
             value={paymentMethod}
@@ -301,7 +301,7 @@ export function SalesPanel({
             <button
               type="button"
               onClick={() => removeCartItem(index)}
-              style={{ color: "#b91c1c", padding: "2px 6px" }}
+              style={{ color: "var(--color-state-error)", padding: "2px 6px" }}
             >
               X
             </button>
@@ -337,7 +337,7 @@ export function SalesPanel({
             <button
               type="button"
               onClick={() => removePayment(index)}
-              style={{ color: "#b91c1c", padding: "2px 6px" }}
+              style={{ color: "var(--color-state-error)", padding: "2px 6px" }}
             >
               X
             </button>

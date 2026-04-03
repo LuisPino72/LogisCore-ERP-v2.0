@@ -18,7 +18,7 @@ export function CoreBootstrapGate() {
 
   if (state.lastError) {
     return (
-      <section style={{ color: "#b91c1c" }}>
+      <section style={{ color: "var(--color-state-error)" }}>
         <p>{state.lastError.message}</p>
         <button onClick={clearLastError} type="button">
           Cerrar
@@ -34,8 +34,8 @@ export function CoreBootstrapGate() {
   return (
     <section
       style={{
-        border: "1px solid #bfdbfe",
-        background: "#eff6ff",
+        border: "1px solid var(--color-state-info)",
+        background: "rgb(59 130 246 / 0.1)",
         padding: "16px",
         borderRadius: "8px"
       }}

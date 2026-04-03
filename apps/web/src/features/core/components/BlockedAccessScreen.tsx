@@ -7,9 +7,9 @@ export function BlockedAccessScreen({ tenantSlug }: BlockedAccessScreenProps) {
   return (
     <section
       style={{
-        border: "1px solid #fca5a5",
-        background: "#fef2f2",
-        color: "#7f1d1d",
+        border: "1px solid var(--color-state-error)",
+        background: "rgb(254 242 242 / 0.5)",
+        color: "var(--color-state-error)",
         padding: "16px",
         borderRadius: "8px",
         marginBottom: "16px"

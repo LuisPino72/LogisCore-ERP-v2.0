@@ -26,9 +26,9 @@ export function ProductsList({
   return (
     <section
       style={{
-        border: "1px solid #cbd5e1",
+        border: "1px solid var(--color-surface-300)",
         borderRadius: "8px",
-        background: "#f8fafc",
+        background: "var(--color-surface-50)",
         padding: "12px"
       }}
     >

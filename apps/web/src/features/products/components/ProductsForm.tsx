@@ -50,11 +50,11 @@ export function ProductsForm({
   return (
     <section
       style={{
-        border: "1px solid #e2e8f0",
+        border: "1px solid var(--border)",
         borderRadius: "8px",
         padding: "12px",
         marginBottom: "16px",
-        background: "#ffffff"
+        background: "white"
       }}
     >
       <h2 style={{ marginTop: 0 }}>Catalogo</h2>

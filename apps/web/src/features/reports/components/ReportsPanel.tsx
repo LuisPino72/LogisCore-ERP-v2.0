@@ -69,7 +69,7 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
   return (
     <section
       style={{
-        border: "1px solid #e2e8f0",
+        border: "1px solid var(--border)",
         borderRadius: "8px",
         padding: "12px",
         marginTop: "16px"
@@ -84,8 +84,8 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
           onClick={() => handleTabChange("sales-day")}
           style={{
             padding: "8px 12px",
-            background: activeTab === "sales-day" ? "#3b82f6" : "#e2e8f0",
-            color: activeTab === "sales-day" ? "white" : "black",
+            background: activeTab === "sales-day" ? "var(--color-state-info)" : "var(--color-surface-100)",
+            color: activeTab === "sales-day" ? "white" : "var(--color-content-primary)",
             border: "none",
             borderRadius: "4px",
             cursor: "pointer"
@@ -98,8 +98,8 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
           onClick={() => handleTabChange("sales-product")}
           style={{
             padding: "8px 12px",
-            background: activeTab === "sales-product" ? "#3b82f6" : "#e2e8f0",
-            color: activeTab === "sales-product" ? "white" : "black",
+            background: activeTab === "sales-product" ? "var(--color-state-info)" : "var(--color-surface-100)",
+            color: activeTab === "sales-product" ? "white" : "var(--color-content-primary)",
             border: "none",
             borderRadius: "4px",
             cursor: "pointer"
@@ -112,8 +112,8 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
           onClick={() => handleTabChange("kardex")}
           style={{
             padding: "8px 12px",
-            background: activeTab === "kardex" ? "#3b82f6" : "#e2e8f0",
-            color: activeTab === "kardex" ? "white" : "black",
+            background: activeTab === "kardex" ? "var(--color-state-info)" : "var(--color-surface-100)",
+            color: activeTab === "kardex" ? "white" : "var(--color-content-primary)",
             border: "none",
             borderRadius: "4px",
             cursor: "pointer"
@@ -126,8 +126,8 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
           onClick={() => handleTabChange("profit")}
           style={{
             padding: "8px 12px",
-            background: activeTab === "profit" ? "#3b82f6" : "#e2e8f0",
-            color: activeTab === "profit" ? "white" : "black",
+            background: activeTab === "profit" ? "var(--color-state-info)" : "var(--color-surface-100)",
+            color: activeTab === "profit" ? "white" : "var(--color-content-primary)",
             border: "none",
             borderRadius: "4px",
             cursor: "pointer"
@@ -140,8 +140,8 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
           onClick={() => handleTabChange("box")}
           style={{
             padding: "8px 12px",
-            background: activeTab === "box" ? "#3b82f6" : "#e2e8f0",
-            color: activeTab === "box" ? "white" : "black",
+            background: activeTab === "box" ? "var(--color-state-info)" : "var(--color-surface-100)",
+            color: activeTab === "box" ? "white" : "var(--color-content-primary)",
             border: "none",
             borderRadius: "4px",
             cursor: "pointer"
@@ -155,8 +155,8 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
             onClick={() => handleTabChange("audit")}
             style={{
               padding: "8px 12px",
-              background: activeTab === "audit" ? "#3b82f6" : "#e2e8f0",
-              color: activeTab === "audit" ? "white" : "black",
+              background: activeTab === "audit" ? "var(--color-state-info)" : "var(--color-surface-100)",
+              color: activeTab === "audit" ? "white" : "var(--color-content-primary)",
               border: "none",
               borderRadius: "4px",
               cursor: "pointer"
@@ -175,27 +175,27 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Fecha</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Transacciones</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Subtotal</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Impuesto</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Total</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Fecha</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Transacciones</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Subtotal</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Impuesto</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Total</th>
                 </tr>
               </thead>
               <tbody>
                 {state.salesByDay.map((row) => (
                   <tr key={row.saleDate}>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{row.saleDate}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{row.saleDate}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>
                       {row.totalTransactions}
                     </td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>
                       {row.totalSubtotal.toFixed(2)}
                     </td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>
                       {row.totalTax.toFixed(2)}
                     </td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>
                       {row.totalSales.toFixed(2)}
                     </td>
                   </tr>
@@ -208,19 +208,19 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Producto</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Cantidad</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Monto</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Producto</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Cantidad</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Monto</th>
                 </tr>
               </thead>
               <tbody>
                 {state.salesByProduct.map((row) => (
                   <tr key={row.productLocalId}>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{row.productLocalId}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{row.productLocalId}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>
                       {row.totalQty.toFixed(2)}
                     </td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>
                       {row.totalAmount.toFixed(2)}
                     </td>
                   </tr>
@@ -233,21 +233,21 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Producto</th>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Bodega</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Entrada</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Salida</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Saldo</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Producto</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Bodega</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Entrada</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Salida</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Saldo</th>
                 </tr>
               </thead>
               <tbody>
                 {state.kardex.map((row) => (
                   <tr key={`${row.productLocalId}-${row.warehouseLocalId}`}>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{row.productName || row.productLocalId}</td>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{row.warehouseName || row.warehouseLocalId}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>{row.totalIn.toFixed(2)}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>{row.totalOut.toFixed(2)}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>{row.currentBalance.toFixed(2)}</td>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{row.productName || row.productLocalId}</td>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{row.warehouseName || row.warehouseLocalId}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>{row.totalIn.toFixed(2)}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>{row.totalOut.toFixed(2)}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>{row.currentBalance.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -258,21 +258,21 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Fecha</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Venta</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Costo</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Utilidad</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>% Margen</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Fecha</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Venta</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Costo</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Utilidad</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>% Margen</th>
                 </tr>
               </thead>
               <tbody>
                 {state.grossProfit.map((row) => (
                   <tr key={row.saleLocalId}>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{row.createdAt.split("T")[0]}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>{row.saleTotal.toFixed(2)}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>{row.totalCost.toFixed(2)}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>{row.grossProfit.toFixed(2)}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>{row.profitMarginPercent.toFixed(2)}%</td>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{row.createdAt.split("T")[0]}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>{row.saleTotal.toFixed(2)}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>{row.totalCost.toFixed(2)}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>{row.grossProfit.toFixed(2)}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>{row.profitMarginPercent.toFixed(2)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -283,23 +283,23 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Fecha</th>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Bodega</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Esperado</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Contado</th>
-                  <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>Diferencia</th>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Estado</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Fecha</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Bodega</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Esperado</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Contado</th>
+                  <th style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>Diferencia</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {state.boxClosings.map((row) => (
                   <tr key={row.localId}>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{row.closedAt.split("T")[0]}</td>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{row.warehouseLocalId}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>{row.expectedAmount.toFixed(2)}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>{row.countedAmount.toFixed(2)}</td>
-                    <td style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>{row.differenceAmount.toFixed(2)}</td>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{row.status}</td>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{row.closedAt.split("T")[0]}</td>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{row.warehouseLocalId}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>{row.expectedAmount.toFixed(2)}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>{row.countedAmount.toFixed(2)}</td>
+                    <td style={{ textAlign: "right", borderBottom: "1px solid var(--border)" }}>{row.differenceAmount.toFixed(2)}</td>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{row.status}</td>
                   </tr>
                 ))}
               </tbody>
@@ -310,21 +310,21 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Fecha</th>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Evento</th>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Tabla</th>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Usuario</th>
-                  <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Resultado</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Fecha</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Evento</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Tabla</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Usuario</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>Resultado</th>
                 </tr>
               </thead>
               <tbody>
                 {state.auditLogs.map((log) => (
                   <tr key={log.localId}>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{log.createdAt.split("T")[0]}</td>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{log.eventType}</td>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{log.targetTable || "-"}</td>
-                    <td style={{ borderBottom: "1px solid #e2e8f0" }}>{log.userId || "Sistema"}</td>
-                    <td style={{ borderBottom: "1px solid #e2e8f0", color: log.success ? "green" : "red" }}>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{log.createdAt.split("T")[0]}</td>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{log.eventType}</td>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{log.targetTable || "-"}</td>
+                    <td style={{ borderBottom: "1px solid var(--border)" }}>{log.userId || "Sistema"}</td>
+                    <td style={{ borderBottom: "1px solid var(--border)", color: log.success ? "var(--color-state-success)" : "var(--color-state-error)" }}>
                       {log.success ? "Exito" : "Fallo"}
                     </td>
                   </tr>
