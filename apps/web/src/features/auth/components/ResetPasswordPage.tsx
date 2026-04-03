@@ -52,7 +52,7 @@ export function ResetPasswordPage({ supabase, onPasswordReset }: ResetPasswordPa
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-surface-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br from-brand-50 to-surface-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="card">
             <div className="card-body text-center">
@@ -78,7 +78,7 @@ export function ResetPasswordPage({ supabase, onPasswordReset }: ResetPasswordPa
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-surface-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-brand-50 to-surface-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="card">
           <div className="card-body">

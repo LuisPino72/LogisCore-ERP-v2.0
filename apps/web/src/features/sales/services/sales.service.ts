@@ -240,7 +240,7 @@ export const createSalesService = ({
     actor: SalesActorContext,
     warehouseLocalId: string
   ): Result<void, AppError> => {
-    if (actor.role === "owner" || actor.role === "super_admin") {
+    if (actor.role === "owner" || actor.role === "admin") {
       return ok<void>(undefined);
     }
     const allowed = actor.permissions.allowedWarehouseLocalIds;
@@ -550,11 +550,11 @@ export const createSalesService = ({
   };
 
   const closeBox: SalesService["closeBox"] = async (tenant, actor, input) => {
-    if (actor.role !== "owner" && actor.role !== "super_admin") {
+    if (actor.role !== "owner" && actor.role !== "admin") {
       return err(
         createAppError({
           code: "BOX_CLOSING_PERMISSION_DENIED",
-          message: "Solo owner/super_admin puede cerrar caja.",
+          message: "Solo owner/admin puede cerrar caja.",
           retryable: false
         })
       );
@@ -646,11 +646,11 @@ export const createSalesService = ({
   };
 
   const openBox: SalesService["openBox"] = async (tenant, actor, input) => {
-    if (actor.role !== "owner" && actor.role !== "super_admin") {
+    if (actor.role !== "owner" && actor.role !== "admin") {
       return err(
         createAppError({
           code: "BOX_OPEN_PERMISSION_DENIED",
-          message: "Solo owner/super_admin puede abrir caja.",
+          message: "Solo owner/admin puede abrir caja.",
           retryable: false
         })
       );

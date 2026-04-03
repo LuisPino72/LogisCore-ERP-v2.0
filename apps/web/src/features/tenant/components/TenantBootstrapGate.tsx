@@ -86,7 +86,7 @@ export function TenantBootstrapGate({
     return <BlockedAccessScreen tenantSlug={state.tenant?.tenantSlug ?? null} />;
   }
 
-  if (state.userRole?.role === "super_admin") {
+  if (state.userRole?.role === "admin") {
     return (
       <AdminLayout
         activeModule={activeAdminModule}

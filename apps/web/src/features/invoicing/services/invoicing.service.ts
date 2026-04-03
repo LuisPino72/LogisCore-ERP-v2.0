@@ -143,7 +143,7 @@ export const createInvoicingService = ({
       );
     }
 
-    if (actor.role !== "owner" && actor.role !== "super_admin" && !actor.permissions.canVoidInvoice) {
+    if (actor.role !== "owner" && actor.role !== "admin" && !actor.permissions.canVoidInvoice) {
       return err(
         createAppError({
           code: "INVOICE_PERMISSION_DENIED",
@@ -258,7 +258,7 @@ export const createInvoicingService = ({
       );
     }
 
-    if (actor.role !== "owner" && actor.role !== "super_admin") {
+    if (actor.role !== "owner" && actor.role !== "admin") {
       if (!actor.permissions.canVoidInvoice) {
         return err(
           createAppError({

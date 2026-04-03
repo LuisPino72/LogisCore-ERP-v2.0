@@ -35,7 +35,7 @@ export interface SalesActorPermissions {
 
 /** Contexto del usuario en ventas */
 export interface SalesActorContext {
-  role: "owner" | "employee" | "super_admin";
+  role: "owner" | "employee" | "admin";
   userId?: string;
   permissions: SalesActorPermissions;
 }

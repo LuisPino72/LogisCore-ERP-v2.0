@@ -56,7 +56,7 @@ export interface RolePermissions {
  * Combina el tipo de rol con los permisos y datos del usuario.
  */
 export interface UserRole {
-  role: "owner" | "employee" | "super_admin";
+  role: "owner" | "employee" | "admin" | "admin";
   permissions: RolePermissions;
   email: string;
   fullName: string;

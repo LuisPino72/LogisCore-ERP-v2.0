@@ -32,7 +32,7 @@ export interface PurchasesActorPermissions {
  * Combina el rol y los permisos del usuario.
  */
 export interface PurchasesActorContext {
-  role: "owner" | "employee" | "super_admin";
+  role: "owner" | "employee" | "admin";
   userId?: string;
   permissions: PurchasesActorPermissions;
 }

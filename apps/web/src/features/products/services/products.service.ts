@@ -141,7 +141,7 @@ export const createProductsService = ({
   const assertCatalogPermissions = (
     actor: ProductsActorContext
   ): Result<void, AppError> => {
-    const allowedByRole = actor.role === "owner" || actor.role === "super_admin";
+    const allowedByRole = actor.role === "owner" || actor.role === "admin";
     const allowedByPermission =
       actor.permissions.canAdjustStock || actor.permissions.canApplyCustomPrice;
     if (!allowedByRole && !allowedByPermission) {

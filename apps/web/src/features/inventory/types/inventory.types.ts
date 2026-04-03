@@ -15,7 +15,7 @@ export interface InventoryTenantContext {
 
 /** Contexto del actor en inventario */
 export interface InventoryActorContext {
-  role: "super_admin" | "owner" | "employee";
+  role: "admin" | "owner" | "employee";
   userId?: string;
   permissions: {
     canApplyDiscount: boolean;

@@ -322,7 +322,7 @@ interface TaxpayerInfo {
 1. Auth valida sesión
 2. Trigger agrega `tenant_slug` al JWT
 3. Resolver roles en `user_roles`
-4. Si `super_admin` → Admin Panel
+4. Si `admin` → Admin Panel
 5. Si `owner/employee` → Resolver tenant
 6. Cargar datos del tenant
 7. Cargar plantillas según `business_type`

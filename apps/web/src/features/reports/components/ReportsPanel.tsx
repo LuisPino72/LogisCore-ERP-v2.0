@@ -6,7 +6,7 @@
  * - Kardex de productos
  * - Utilidad bruta
  * - Cierres de caja
- * - Auditoría (solo para owner y super_admin)
+ * - Auditoría (solo para owner y admin)
  * Utiliza el hook useReports para cargar y mostrar los datos.
  */
 
@@ -149,7 +149,7 @@ export function ReportsPanel({ tenantSlug, actor }: ReportsPanelProps) {
         >
           Cierres de Caja
         </button>
-        {actor.role === "owner" || actor.role === "super_admin" ? (
+        {actor.role === "owner" || actor.role === "admin" ? (
           <button
             type="button"
             onClick={() => handleTabChange("audit")}

@@ -258,10 +258,10 @@ export const createTenantService = ({
     }
 
     const normalizedRole = roleResult.data.role?.trim().toLowerCase();
-    console.log("[DEBUG bootstrapTenant] role received:", JSON.stringify(roleResult.data.role), "normalized:", normalizedRole);
+    console.log("[DEBUG bootstrapTenant] role received:", normalizedRole);
 
-    if (normalizedRole === "super_admin") {
-      console.log("[DEBUG bootstrapTenant] Detected super_admin, returning Admin Panel");
+    if (normalizedRole === "admin") {
+      console.log("[DEBUG bootstrapTenant] Detected admin role, returning Admin Panel");
       return ok({
         tenant: null,
         userRole: roleResult.data,
@@ -269,7 +269,7 @@ export const createTenantService = ({
       });
     }
 
-    console.log("[DEBUG bootstrapTenant] Not super_admin, proceeding to resolve tenant");
+    console.log("[DEBUG bootstrapTenant] Not admin, proceeding to resolve tenant");
     const tenantResult = await resolveTenantContext(userId);
     if (!tenantResult.ok) {
       return err(tenantResult.error);

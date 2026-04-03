@@ -139,7 +139,7 @@ export const createInventoryService = ({
   ): Result<void, AppError> => {
     if (
       actor.role === "owner" ||
-      actor.role === "super_admin" ||
+      actor.role === "admin" ||
       actor.permissions.canAdjustStock
     ) {
       return ok<void>(undefined);
@@ -157,7 +157,7 @@ export const createInventoryService = ({
     actor: InventoryActorContext,
     warehouseLocalId: string
   ): Result<void, AppError> => {
-    if (actor.role === "owner" || actor.role === "super_admin") {
+    if (actor.role === "owner" || actor.role === "admin") {
       return ok<void>(undefined);
     }
     const allowed = actor.permissions.allowedWarehouseLocalIds;

@@ -80,7 +80,7 @@ export interface ReportsTenantContext {
 }
 
 export interface ReportsActorContext {
-  role: "owner" | "employee" | "super_admin";
+  role: "owner" | "employee" | "admin";
   userId?: string;
   permissions: {
     canViewReports: boolean;

@@ -137,11 +137,11 @@ describe("tenant.service", () => {
     }
   });
 
-  it("resuelve bootstrap super_admin sin tenant", async () => {
+  it("resuelve bootstrap admin sin tenant", async () => {
     const service = createTenantService({
       eventBus: new InMemoryEventBus(),
       supabase: createSupabaseMock({
-        role: "super_admin",
+        role: "admin",
         subscriptionActive: true
       })
     });
@@ -149,7 +149,7 @@ describe("tenant.service", () => {
     const result = await service.bootstrapTenant("user-admin");
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.data.userRole.role).toBe("super_admin");
+      expect(result.data.userRole.role).toBe("admin");
       expect(result.data.tenant).toBeNull();
       expect(result.data.subscriptionActive).toBe(true);
     }

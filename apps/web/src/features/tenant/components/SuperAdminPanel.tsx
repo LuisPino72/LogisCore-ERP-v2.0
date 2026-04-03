@@ -1,6 +1,6 @@
 /**
  * Panel de administración para super-admins.
- * Muestra información y controles exclusivos para el rol super_admin.
+ * Muestra información y controles exclusivos para el rol admin.
  */
 
 export function SuperAdminPanel() {
@@ -16,7 +16,7 @@ export function SuperAdminPanel() {
     >
       <h2 style={{ marginTop: 0 }}>Admin Panel</h2>
       <p style={{ margin: 0 }}>
-        Sesion detectada con rol <strong>super_admin</strong>. Desde aqui debe
+        Sesion detectada con rol <strong>admin</strong>. Desde aqui debe
         iniciarse el flujo de administracion global de tenants.
       </p>
     </section>

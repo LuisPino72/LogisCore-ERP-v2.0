@@ -97,7 +97,7 @@ export const createPurchasesService = ({
     actor: PurchasesActorContext,
     warehouseLocalId: string
   ): Result<void, AppError> => {
-    if (actor.role === "owner" || actor.role === "super_admin") {
+    if (actor.role === "owner" || actor.role === "admin") {
       return ok<void>(undefined);
     }
     const allowed = actor.permissions.allowedWarehouseLocalIds;

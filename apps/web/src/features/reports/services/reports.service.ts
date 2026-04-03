@@ -159,7 +159,7 @@ export const createReportsService = ({
     actor,
     event
   ) => {
-    if (actor.role !== "owner" && actor.role !== "super_admin" && !actor.permissions.canViewReports) {
+    if (actor.role !== "owner" && actor.role !== "admin" && !actor.permissions.canViewReports) {
       return err(
         createAppError({
           code: "AUDIT_PERMISSION_DENIED",
@@ -205,7 +205,7 @@ export const createReportsService = ({
     actor,
     eventType
   ) => {
-    if (actor.role !== "owner" && actor.role !== "super_admin" && !actor.permissions.canViewReports) {
+    if (actor.role !== "owner" && actor.role !== "admin" && !actor.permissions.canViewReports) {
       return err(
         createAppError({
           code: "AUDIT_PERMISSION_DENIED",

@@ -95,7 +95,7 @@ export interface ProductsActorPermissions {
 
 /** Contexto del actor (usuario) */
 export interface ProductsActorContext {
-  role: "owner" | "employee" | "super_admin";
+  role: "owner" | "employee" | "admin";
   permissions: ProductsActorPermissions;
 }
 

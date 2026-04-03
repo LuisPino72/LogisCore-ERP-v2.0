@@ -11,7 +11,7 @@ export interface ActorPermissions {
   allowedWarehouseLocalIds?: string[];
 }
 
-export type ActorRole = "owner" | "employee" | "super_admin";
+export type ActorRole = "owner" | "employee" | "admin";
 
 export interface ActorContext {
   role: ActorRole;
@@ -32,37 +32,37 @@ export interface PermissionsService {
 
 export const createPermissionsService = (): PermissionsService => ({
   canManageCatalog: (actor) => 
-    actor.role === "owner" || actor.role === "super_admin" ||
+    actor.role === "owner" || actor.role === "admin" ||
     actor.permissions.canAdjustStock || actor.permissions.canApplyCustomPrice,
     
   canApplyDiscount: (actor) =>
-    actor.role === "owner" || actor.role === "super_admin" ||
+    actor.role === "owner" || actor.role === "admin" ||
     (actor.permissions.canApplyDiscount && 
      actor.permissions.maxDiscountPercent > 0),
     
   canVoidTransaction: (actor) =>
-    actor.role === "owner" || actor.role === "super_admin" ||
+    actor.role === "owner" || actor.role === "admin" ||
     actor.permissions.canVoidSale,
     
   canRefundTransaction: (actor) =>
-    actor.role === "owner" || actor.role === "super_admin" ||
+    actor.role === "owner" || actor.role === "admin" ||
     actor.permissions.canRefundSale,
     
   canAdjustStock: (actor) =>
-    actor.role === "owner" || actor.role === "super_admin" ||
+    actor.role === "owner" || actor.role === "admin" ||
     actor.permissions.canAdjustStock,
     
   canManageUsers: (actor) =>
-    actor.role === "owner" || actor.role === "super_admin",
+    actor.role === "owner" || actor.role === "admin",
     
   canManageSubscriptions: (actor) =>
-    actor.role === "owner" || actor.role === "super_admin",
+    actor.role === "owner" || actor.role === "admin",
     
   canViewReports: (actor) =>
-    actor.role === "owner" || actor.role === "super_admin" ||
+    actor.role === "owner" || actor.role === "admin" ||
     actor.permissions.canViewReports,
     
   canExportReports: (actor) =>
-    actor.role === "owner" || actor.role === "super_admin" ||
+    actor.role === "owner" || actor.role === "admin" ||
     actor.permissions.canExportReports
 });

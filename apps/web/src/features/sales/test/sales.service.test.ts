@@ -227,7 +227,7 @@ describe("sales.service", () => {
     }
   });
 
-  it("cierra caja solo owner/super_admin", async () => {
+  it("cierra caja solo owner/admin", async () => {
     const db = createSalesDbMock();
     const service = createSalesService({
       db,

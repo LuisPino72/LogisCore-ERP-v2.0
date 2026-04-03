@@ -35,7 +35,7 @@ export interface ProductionActorPermissions {
  * Combina el rol y los permisos del usuario.
  */
 export interface ProductionActorContext {
-  role: "owner" | "employee" | "super_admin";
+  role: "owner" | "employee" | "admin";
   userId?: string;
   permissions: ProductionActorPermissions;
 }
