@@ -141,18 +141,19 @@ export const createTenantService = ({
   };
 
     const resolveUserRole: TenantService["resolveUserRole"] = async (userId) => {
-    const roleQuery = await supabase.rpc<{
-      role: UserRole["role"];
-      permissions: RolePermissions | null;
-      email: string;
-      full_name: string;
-      last_login_at: string | null;
-      is_active: boolean;
-      tenant_id: string | null;
-      tenant_slug: string | null;
-    }>("get_user_primary_role_extended", {
-      p_user_id: userId
-    });
+    const roleQuery = await supabase
+      .from("user_roles")
+      .select("role, permissions, email, full_name, last_login_at, is_active, tenant_id")
+      .eq("user_id", userId)
+      .maybeSingle<{
+        role: string;
+        permissions: RolePermissions | null;
+        email: string;
+        full_name: string;
+        last_login_at: string | null;
+        is_active: boolean;
+        tenant_id: string | null;
+      }>();
 
     if (roleQuery.error || !roleQuery.data) {
       return err(
@@ -165,6 +166,8 @@ export const createTenantService = ({
       );
     }
 
+    console.log("[DEBUG resolveUserRole] role from user_roles:", roleQuery.data.role);
+
     const basePermissions = roleQuery.data.permissions ?? defaultPermissions;
     const warehouseAccessResult = await resolveAllowedWarehouses(userId);
     if (!warehouseAccessResult.ok) {
@@ -172,7 +175,7 @@ export const createTenantService = ({
     }
 
     const userRole: UserRole = {
-      role: roleQuery.data.role,
+      role: roleQuery.data.role as UserRole["role"],
       permissions: {
         ...basePermissions,
         allowedWarehouseLocalIds: warehouseAccessResult.data
