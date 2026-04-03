@@ -7,6 +7,7 @@ import { useTenantData } from "../hooks/useTenantData";
 import { adminService } from "@/features/admin/services/admin.service.instance";
 import { useAdmin } from "@/features/admin/hooks/useAdmin";
 import { AdminLayout, Dashboard, TenantsList, SecurityPanel, BusinessTypesPanel, SubscriptionsPanel } from "@/features/admin";
+import { LoadingSpinner } from "@/common";
 import type { AdminModule, Tenant } from "@/features/admin/types/admin.types";
 
 interface TenantBootstrapGateProps {
@@ -56,6 +57,7 @@ export function TenantBootstrapGate({
 
   const handleLogout = async () => {
     await authService.signOut();
+    await loadSession();
   };
 
   const handleAccessTenant = (tenant: Tenant) => {
@@ -75,7 +77,7 @@ export function TenantBootstrapGate({
   }
 
   if (authState.isLoading || state.isLoading) {
-    return <p>Cargando...</p>;
+    return <LoadingSpinner message="Cargando sesión..." />;
   }
 
   if (state.lastError) {
