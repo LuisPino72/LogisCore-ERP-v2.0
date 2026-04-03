@@ -1,10 +1,13 @@
 // Tenant - Gestiona la carga inicial y autenticación del tenant
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AuthSessionCard, LoginPage } from "@/features/auth/components/Login";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { BlockedAccessScreen } from "@/features/core/components/BlockedAccessScreen";
 import { useTenantData } from "../hooks/useTenantData";
-import { SuperAdminPanel } from "./SuperAdminPanel";
+import { adminService } from "@/features/admin/services/admin.service.instance";
+import { useAdmin } from "@/features/admin/hooks/useAdmin";
+import { AdminLayout, Dashboard, TenantsList, SecurityPanel, BusinessTypesPanel, SubscriptionsPanel } from "@/features/admin";
+import type { AdminModule, Tenant } from "@/features/admin/types/admin.types";
 
 interface TenantBootstrapGateProps {
   authService: Parameters<typeof useAuth>[0]["service"];
@@ -24,6 +27,8 @@ export function TenantBootstrapGate({
     auth: authService,
     tenant: tenantService
   });
+  const admin = useAdmin({ service: adminService });
+  const [activeAdminModule, setActiveAdminModule] = useState<AdminModule>("dashboard");
 
   useEffect(() => {
     void (async () => {
@@ -47,6 +52,14 @@ export function TenantBootstrapGate({
 
   const handleResetPassword = async (email: string) => {
     return await resetPassword(email);
+  };
+
+  const handleLogout = async () => {
+    await authService.signOut();
+  };
+
+  const handleAccessTenant = (tenant: Tenant) => {
+    console.log("Accessing tenant:", tenant.slug);
   };
 
   if (!authState.session) {
@@ -75,10 +88,57 @@ export function TenantBootstrapGate({
 
   if (state.userRole?.role === "super_admin") {
     return (
-      <section>
-        <AuthSessionCard session={authState.session} />
-        <SuperAdminPanel />
-      </section>
+      <AdminLayout
+        activeModule={activeAdminModule}
+        onModuleChange={setActiveAdminModule}
+        onLogout={handleLogout}
+        userEmail={authState.session.email || "admin@logiscoredev.com"}
+      >
+        {activeAdminModule === "dashboard" && (
+          <Dashboard
+            stats={admin.stats}
+            isLoading={admin.state.isLoading}
+            onRefresh={admin.loadStats}
+          />
+        )}
+        {activeAdminModule === "tenants" && (
+          <TenantsList
+            tenants={admin.tenants}
+            isLoading={admin.state.isLoading}
+            onRefresh={admin.loadTenants}
+            onCreate={admin.createTenant}
+            onUpdate={admin.updateTenant}
+            onDelete={admin.deleteTenant}
+            onAccessTenant={handleAccessTenant}
+          />
+        )}
+        {activeAdminModule === "security" && (
+          <SecurityPanel
+            users={admin.securityUsers}
+            isLoading={admin.state.isLoading}
+            onRefresh={() => admin.loadSecurityUsers()}
+            onToggleUser={admin.toggleUserStatus}
+          />
+        )}
+        {activeAdminModule === "businessTypes" && (
+          <BusinessTypesPanel
+            businessTypes={admin.businessTypes}
+            isLoading={admin.state.isLoading}
+            onRefresh={admin.loadBusinessTypes}
+            onCreate={admin.createBusinessType}
+            onDelete={admin.deleteBusinessType}
+          />
+        )}
+        {activeAdminModule === "subscriptions" && (
+          <SubscriptionsPanel
+            subscriptions={admin.subscriptions}
+            plans={admin.plans}
+            isLoading={admin.state.isLoading}
+            onRefreshSubscriptions={admin.loadSubscriptions}
+            onRefreshPlans={admin.loadPlans}
+          />
+        )}
+      </AdminLayout>
     );
   }
 

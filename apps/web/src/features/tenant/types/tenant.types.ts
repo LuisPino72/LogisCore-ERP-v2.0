@@ -8,9 +8,16 @@ export interface TenantContext {
   tenantUuid: string;
   tenantSlug: string;
   userId: string;
+  name?: string;
+  logoUrl?: string;
   contactEmail?: string;
   phone?: string;
   address?: string;
+  businessTypeId?: string;
+  isActive?: boolean;
+  taxpayerInfo?: Record<string, unknown>;
+  timezone?: string;
+  currency?: string;
 }
 
 /**
