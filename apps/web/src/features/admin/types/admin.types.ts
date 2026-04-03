@@ -38,6 +38,13 @@ export interface CreateTenantInput {
   contactEmail?: string;
   phone?: string;
   address?: string;
+  logoUrl?: string;
+  taxpayerInfo?: {
+    rif: string;
+    razonSocial: string;
+    direccionFiscal: string;
+    regimen?: string;
+  };
 }
 
 /**
@@ -53,6 +60,13 @@ export interface UpdateTenantInput {
   address?: string;
   timezone?: string;
   currency?: string;
+  taxpayerInfo?: {
+    rif?: string;
+    razonSocial?: string;
+    direccionFiscal?: string;
+    regimen?: string;
+  };
+  ownerUserId?: string;
 }
 
 /**

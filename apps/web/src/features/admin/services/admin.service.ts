@@ -117,6 +117,7 @@ export const createAdminService = ({
       contactEmail: row.contact_email,
       phone: row.phone,
       address: row.address,
+      taxpayerInfo: row.taxpayer_info,
       timezone: row.timezone,
       currency: row.currency,
       createdAt: row.created_at
@@ -175,6 +176,8 @@ export const createAdminService = ({
       phone: input.phone,
       address: input.address,
       business_type_id: input.businessTypeId,
+      logo_url: input.logoUrl,
+      taxpayer_info: input.taxpayerInfo,
       is_active: true
     };
 
@@ -219,6 +222,8 @@ export const createAdminService = ({
     if (input.address !== undefined) updateData.address = input.address;
     if (input.timezone !== undefined) updateData.timezone = input.timezone;
     if (input.currency !== undefined) updateData.currency = input.currency;
+    if (input.taxpayerInfo !== undefined) updateData.taxpayer_info = input.taxpayerInfo;
+    if (input.ownerUserId !== undefined) updateData.owner_user_id = input.ownerUserId;
 
     const result = await supabase.from("tenants").update(updateData).eq("id", id).select().single();
     if (result.error) {

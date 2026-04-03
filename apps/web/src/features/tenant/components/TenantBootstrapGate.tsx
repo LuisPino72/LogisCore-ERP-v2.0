@@ -23,7 +23,7 @@ export function TenantBootstrapGate({
   coreService,
   renderApp
 }: TenantBootstrapGateProps) {
-  const { state: authState, loadSession, signIn, resetPassword } = useAuth({ service: authService });
+  const { state: authState, loadSession, signIn, resetPassword, signOut } = useAuth({ service: authService });
   const { state, bootstrapTenantData } = useTenantData({
     auth: authService,
     tenant: tenantService
@@ -56,8 +56,7 @@ export function TenantBootstrapGate({
   };
 
   const handleLogout = async () => {
-    await authService.signOut();
-    await loadSession();
+    await signOut();
   };
 
   const handleAccessTenant = (tenant: Tenant) => {
@@ -77,7 +76,7 @@ export function TenantBootstrapGate({
   }
 
   if (authState.isLoading || state.isLoading) {
-    return <LoadingSpinner message="Cargando sesión..." />;
+    return <LoadingSpinner variant="fullscreen" message="Cargando sesión..." />;
   }
 
   if (state.lastError) {
@@ -106,12 +105,16 @@ export function TenantBootstrapGate({
         {activeAdminModule === "tenants" && (
           <TenantsList
             tenants={admin.tenants}
+            businessTypes={admin.businessTypes}
+            securityUsers={admin.securityUsers}
             isLoading={admin.state.isLoading}
             onRefresh={admin.loadTenants}
             onCreate={admin.createTenant}
             onUpdate={admin.updateTenant}
             onDelete={admin.deleteTenant}
             onAccessTenant={handleAccessTenant}
+            onLoadBusinessTypes={admin.loadBusinessTypes}
+            onLoadSecurityUsers={admin.loadSecurityUsers}
           />
         )}
         {activeAdminModule === "security" && (

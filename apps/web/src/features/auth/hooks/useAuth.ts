@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useState } from "react";
+import { ok } from "@logiscore/core";
 import type { AuthService } from "../services/auth.service";
 import type { AuthUiState } from "../types/auth.types";
 
@@ -86,5 +87,22 @@ export const useAuth = ({ service }: UseAuthOptions) => {
     return result;
   }, [service]);
 
-  return { state, loadSession, signIn, resetPassword };
+  /**
+   * Cierra la sesión del usuario
+   * Llama a signOut del servicio y limpia el estado
+   */
+  const signOut = useCallback(async () => {
+    setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
+    const result = await service.signOut();
+    setState((previous) => ({ ...previous, isLoading: false }));
+    if (!result.ok) {
+      setState((previous) => ({ ...previous, lastError: result.error }));
+      return result;
+    }
+    // Limpiar estado después de logout exitoso
+    setState(initialState);
+    return ok<void>(undefined);
+  }, [service]);
+
+  return { state, loadSession, signIn, resetPassword, signOut };
 };

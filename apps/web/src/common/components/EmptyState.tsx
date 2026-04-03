@@ -19,6 +19,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
 export interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
   message?: string;
+  variant?: "default" | "fullscreen";
 }
 
 const sizeClasses = {
@@ -27,9 +28,13 @@ const sizeClasses = {
   lg: "w-8 h-8"
 };
 
-export function LoadingSpinner({ size = "md", message }: LoadingSpinnerProps) {
+export function LoadingSpinner({ size = "md", message, variant = "default" }: LoadingSpinnerProps) {
+  const containerClass = variant === "fullscreen"
+    ? "fixed inset-0 flex flex-col items-center justify-center gap-3 bg-surface-50 z-50"
+    : "flex flex-col items-center justify-center gap-3 py-8";
+  
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-8">
+    <div className={containerClass}>
       <svg className={`animate-spin text-brand-500 ${sizeClasses[size]}`} fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
