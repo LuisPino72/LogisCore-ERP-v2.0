@@ -70,6 +70,17 @@ export const createTenantService = ({
   const resolveAllowedWarehouses = async (
     userId: string
   ): Promise<Result<string[], AppError>> => {
+    const roleQuery = await supabase.rpc<{ role: string }>(
+      "get_user_primary_role",
+      { p_user_id: userId }
+    );
+    
+    const userRole = roleQuery.data?.role?.trim().toLowerCase();
+    
+    if (userRole === "admin") {
+      return ok([]);
+    }
+
     const warehouseAccess = await supabase.rpc<
       { warehouse_local_id: string }[]
     >("get_user_allowed_warehouses", {
