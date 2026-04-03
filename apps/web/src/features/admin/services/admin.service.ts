@@ -89,6 +89,7 @@ export const createAdminService = ({
       totalTenants: tenants.length,
       activeTenants,
       totalUsers: users.length,
+      activeUsers,
       activeSubscriptions: activeSubs,
       tenantsTrend: 0
     });

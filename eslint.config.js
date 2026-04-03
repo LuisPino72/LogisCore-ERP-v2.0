@@ -33,5 +33,11 @@ export default [
       ...reactHooks.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": "error"
     }
+  },
+  {
+    files: ["**/test/**/*.ts", "**/*.test.ts", "**/*.spec.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off"
+    }
   }
 ];

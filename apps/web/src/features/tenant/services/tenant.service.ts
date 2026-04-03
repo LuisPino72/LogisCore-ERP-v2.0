@@ -134,6 +134,8 @@ export const createTenantService = ({
       full_name: string;
       last_login_at: string | null;
       is_active: boolean;
+      tenant_id: string | null;
+      tenant_slug: string | null;
     }>("get_user_primary_role_extended", {
       p_user_id: userId
     });
