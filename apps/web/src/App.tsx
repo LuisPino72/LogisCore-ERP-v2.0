@@ -24,16 +24,14 @@ function LoadingFallback() {
   );
 }
 
-function DashboardHome() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-content-primary mb-2">Bienvenido a LogisCore ERP</h1>
-      <p className="text-content-secondary">Selecciona un módulo del menú para comenzar.</p>
-    </div>
-  );
+import { DashboardPanel } from "@/features/dashboard";
+
+function DashboardHome({ tenantSlug, actor }: { tenantSlug: string, actor: any }) {
+  const tenantContext = { tenantSlug };
+  return <DashboardPanel tenant={tenantContext as any} actor={actor} />;
 }
 
-function ModuleRenderer({ moduleId }: { moduleId: ModuleId }) {
+function ModuleRenderer({ moduleId, tenantSlug, actor }: { moduleId: ModuleId, tenantSlug: string, actor: any }) {
   const defaultActor = { 
     role: "employee", 
     permissions: { 
@@ -52,28 +50,28 @@ function ModuleRenderer({ moduleId }: { moduleId: ModuleId }) {
   const renderModule = (id: ModuleId) => {
     switch (id) {
       case "dashboard":
-        return <DashboardHome />;
+        return <DashboardHome tenantSlug={tenantSlug} actor={actor} />;
       case "inventory":
-        return <InventoryPanel tenantSlug="" actor={defaultActor as never} products={[]} />;
+        return <InventoryPanel tenantSlug={tenantSlug} actor={actor as never} products={[]} />;
       case "products":
-        return <ProductsCatalog tenantSlug="" actor={defaultActor as never} />;
+        return <ProductsCatalog tenantSlug={tenantSlug} actor={actor as never} />;
       case "purchases":
         return (
           <>
-            <PurchasesCatalogPanel tenantSlug="" actor={defaultActor as never} categories={[]} products={[]} presentations={[]} />
-            <PurchasesPanel tenantSlug="" actor={defaultActor as never} products={[]} />
+            <PurchasesCatalogPanel tenantSlug={tenantSlug} actor={actor as never} categories={[]} products={[]} presentations={[]} />
+            <PurchasesPanel tenantSlug={tenantSlug} actor={actor as never} products={[]} />
           </>
         );
       case "sales":
-        return <SalesPanel tenantSlug="" actor={defaultActor as never} products={[]} />;
+        return <SalesPanel tenantSlug={tenantSlug} actor={actor as never} products={[]} />;
       case "production":
-        return <ProductionPanel tenantSlug="" actor={defaultActor as never} products={[]} />;
+        return <ProductionPanel tenantSlug={tenantSlug} actor={actor as never} products={[]} />;
       case "invoicing":
-        return <InvoicingPanel tenantSlug="" actor={defaultActor as never} />;
+        return <InvoicingPanel tenantSlug={tenantSlug} actor={actor as never} />;
       case "reports":
-        return <ReportsPanel tenantSlug="" actor={defaultActor as never} />;
+        return <ReportsPanel tenantSlug={tenantSlug} actor={actor as never} />;
       default:
-        return <DashboardHome />;
+        return <DashboardHome tenantSlug={tenantSlug} actor={actor} />;
     }
   };
 
@@ -120,9 +118,9 @@ export function App() {
       authService={authService}
       tenantService={tenantService}
       coreService={coreService}
-      renderApp={() => (
+      renderApp={(tenantSlug, actor) => (
         <AppLayout activeModule={activeModule} onModuleChange={setActiveModule}>
-          <ModuleRenderer moduleId={activeModule} />
+          <ModuleRenderer moduleId={activeModule} tenantSlug={tenantSlug} actor={actor} />
         </AppLayout>
       )}
     />
