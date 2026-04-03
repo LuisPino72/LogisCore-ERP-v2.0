@@ -77,10 +77,8 @@ export const createTenantService = ({
       .maybeSingle<{ role: string }>();
     
     const userRole = roleQuery.data?.role?.trim().toLowerCase();
-    console.log("[DEBUG resolveAllowedWarehouses] role from user_roles:", userRole);
     
     if (userRole === "admin") {
-      console.log("[DEBUG resolveAllowedWarehouses] admin detected, returning empty warehouses");
       return ok([]);
     }
 
@@ -141,8 +139,6 @@ export const createTenantService = ({
   };
 
     const resolveUserRole: TenantService["resolveUserRole"] = async (userId) => {
-    console.log("[DEBUG resolveUserRole] Fetching role for userId:", userId);
-    
     const roleQuery = await supabase
       .from("user_roles")
       .select("role, permissions, email, full_name, last_login_at, is_active, tenant_id")
@@ -157,18 +153,7 @@ export const createTenantService = ({
         tenant_id: string | null;
       }>();
 
-    console.log("[DEBUG resolveUserRole] Raw query result:", JSON.stringify(roleQuery));
-
-    if (roleQuery.error) {
-      console.error("[DEBUG resolveUserRole] Query error:", roleQuery.error);
-    }
-    if (!roleQuery.data) {
-      console.warn("[DEBUG resolveUserRole] No data returned for userId:", userId);
-    }
-
     if (roleQuery.error || !roleQuery.data) {
-      console.error("[DEBUG resolveUserRole] Query error:", roleQuery.error);
-      console.warn("[DEBUG resolveUserRole] No data for userId:", userId);
       return err(
         createAppError({
           code: "ROLE_RESOLVE_FAILED",
@@ -178,8 +163,6 @@ export const createTenantService = ({
         })
       );
     }
-
-    console.log("[DEBUG resolveUserRole] role from user_roles:", roleQuery.data.role);
 
     const basePermissions = roleQuery.data.permissions ?? defaultPermissions;
     const warehouseAccessResult = await resolveAllowedWarehouses(userId);
@@ -288,10 +271,8 @@ export const createTenantService = ({
     }
 
     const normalizedRole = roleResult.data.role?.trim().toLowerCase();
-    console.log("[DEBUG bootstrapTenant] role received:", normalizedRole);
 
     if (normalizedRole === "admin") {
-      console.log("[DEBUG bootstrapTenant] Detected admin role, returning Admin Panel");
       return ok({
         tenant: null,
         userRole: roleResult.data,
@@ -304,16 +285,6 @@ export const createTenantService = ({
       .select("id, slug")
       .eq("owner_user_id", userId)
       .maybeSingle<{ id: string; slug: string }>();
-
-    if (!tenantQuery.data && normalizedRole === "owner") {
-      return err(
-        createAppError({
-          code: "TENANT_RESOLVE_FAILED",
-          message: "No se pudo resolver tenant para la sesion actual.",
-          retryable: false
-        })
-      );
-    }
 
     if (!tenantQuery.data) {
       return err(
