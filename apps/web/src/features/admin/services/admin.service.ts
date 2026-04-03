@@ -1,6 +1,6 @@
 /**
  * Servicio de administración del sistema.
- * Maneja todas las operaciones CRUD y de gestión para el super admin.
+ * Maneja todas las operaciones CRUD y de gestión para el admin.
  * 
  * Funcionalidades:
  * - Estadísticas del dashboard
