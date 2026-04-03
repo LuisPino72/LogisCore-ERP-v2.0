@@ -6,7 +6,7 @@ import { BlockedAccessScreen } from "@/features/core/components/BlockedAccessScr
 import { useTenantData } from "../hooks/useTenantData";
 import { adminService } from "@/features/admin/services/admin.service.instance";
 import { useAdmin } from "@/features/admin/hooks/useAdmin";
-import { AdminLayout, Dashboard, TenantsList, SecurityPanel, BusinessTypesPanel, SubscriptionsPanel } from "@/features/admin";
+import { AdminLayout, Dashboard, TenantsList, SecurityPanel, BusinessTypesPanel, SubscriptionsPanel, SettingsPanel } from "@/features/admin";
 import { LoadingSpinner } from "@/common";
 import type { AdminModule, Tenant } from "@/features/admin/types/admin.types";
 
@@ -120,9 +120,12 @@ export function TenantBootstrapGate({
         {activeAdminModule === "security" && (
           <SecurityPanel
             users={admin.securityUsers}
+            tenants={admin.tenants}
             isLoading={admin.state.isLoading}
-            onRefresh={() => admin.loadSecurityUsers()}
+            onRefresh={() => { admin.loadSecurityUsers(); admin.loadTenants(); }}
             onToggleUser={admin.toggleUserStatus}
+            onCreate={admin.createUser}
+            onUpdate={admin.updateUser}
           />
         )}
         {activeAdminModule === "businessTypes" && (
@@ -131,6 +134,7 @@ export function TenantBootstrapGate({
             isLoading={admin.state.isLoading}
             onRefresh={admin.loadBusinessTypes}
             onCreate={admin.createBusinessType}
+            onUpdate={admin.updateBusinessType}
             onDelete={admin.deleteBusinessType}
           />
         )}
@@ -138,9 +142,21 @@ export function TenantBootstrapGate({
           <SubscriptionsPanel
             subscriptions={admin.subscriptions}
             plans={admin.plans}
+            tenants={admin.tenants}
             isLoading={admin.state.isLoading}
             onRefreshSubscriptions={admin.loadSubscriptions}
             onRefreshPlans={admin.loadPlans}
+            onRefreshTenants={admin.loadTenants}
+            onCreate={admin.createSubscription}
+            onUpdate={admin.updateSubscription}
+          />
+        )}
+        {activeAdminModule === "settings" && (
+          <SettingsPanel
+            config={admin.globalConfig}
+            isLoading={admin.state.isLoading}
+            onRefresh={admin.loadGlobalConfig}
+            onUpdate={admin.updateGlobalConfig}
           />
         )}
       </AdminLayout>

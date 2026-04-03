@@ -13,3 +13,4 @@ export * from "./components/TenantsList";
 export * from "./components/SecurityPanel";
 export * from "./components/BusinessTypesPanel";
 export * from "./components/SubscriptionsPanel";
+export * from "./components/SettingsPanel";

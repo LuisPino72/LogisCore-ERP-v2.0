@@ -10,7 +10,7 @@
 
 import { useCallback, useState } from "react";
 import type { AdminService } from "../services/admin.service";
-import type { AdminUiState, AdminModule, DashboardStats, Tenant, BusinessType, Plan, Subscription, SecurityUser } from "../types/admin.types";
+import type { AdminUiState, AdminModule, DashboardStats, Tenant, BusinessType, Plan, Subscription, SecurityUser, GlobalConfig } from "../types/admin.types";
 
 interface UseAdminOptions {
   service: AdminService;
@@ -34,6 +34,7 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [securityUsers, setSecurityUsers] = useState<SecurityUser[]>([]);
+  const [globalConfig, setGlobalConfig] = useState<GlobalConfig | null>(null);
   const [activeModule, setActiveModule] = useState<AdminModule>("dashboard");
 
   const loadStats = useCallback(async () => {
@@ -102,6 +103,17 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     setState(prev => ({ ...prev, isLoading: false }));
   }, [service]);
 
+  const loadGlobalConfig = useCallback(async () => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.getGlobalConfig();
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return;
+    }
+    setGlobalConfig(result.data);
+    setState(prev => ({ ...prev, isLoading: false }));
+  }, [service]);
+
   const createTenant = useCallback(async (input: Parameters<typeof service.createTenant>[0]) => {
     setState(prev => ({ ...prev, isLoading: true, lastError: null }));
     const result = await service.createTenant(input);
@@ -150,6 +162,18 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     return result;
   }, [service]);
 
+  const updateBusinessType = useCallback(async (id: string, input: Parameters<typeof service.updateBusinessType>[1]) => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.updateBusinessType(id, input);
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return result;
+    }
+    setBusinessTypes(prev => prev.map(bt => bt.id === id ? result.data : bt));
+    setState(prev => ({ ...prev, isLoading: false }));
+    return result;
+  }, [service]);
+
   const deleteBusinessType = useCallback(async (id: string) => {
     setState(prev => ({ ...prev, isLoading: true, lastError: null }));
     const result = await service.deleteBusinessType(id);
@@ -158,6 +182,30 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
       return result;
     }
     setBusinessTypes(prev => prev.filter(bt => bt.id !== id));
+    setState(prev => ({ ...prev, isLoading: false }));
+    return result;
+  }, [service]);
+
+  const createUser = useCallback(async (input: Parameters<typeof service.createUser>[0]) => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.createUser(input);
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return result;
+    }
+    setSecurityUsers(prev => [...prev, result.data]);
+    setState(prev => ({ ...prev, isLoading: false }));
+    return result;
+  }, [service]);
+
+  const updateUser = useCallback(async (userId: string, input: Parameters<typeof service.updateUser>[1]) => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.updateUser(userId, input);
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return result;
+    }
+    setSecurityUsers(prev => prev.map(u => u.userId === userId ? result.data : u));
     setState(prev => ({ ...prev, isLoading: false }));
     return result;
   }, [service]);
@@ -174,6 +222,42 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     return result;
   }, [service]);
 
+  const createSubscription = useCallback(async (input: Parameters<typeof service.createSubscription>[0]) => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.createSubscription(input);
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return result;
+    }
+    setSubscriptions(prev => [...prev, result.data]);
+    setState(prev => ({ ...prev, isLoading: false }));
+    return result;
+  }, [service]);
+
+  const updateSubscription = useCallback(async (id: string, input: Parameters<typeof service.updateSubscription>[1]) => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.updateSubscription(id, input);
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return result;
+    }
+    setSubscriptions(prev => prev.map(s => s.id === id ? result.data : s));
+    setState(prev => ({ ...prev, isLoading: false }));
+    return result;
+  }, [service]);
+
+  const updateGlobalConfig = useCallback(async (input: Parameters<typeof service.updateGlobalConfig>[0]) => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.updateGlobalConfig(input);
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return result;
+    }
+    setGlobalConfig(result.data);
+    setState(prev => ({ ...prev, isLoading: false }));
+    return result;
+  }, [service]);
+
   return {
     state,
     stats,
@@ -182,6 +266,7 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     plans,
     subscriptions,
     securityUsers,
+    globalConfig,
     activeModule,
     setActiveModule,
     loadStats,
@@ -190,11 +275,18 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     loadPlans,
     loadSubscriptions,
     loadSecurityUsers,
+    loadGlobalConfig,
     createTenant,
     updateTenant,
     deleteTenant,
     createBusinessType,
+    updateBusinessType,
     deleteBusinessType,
-    toggleUserStatus
+    createUser,
+    updateUser,
+    toggleUserStatus,
+    createSubscription,
+    updateSubscription,
+    updateGlobalConfig
   };
 };

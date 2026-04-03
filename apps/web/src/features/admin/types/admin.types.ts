@@ -51,22 +51,22 @@ export interface CreateTenantInput {
  * Datos para actualizar un tenant existente.
  */
 export interface UpdateTenantInput {
-  name?: string;
-  businessTypeId?: string;
+  name?: string | undefined;
+  businessTypeId?: string | undefined;
   isActive?: boolean;
-  logoUrl?: string;
-  contactEmail?: string;
-  phone?: string;
-  address?: string;
-  timezone?: string;
-  currency?: string;
+  logoUrl?: string | undefined;
+  contactEmail?: string | undefined;
+  phone?: string | undefined;
+  address?: string | undefined;
+  timezone?: string | undefined;
+  currency?: string | undefined;
   taxpayerInfo?: {
-    rif?: string;
-    razonSocial?: string;
-    direccionFiscal?: string;
-    regimen?: string;
+    rif?: string | undefined;
+    razonSocial?: string | undefined;
+    direccionFiscal?: string | undefined;
+    regimen?: string | undefined;
   };
-  ownerUserId?: string;
+  ownerUserId?: string | undefined;
 }
 
 /**
@@ -85,6 +85,14 @@ export interface BusinessType {
 export interface CreateBusinessTypeInput {
   name: string;
   description?: string;
+}
+
+/**
+ * Datos para actualizar un tipo de negocio.
+ */
+export interface UpdateBusinessTypeInput {
+  name?: string;
+  description?: string | undefined;
 }
 
 /**
@@ -120,6 +128,29 @@ export interface Subscription {
 }
 
 /**
+ * Datos para crear una nueva suscripción.
+ */
+export interface CreateSubscriptionInput {
+  tenantId: string;
+  planId: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  billingCycle?: string;
+}
+
+/**
+ * Datos para actualizar una suscripción.
+ */
+export interface UpdateSubscriptionInput {
+  planId?: string;
+  status?: string | undefined;
+  startDate?: string;
+  endDate?: string | undefined;
+  billingCycle?: string | undefined;
+}
+
+/**
  * Usuario con rol en el sistema (admin de tenant).
  */
 export interface SecurityUser {
@@ -135,6 +166,26 @@ export interface SecurityUser {
 }
 
 /**
+ * Datos para crear un nuevo usuario.
+ */
+export interface CreateUserInput {
+  email: string;
+  fullName?: string | undefined;
+  role: "owner" | "employee";
+  tenantId: string;
+  password?: string | undefined;
+}
+
+/**
+ * Datos para actualizar un usuario.
+ */
+export interface UpdateUserInput {
+  fullName?: string | undefined;
+  role?: "owner" | "employee";
+  isActive?: boolean;
+}
+
+/**
  * Estadísticas globales del dashboard administrativo.
  */
 export interface DashboardStats {
@@ -143,6 +194,40 @@ export interface DashboardStats {
   totalUsers: number;
   activeSubscriptions: number;
   tenantsTrend: number;
+}
+
+/**
+ * Configuración global del sistema.
+ */
+export interface GlobalConfig {
+  id: string;
+  systemName: string;
+  defaultCurrency: string;
+  globalTaxRules: Array<{
+    name: string;
+    rate: number;
+    type: "iva" | "islr" | "igtf";
+  }>;
+  maintenanceMode: boolean;
+  supportContact?: string;
+  welcomeMessage?: string;
+  updatedAt: string;
+}
+
+/**
+ * Datos para actualizar la configuración global.
+ */
+export interface UpdateGlobalConfigInput {
+  systemName?: string;
+  defaultCurrency?: string;
+  globalTaxRules?: Array<{
+    name: string;
+    rate: number;
+    type: "iva" | "islr" | "igtf";
+  }>;
+  maintenanceMode?: boolean;
+  supportContact?: string | undefined;
+  welcomeMessage?: string | undefined;
 }
 
 /**

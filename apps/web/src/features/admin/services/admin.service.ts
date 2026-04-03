@@ -23,7 +23,14 @@ import type {
   Plan,
   Subscription,
   SecurityUser,
-  DashboardStats
+  DashboardStats,
+  UpdateBusinessTypeInput,
+  CreateSubscriptionInput,
+  UpdateSubscriptionInput,
+  CreateUserInput,
+  UpdateUserInput,
+  GlobalConfig,
+  UpdateGlobalConfigInput
 } from "../types/admin.types";
 
 /**
@@ -39,11 +46,18 @@ export interface AdminService {
   deleteTenant(id: string): Promise<Result<void, AppError>>;
   listBusinessTypes(): Promise<Result<BusinessType[], AppError>>;
   createBusinessType(input: CreateBusinessTypeInput): Promise<Result<BusinessType, AppError>>;
+  updateBusinessType(id: string, input: UpdateBusinessTypeInput): Promise<Result<BusinessType, AppError>>;
   deleteBusinessType(id: string): Promise<Result<void, AppError>>;
   listPlans(): Promise<Result<Plan[], AppError>>;
   listSubscriptions(): Promise<Result<Subscription[], AppError>>;
+  createSubscription(input: CreateSubscriptionInput): Promise<Result<Subscription, AppError>>;
+  updateSubscription(id: string, input: UpdateSubscriptionInput): Promise<Result<Subscription, AppError>>;
   listSecurityUsers(tenantId?: string): Promise<Result<SecurityUser[], AppError>>;
+  createUser(input: CreateUserInput): Promise<Result<SecurityUser, AppError>>;
+  updateUser(userId: string, input: UpdateUserInput): Promise<Result<SecurityUser, AppError>>;
   toggleUserStatus(userId: string, isActive: boolean): Promise<Result<void, AppError>>;
+  getGlobalConfig(): Promise<Result<GlobalConfig, AppError>>;
+  updateGlobalConfig(input: UpdateGlobalConfigInput): Promise<Result<GlobalConfig, AppError>>;
 }
 
 /** Dependencias necesarias para crear el servicio */
@@ -302,6 +316,24 @@ export const createAdminService = ({
     });
   };
 
+  const updateBusinessType: AdminService["updateBusinessType"] = async (id, input) => {
+    const result = await supabase.from("business_types").update(input).eq("id", id).select().single();
+    if (result.error) {
+      return err(createAppError({
+        code: "ADMIN_UPDATE_BUSINESS_TYPE_FAILED",
+        message: result.error.message,
+        retryable: false
+      }));
+    }
+
+    return ok({
+      id: result.data.id,
+      name: result.data.name,
+      description: result.data.description,
+      createdAt: result.data.created_at
+    });
+  };
+
   const deleteBusinessType: AdminService["deleteBusinessType"] = async (id) => {
     const result = await supabase.from("business_types").delete().eq("id", id);
     if (result.error) {
@@ -366,6 +398,72 @@ export const createAdminService = ({
     return ok(subscriptions);
   };
 
+  const createSubscription: AdminService["createSubscription"] = async (input) => {
+    const insertData = {
+      tenant_id: input.tenantId,
+      plan_id: input.planId,
+      status: input.status || "active",
+      start_date: input.startDate || new Date().toISOString(),
+      end_date: input.endDate,
+      billing_cycle: input.billingCycle || "monthly"
+    };
+
+    const result = await supabase.from("subscriptions").insert(insertData).select("*, tenants(name), plans(name)").single();
+    if (result.error) {
+      return err(createAppError({
+        code: "ADMIN_CREATE_SUBSCRIPTION_FAILED",
+        message: result.error.message,
+        retryable: false
+      }));
+    }
+
+    return ok({
+      id: result.data.id,
+      tenantId: result.data.tenant_id,
+      tenantName: result.data.tenants?.name,
+      planId: result.data.plan_id,
+      planName: result.data.plans?.name,
+      status: result.data.status,
+      startDate: result.data.start_date,
+      endDate: result.data.end_date,
+      features: result.data.features,
+      billingCycle: result.data.billing_cycle,
+      createdAt: result.data.created_at
+    });
+  };
+
+  const updateSubscription: AdminService["updateSubscription"] = async (id, input) => {
+    const updateData: Record<string, unknown> = {};
+    if (input.planId !== undefined) updateData.plan_id = input.planId;
+    if (input.status !== undefined) updateData.status = input.status;
+    if (input.startDate !== undefined) updateData.start_date = input.startDate;
+    if (input.endDate !== undefined) updateData.end_date = input.endDate;
+    if (input.billingCycle !== undefined) updateData.billing_cycle = input.billingCycle;
+
+    const result = await supabase.from("subscriptions").update(updateData).eq("id", id).select("*, tenants(name), plans(name)").single();
+    if (result.error) {
+      return err(createAppError({
+        code: "ADMIN_UPDATE_SUBSCRIPTION_FAILED",
+        message: result.error.message,
+        retryable: false
+      }));
+    }
+
+    return ok({
+      id: result.data.id,
+      tenantId: result.data.tenant_id,
+      tenantName: result.data.tenants?.name,
+      planId: result.data.plan_id,
+      planName: result.data.plans?.name,
+      status: result.data.status,
+      startDate: result.data.start_date,
+      endDate: result.data.end_date,
+      features: result.data.features,
+      billingCycle: result.data.billing_cycle,
+      createdAt: result.data.created_at
+    });
+  };
+
   const listSecurityUsers: AdminService["listSecurityUsers"] = async (tenantId) => {
     const query = tenantId 
       ? supabase.from("user_roles").select("*, tenants(name)").eq("tenant_id", tenantId)
@@ -395,6 +493,79 @@ export const createAdminService = ({
     return ok(users);
   };
 
+  const createUser: AdminService["createUser"] = async (input) => {
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: input.email,
+      password: input.password || Math.random().toString(36).slice(-8),
+      email_confirm: true,
+      user_metadata: { full_name: input.fullName }
+    });
+
+    if (authError || !authData.user) {
+      return err(createAppError({
+        code: "ADMIN_CREATE_USER_AUTH_FAILED",
+        message: authError?.message ?? "Error en el servidor de autenticación",
+        retryable: false
+      }));
+    }
+
+    const result = await supabase.from("user_roles").insert({
+      user_id: authData.user.id,
+      tenant_id: input.tenantId,
+      role: input.role,
+      email: input.email,
+      full_name: input.fullName,
+      is_active: true
+    }).select("*, tenants(name)").single();
+
+    if (result.error) {
+      return err(createAppError({
+        code: "ADMIN_CREATE_USER_ROLE_FAILED",
+        message: result.error.message,
+        retryable: false
+      }));
+    }
+
+    return ok({
+      id: result.data.id,
+      userId: result.data.user_id,
+      email: result.data.email,
+      fullName: result.data.full_name,
+      tenantId: result.data.tenant_id,
+      tenantName: result.data.tenants?.name,
+      role: result.data.role,
+      isActive: result.data.is_active ?? true
+    });
+  };
+
+  const updateUser: AdminService["updateUser"] = async (userId, input) => {
+    const updateData: Record<string, unknown> = {};
+    if (input.fullName !== undefined) updateData.full_name = input.fullName;
+    if (input.role !== undefined) updateData.role = input.role;
+    if (input.isActive !== undefined) updateData.is_active = input.isActive;
+
+    const result = await supabase.from("user_roles").update(updateData).eq("user_id", userId).select("*, tenants(name)").single();
+    if (result.error) {
+      return err(createAppError({
+        code: "ADMIN_UPDATE_USER_FAILED",
+        message: result.error.message,
+        retryable: false
+      }));
+    }
+
+    return ok({
+      id: result.data.id,
+      userId: result.data.user_id,
+      email: result.data.email,
+      fullName: result.data.full_name,
+      tenantId: result.data.tenant_id,
+      tenantName: result.data.tenants?.name,
+      role: result.data.role,
+      isActive: result.data.is_active ?? true,
+      lastLoginAt: result.data.last_login_at
+    });
+  };
+
   const toggleUserStatus: AdminService["toggleUserStatus"] = async (userId, isActive) => {
     const result = await supabase.from("user_roles").update({ is_active: isActive }).eq("user_id", userId);
     if (result.error) {
@@ -408,6 +579,62 @@ export const createAdminService = ({
     return ok(undefined);
   };
 
+  const getGlobalConfig: AdminService["getGlobalConfig"] = async () => {
+    const result = await supabase.from("global_config").select("*").order("updated_at", { ascending: false }).limit(1).single();
+    if (result.error) {
+      return err(createAppError({
+        code: "ADMIN_GET_CONFIG_FAILED",
+        message: result.error.message,
+        retryable: true
+      }));
+    }
+
+    return ok({
+      id: result.data.id,
+      systemName: result.data.system_name,
+      defaultCurrency: result.data.default_currency,
+      globalTaxRules: result.data.global_tax_rules,
+      maintenanceMode: result.data.maintenance_mode,
+      supportContact: result.data.support_contact,
+      welcomeMessage: result.data.welcome_message,
+      updatedAt: result.data.updated_at
+    });
+  };
+
+  const updateGlobalConfig: AdminService["updateGlobalConfig"] = async (input) => {
+    const updateData: Record<string, unknown> = {};
+    if (input.systemName !== undefined) updateData.system_name = input.systemName;
+    if (input.defaultCurrency !== undefined) updateData.default_currency = input.defaultCurrency;
+    if (input.globalTaxRules !== undefined) updateData.global_tax_rules = input.globalTaxRules;
+    if (input.maintenanceMode !== undefined) updateData.maintenance_mode = input.maintenanceMode;
+    if (input.supportContact !== undefined) updateData.support_contact = input.supportContact;
+    if (input.welcomeMessage !== undefined) updateData.welcome_message = input.welcomeMessage;
+    updateData.updated_at = new Date().toISOString();
+
+    const configResult = await getGlobalConfig();
+    if (!configResult.ok) return err(configResult.error);
+
+    const result = await supabase.from("global_config").update(updateData).eq("id", configResult.data.id).select().single();
+    if (result.error) {
+      return err(createAppError({
+        code: "ADMIN_UPDATE_CONFIG_FAILED",
+        message: result.error.message,
+        retryable: false
+      }));
+    }
+
+    return ok({
+      id: result.data.id,
+      systemName: result.data.system_name,
+      defaultCurrency: result.data.default_currency,
+      globalTaxRules: result.data.global_tax_rules,
+      maintenanceMode: result.data.maintenance_mode,
+      supportContact: result.data.support_contact,
+      welcomeMessage: result.data.welcome_message,
+      updatedAt: result.data.updated_at
+    });
+  };
+
   return {
     getDashboardStats,
     listTenants,
@@ -417,10 +644,17 @@ export const createAdminService = ({
     deleteTenant,
     listBusinessTypes,
     createBusinessType,
+    updateBusinessType,
     deleteBusinessType,
     listPlans,
     listSubscriptions,
+    createSubscription,
+    updateSubscription,
     listSecurityUsers,
-    toggleUserStatus
+    createUser,
+    updateUser,
+    toggleUserStatus,
+    getGlobalConfig,
+    updateGlobalConfig
   };
 };
