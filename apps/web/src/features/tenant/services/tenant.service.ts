@@ -286,19 +286,46 @@ export const createTenantService = ({
       });
     }
 
-    console.log("[DEBUG bootstrapTenant] Not admin, proceeding to resolve tenant");
-    const tenantResult = await resolveTenantContext(userId);
-    if (!tenantResult.ok) {
-      return err(tenantResult.error);
+    const tenantQuery = await supabase
+      .from("tenants")
+      .select("id, slug")
+      .eq("owner_user_id", userId)
+      .maybeSingle<{ id: string; slug: string }>();
+
+    if (!tenantQuery.data && normalizedRole === "owner") {
+      return err(
+        createAppError({
+          code: "TENANT_RESOLVE_FAILED",
+          message: "No se pudo resolver tenant para la sesion actual.",
+          retryable: false
+        })
+      );
     }
 
-    const subscriptionResult = await checkSubscription(tenantResult.data.tenantSlug);
+    if (!tenantQuery.data) {
+      return err(
+        createAppError({
+          code: "TENANT_RESOLVE_FAILED",
+          message: "No se pudo resolver tenant para la sesion actual.",
+          retryable: false
+        })
+      );
+    }
+
+    const tenant = {
+      tenantUuid: tenantQuery.data.id,
+      tenantSlug: tenantQuery.data.slug,
+      userId
+    };
+    eventBus.emit("TENANT.RESOLVED", tenant);
+
+    const subscriptionResult = await checkSubscription(tenantQuery.data.slug);
     if (!subscriptionResult.ok) {
       return err(subscriptionResult.error);
     }
 
     return ok({
-      tenant: tenantResult.data,
+      tenant,
       userRole: roleResult.data,
       subscriptionActive: subscriptionResult.data
     });
