@@ -34,6 +34,7 @@ export interface CreateTenantInput {
   name: string;
   slug: string;
   ownerEmail: string;
+  planId: string; // ID del plan inicial
   businessTypeId?: string;
   contactEmail?: string;
   phone?: string;

@@ -11,6 +11,7 @@ interface TaxpayerInfo {
 interface TenantFormProps {
   initialData?: Tenant | null;
   businessTypes: { id: string; name: string }[];
+  plans: { id: string; name: string; price: number }[];
   securityUsers: SecurityUser[];
   onSubmit: (input: any) => Promise<void>;
   onCancel: () => void;
@@ -21,6 +22,7 @@ const emptyFormData: any = {
   slug: "",
   ownerEmail: "",
   ownerUserId: "",
+  planId: "", // Nuevo campo obligatorio para creación
   businessTypeId: "",
   contactEmail: "",
   phone: "",
@@ -129,6 +131,29 @@ export function TenantForm({ initialData, businessTypes, securityUsers, onSubmit
               </div>
             )}
           </div>
+
+          {/* Plan Selection (Only for New Tenants) */}
+          {!initialData && (
+            <div>
+              <h3 className="text-sm font-medium text-content-primary mb-3 border-b pb-1">Plan de Suscripción</h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="label">Elegir un Plan</label>
+                  <select
+                    className="input"
+                    value={formData.planId}
+                    onChange={(e) => setFormData({ ...formData, planId: e.target.value })}
+                    required
+                  >
+                    <option value="">Seleccionar plan...</option>
+                    {plans.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} - ${p.price}/mes</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Logo */}
           <div>

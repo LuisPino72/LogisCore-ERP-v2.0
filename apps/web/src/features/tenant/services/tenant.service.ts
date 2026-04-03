@@ -42,7 +42,7 @@ interface TenantSupabaseLike {
 export interface TenantService {
   resolveTenantContext(userId: string): Promise<Result<TenantContext, AppError>>;
   resolveUserRole(userId: string): Promise<Result<UserRole, AppError>>;
-  checkSubscription(tenantSlug: string): Promise<Result<boolean, AppError>>;
+  checkSubscription(tenantSlug: string): Promise<Result<{ isActive: boolean; endDate?: string; isLastDay?: boolean }, AppError>>;
   bootstrapTenant(userId: string): Promise<Result<TenantBootstrapResult, AppError>>;
 }
 
@@ -242,7 +242,7 @@ export const createTenantService = ({
       if (!fallbackIsActive) {
         eventBus.emit("SUBSCRIPTION.BLOCKED", { tenantSlug });
       }
-      return ok(fallbackIsActive);
+      return ok({ isActive: fallbackIsActive });
     }
 
     if (!subscriptionQuery.data || typeof subscriptionQuery.data.isActive !== "boolean") {
@@ -261,7 +261,11 @@ export const createTenantService = ({
       eventBus.emit("SUBSCRIPTION.BLOCKED", { tenantSlug });
     }
 
-    return ok(isActive);
+    return ok({
+      isActive,
+      endDate: (subscriptionQuery.data as any).endDate,
+      isLastDay: (subscriptionQuery.data as any).isLastDay
+    });
   };
 
   const bootstrapTenant: TenantService["bootstrapTenant"] = async (userId) => {
@@ -276,7 +280,9 @@ export const createTenantService = ({
       return ok({
         tenant: null,
         userRole: roleResult.data,
-        subscriptionActive: true
+        subscriptionActive: true,
+        subscriptionEndDate: null,
+        isLastDay: false
       });
     }
 
@@ -311,7 +317,9 @@ export const createTenantService = ({
     return ok({
       tenant,
       userRole: roleResult.data,
-      subscriptionActive: subscriptionResult.data
+      subscriptionActive: subscriptionResult.data.isActive,
+      subscriptionEndDate: subscriptionResult.data.endDate || null,
+      isLastDay: !!subscriptionResult.data.isLastDay
     });
   };
 

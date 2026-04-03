@@ -56,6 +56,7 @@ export interface AdminService {
   createUser(input: CreateUserInput): Promise<Result<SecurityUser, AppError>>;
   updateUser(userId: string, input: UpdateUserInput): Promise<Result<SecurityUser, AppError>>;
   toggleUserStatus(userId: string, isActive: boolean): Promise<Result<void, AppError>>;
+  renewSubscription(subscriptionId: string): Promise<Result<void, AppError>>;
   getGlobalConfig(): Promise<Result<GlobalConfig, AppError>>;
   updateGlobalConfig(input: UpdateGlobalConfigInput): Promise<Result<GlobalConfig, AppError>>;
 }
@@ -210,6 +211,16 @@ export const createAdminService = ({
       role: "owner",
       email: input.ownerEmail,
       is_active: true
+    });
+
+    // Crear suscripción inicial de 1 mes
+    await supabase.from("subscriptions").insert({
+      tenant_id: result.data.id,
+      plan_id: input.planId,
+      status: "active",
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      billing_cycle: "monthly"
     });
 
     eventBus.emit("ADMIN.TENANT_CREATED", { tenantId: result.data.id, slug: result.data.slug });
@@ -464,6 +475,19 @@ export const createAdminService = ({
     });
   };
 
+  const renewSubscription: AdminService["renewSubscription"] = async (id) => {
+    const result = await supabase.rpc("renew_subscription", { p_subscription_id: id });
+    if (result.error) {
+      return err(createAppError({
+        code: "ADMIN_RENEW_SUBSCRIPTION_FAILED",
+        message: result.error.message,
+        retryable: false
+      }));
+    }
+    eventBus.emit("ADMIN.SUBSCRIPTION_RENEWED", { subscriptionId: id });
+    return ok(undefined);
+  };
+
   const listSecurityUsers: AdminService["listSecurityUsers"] = async (tenantId) => {
     const query = tenantId 
       ? supabase.from("user_roles").select("*, tenants(name)").eq("tenant_id", tenantId)
@@ -650,6 +674,7 @@ export const createAdminService = ({
     listSubscriptions,
     createSubscription,
     updateSubscription,
+    renewSubscription,
     listSecurityUsers,
     createUser,
     updateUser,

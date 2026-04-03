@@ -8,6 +8,7 @@
 import { useState, type FormEvent } from "react";
 import type { AuthSession } from "../types/auth.types";
 import type { AppError, Result } from "@logiscore/core";
+import { FormField, Input } from "@/common";
 
 // ============================================================================
 // LoginPage - Página completa de login
@@ -89,22 +90,18 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
                     </div>
                   )}
 
-                  <div>
-                    <label htmlFor="resetEmail" className="label">
-                      Correo electrónico
-                    </label>
-                    <input
+                  <FormField label="Correo electrónico" htmlFor="resetEmail" required>
+                    <Input
                       id="resetEmail"
                       type="email"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       required
                       disabled={isLoading}
-                      className="input"
                       placeholder="tu@correo.com"
                       autoComplete="email"
                     />
-                  </div>
+                  </FormField>
 
                   <button
                     type="submit"
@@ -209,48 +206,44 @@ export function LoginForm({ onLogin, isLoading, error, onForgotPassword }: Login
         </div>
       )}
 
-      <div>
-        <label htmlFor="email" className="label">
-          Correo electrónico
-        </label>
-        <input
+      <FormField label="Correo electrónico" htmlFor="email" required>
+        <Input
           id="email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
           disabled={isLoading}
-          className="input"
           placeholder="tu@correo.com"
           autoComplete="email"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <div className="flex items-center justify-between">
-          <label htmlFor="password" className="label mb-0">
-            Contraseña
-          </label>
+      <FormField 
+        label="Contraseña" 
+        htmlFor="password" 
+        required
+      >
+        <div className="relative">
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={isLoading}
+            placeholder="••••••••"
+            autoComplete="current-password"
+          />
           <button
             type="button"
             onClick={onForgotPassword}
-            className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+            className="absolute right-0 -top-7 text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors"
           >
             Olvidé mi contraseña
           </button>
         </div>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          disabled={isLoading}
-          className="input"
-          placeholder="••••••••"
-          autoComplete="current-password"
-        />
-      </div>
+      </FormField>
 
       <button
         type="submit"

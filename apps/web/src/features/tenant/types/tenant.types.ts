@@ -76,6 +76,8 @@ export interface TenantBootstrapResult {
   tenant: TenantContext | null;
   userRole: UserRole;
   subscriptionActive: boolean;
+  subscriptionEndDate: string | null;
+  isLastDay: boolean;
 }
 
 /**
@@ -84,6 +86,8 @@ export interface TenantBootstrapResult {
 export interface TenantUiState {
   isLoading: boolean;
   isBlocked: boolean;
+  isLastDay: boolean; // Flag para el banner
+  subscriptionEndDate: string | null;
   tenant: TenantContext | null;
   userRole: UserRole | null;
   lastError: AppError | null;

@@ -12,6 +12,8 @@ import type { TenantService } from "../services/tenant.service";
 const initialState: TenantUiState = {
   isLoading: false,
   isBlocked: false,
+  isLastDay: false,
+  subscriptionEndDate: null,
   tenant: null,
   userRole: null,
   lastError: null
@@ -56,6 +58,8 @@ export const useTenantData = ({
     setState({
       isLoading: false,
       isBlocked: !tenantResult.data.subscriptionActive,
+      isLastDay: !!tenantResult.data.isLastDay,
+      subscriptionEndDate: tenantResult.data.subscriptionEndDate || null,
       tenant: tenantResult.data.tenant,
       userRole: tenantResult.data.userRole,
       lastError: null

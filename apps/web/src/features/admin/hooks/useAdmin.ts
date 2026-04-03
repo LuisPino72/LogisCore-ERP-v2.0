@@ -246,6 +246,19 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     return result;
   }, [service]);
 
+  const renewSubscription = useCallback(async (id: string) => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.renewSubscription(id);
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return result;
+    }
+    // Recargar suscripciones para ver las nuevas fechas
+    await loadSubscriptions();
+    setState(prev => ({ ...prev, isLoading: false }));
+    return result;
+  }, [service, loadSubscriptions]);
+
   const updateGlobalConfig = useCallback(async (input: Parameters<typeof service.updateGlobalConfig>[0]) => {
     setState(prev => ({ ...prev, isLoading: true, lastError: null }));
     const result = await service.updateGlobalConfig(input);
@@ -287,6 +300,7 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     toggleUserStatus,
     createSubscription,
     updateSubscription,
+    renewSubscription,
     updateGlobalConfig
   };
 };

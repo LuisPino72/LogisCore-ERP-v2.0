@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { LoadingSpinner } from "@/common";
 import { TenantTable } from "./TenantTable";
 import { TenantForm } from "./TenantForm";
-import type { Tenant, CreateTenantInput, UpdateTenantInput, SecurityUser } from "../types/admin.types";
+import type { Tenant, CreateTenantInput, UpdateTenantInput, SecurityUser, Plan, BusinessType } from "../types/admin.types";
 
 interface TenantsListProps {
   tenants: Tenant[];
-  businessTypes: { id: string; name: string }[];
+  businessTypes: BusinessType[];
+  plans: Plan[];
   securityUsers: SecurityUser[];
   isLoading: boolean;
   onRefresh: () => void;
@@ -16,11 +17,13 @@ interface TenantsListProps {
   onAccessTenant: (tenant: Tenant) => void;
   onLoadBusinessTypes: () => void;
   onLoadSecurityUsers: () => void;
+  onLoadPlans: () => void;
 }
 
 export function TenantsList({ 
   tenants, 
   businessTypes,
+  plans,
   securityUsers,
   isLoading, 
   onRefresh, 
@@ -29,7 +32,8 @@ export function TenantsList({
   onDelete,
   onAccessTenant,
   onLoadBusinessTypes,
-  onLoadSecurityUsers
+  onLoadSecurityUsers,
+  onLoadPlans
 }: TenantsListProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
@@ -38,7 +42,8 @@ export function TenantsList({
     onRefresh();
     onLoadBusinessTypes();
     onLoadSecurityUsers();
-  }, [onRefresh, onLoadBusinessTypes, onLoadSecurityUsers]);
+    onLoadPlans();
+  }, [onRefresh, onLoadBusinessTypes, onLoadSecurityUsers, onLoadPlans]);
 
   const handleSubmit = async (formData: any) => {
     if (editingTenant) {
@@ -77,6 +82,7 @@ export function TenantsList({
              <TenantForm
                 initialData={editingTenant}
                 businessTypes={businessTypes}
+                plans={plans}
                 securityUsers={securityUsers}
                 onSubmit={handleSubmit}
                 onCancel={() => { setShowForm(false); setEditingTenant(null); }}
