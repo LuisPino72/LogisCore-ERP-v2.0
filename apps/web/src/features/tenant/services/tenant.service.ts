@@ -70,14 +70,17 @@ export const createTenantService = ({
   const resolveAllowedWarehouses = async (
     userId: string
   ): Promise<Result<string[], AppError>> => {
-    const roleQuery = await supabase.rpc<{ role: string }>(
-      "get_user_primary_role",
-      { p_user_id: userId }
-    );
+    const roleQuery = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle<{ role: string }>();
     
     const userRole = roleQuery.data?.role?.trim().toLowerCase();
+    console.log("[DEBUG resolveAllowedWarehouses] role from user_roles:", userRole);
     
     if (userRole === "admin") {
+      console.log("[DEBUG resolveAllowedWarehouses] admin detected, returning empty warehouses");
       return ok([]);
     }
 
