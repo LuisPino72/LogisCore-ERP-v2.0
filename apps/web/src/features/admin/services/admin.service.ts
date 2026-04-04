@@ -170,75 +170,47 @@ export const createAdminService = ({
   };
 
   const createTenant: AdminService["createTenant"] = async (input) => {
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: input.ownerEmail,
-      email_confirm: true
-    });
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${anonKey}`
+        },
+        body: JSON.stringify(input)
+      });
 
-    if (authError || !authData.user) {
-      return err(createAppError({
-        code: "ADMIN_CREATE_TENANT_USER_FAILED",
-        message: authError?.message ?? "No se pudo crear el usuario",
-        retryable: false
-      }));
-    }
+      const result = await response.json();
 
-    const insertData = {
-      name: input.name,
-      slug: input.slug,
-      owner_user_id: authData.user.id,
-      contact_email: input.contactEmail,
-      phone: input.phone,
-      address: input.address,
-      business_type_id: input.businessTypeId,
-      logo_url: input.logoUrl,
-      taxpayer_info: input.taxpayerInfo,
-      is_active: true
-    };
+      if (!response.ok || !result.success) {
+        return err(createAppError({
+          code: "ADMIN_CREATE_TENANT_FAILED",
+          message: result.error ?? "Error al crear tenant",
+          retryable: false
+        }));
+      }
 
-    const result = await supabase.from("tenants").insert(insertData).select().single();
-    if (result.error) {
+      eventBus.emit("ADMIN.TENANT_CREATED", { tenantId: result.tenant.id, slug: result.tenant.slug });
+
+      return ok({
+        id: result.tenant.id,
+        name: result.tenant.name,
+        slug: result.tenant.slug,
+        ownerUserId: "",
+        businessTypeId: input.businessTypeId || "",
+        isActive: true,
+        createdAt: new Date().toISOString()
+      });
+    } catch (error) {
       return err(createAppError({
         code: "ADMIN_CREATE_TENANT_FAILED",
-        message: result.error.message,
+        message: String(error),
         retryable: false
       }));
     }
-
-    await supabase.from("user_roles").insert({
-      user_id: authData.user.id,
-      tenant_id: result.data.id,
-      role: "owner",
-      email: input.ownerEmail,
-      is_active: true
-    });
-
-    // Crear suscripción inicial (si es plan free con trial, usar trial days)
-    const trialDays = input.trialDays || 0;
-    const isTrial = trialDays > 0;
-    const daysToAdd = isTrial ? trialDays : 30;
-    
-    await supabase.from("subscriptions").insert({
-      tenant_id: result.data.id,
-      plan_id: input.planId,
-      status: isTrial ? "trial" : "active",
-      start_date: new Date().toISOString(),
-      end_date: new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000).toISOString(),
-      billing_cycle: "monthly",
-      trial_days: trialDays
-    });
-
-    eventBus.emit("ADMIN.TENANT_CREATED", { tenantId: result.data.id, slug: result.data.slug });
-
-    return ok({
-      id: result.data.id,
-      name: result.data.name,
-      slug: result.data.slug,
-      ownerUserId: result.data.owner_user_id,
-      businessTypeId: result.data.business_type_id,
-      isActive: result.data.is_active ?? true,
-      createdAt: result.data.created_at
-    });
   };
 
   const updateTenant: AdminService["updateTenant"] = async (id, input) => {
