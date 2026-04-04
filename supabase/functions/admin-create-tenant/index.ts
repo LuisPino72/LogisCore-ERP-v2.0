@@ -1,5 +1,4 @@
 import { createClient } from "jsr:@supabase/supabase-js@2.49.1";
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const jsonHeaders = {
   "Content-Type": "application/json",
@@ -27,68 +26,46 @@ interface CreateTenantInput {
   };
 }
 
-interface CreateTenantResult {
-  success: boolean;
-  tenant?: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-  error?: string;
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: jsonHeaders });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  // Usar service role key del entorno de Supabase directamente
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   
-  // Verificar que es admin (Bearer token en el header)
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
-    console.log("ERROR: No Authorization header provided");
-    return new Response(
-      JSON.stringify({ success: false, error: "Unauthorized - No token provided" } as CreateTenantResult),
-      { status: 401, headers: jsonHeaders }
-    );
-  }
-
   try {
-    const input: CreateTenantInput = await req.json();
-    
-    console.log("Creating tenant - input received:", { name: input.name, slug: input.slug, ownerEmail: input.ownerEmail, planId: input.planId, trialDays: input.trialDays });
+    let input: CreateTenantInput;
+    try {
+      input = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid JSON body" }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
 
     if (!input.name || !input.slug || !input.ownerEmail || !input.planId) {
-      console.log("ERROR: Missing required fields");
       return new Response(
-        JSON.stringify({ success: false, error: "Faltan campos requeridos" } as CreateTenantResult),
+        JSON.stringify({ success: false, error: "Faltan campos requeridos: name, slug, ownerEmail, planId" }),
         { status: 400, headers: jsonHeaders }
       );
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 1. Crear usuario en auth
-    console.log("Creating auth user...");
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: input.ownerEmail,
       email_confirm: true
     });
 
-    console.log("Auth result:", { authData: !!authData?.user, authError: authError?.message });
-
     if (authError || !authData.user) {
-      console.log("ERROR creating auth user:", authError?.message);
       return new Response(
-        JSON.stringify({ success: false, error: authError?.message ?? "No se pudo crear el usuario" } as CreateTenantResult),
+        JSON.stringify({ success: false, error: authError?.message ?? "Error al crear usuario" }),
         { status: 400, headers: jsonHeaders }
       );
     }
 
-    // 2. Crear tenant
     const insertData: Record<string, unknown> = {
       name: input.name,
       slug: input.slug,
@@ -109,16 +86,14 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (tenantError || !tenantData) {
-      // Rollback: eliminar usuario creado
       await supabase.auth.admin.deleteUser(authData.user.id);
       return new Response(
-        JSON.stringify({ success: false, error: tenantError?.message ?? "Error al crear tenant" } as CreateTenantResult),
+        JSON.stringify({ success: false, error: tenantError?.message ?? "Error al crear tenant" }),
         { status: 400, headers: jsonHeaders }
       );
     }
 
-    // 3. Crear rol de owner
-    const { error: roleError } = await supabase.from("user_roles").insert({
+    await supabase.from("user_roles").insert({
       user_id: authData.user.id,
       tenant_id: tenantData.id,
       role: "owner",
@@ -126,16 +101,11 @@ Deno.serve(async (req: Request) => {
       is_active: true
     });
 
-    if (roleError) {
-      console.error("Error creating user_roles:", roleError.message);
-    }
-
-    // 4. Crear suscripción inicial
     const trialDays = input.trialDays || 0;
     const isTrial = trialDays > 0;
     const daysToAdd = isTrial ? trialDays : 30;
 
-    const { error: subError } = await supabase.from("subscriptions").insert({
+    await supabase.from("subscriptions").insert({
       tenant_id: tenantData.id,
       plan_id: input.planId,
       status: isTrial ? "trial" : "active",
@@ -145,10 +115,6 @@ Deno.serve(async (req: Request) => {
       trial_days: trialDays
     });
 
-    if (subError) {
-      console.error("Error creating subscription:", subError.message);
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -157,12 +123,12 @@ Deno.serve(async (req: Request) => {
           name: tenantData.name,
           slug: tenantData.slug
         }
-      } as CreateTenantResult),
+      }),
       { headers: jsonHeaders }
     );
   } catch (error) {
     return new Response(
-      JSON.stringify({ success: false, error: String(error) } as CreateTenantResult),
+      JSON.stringify({ success: false, error: String(error) }),
       { status: 500, headers: jsonHeaders }
     );
   }
