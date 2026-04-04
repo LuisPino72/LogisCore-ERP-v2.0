@@ -49,16 +49,20 @@ Deno.serve(async (req: Request) => {
   // Verificar que es admin (Bearer token en el header)
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
+    console.log("ERROR: No Authorization header provided");
     return new Response(
-      JSON.stringify({ success: false, error: "Unauthorized" } as CreateTenantResult),
+      JSON.stringify({ success: false, error: "Unauthorized - No token provided" } as CreateTenantResult),
       { status: 401, headers: jsonHeaders }
     );
   }
 
   try {
     const input: CreateTenantInput = await req.json();
+    
+    console.log("Creating tenant - input received:", { name: input.name, slug: input.slug, ownerEmail: input.ownerEmail, planId: input.planId, trialDays: input.trialDays });
 
     if (!input.name || !input.slug || !input.ownerEmail || !input.planId) {
+      console.log("ERROR: Missing required fields");
       return new Response(
         JSON.stringify({ success: false, error: "Faltan campos requeridos" } as CreateTenantResult),
         { status: 400, headers: jsonHeaders }
@@ -68,12 +72,16 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 1. Crear usuario en auth
+    console.log("Creating auth user...");
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: input.ownerEmail,
       email_confirm: true
     });
 
+    console.log("Auth result:", { authData: !!authData?.user, authError: authError?.message });
+
     if (authError || !authData.user) {
+      console.log("ERROR creating auth user:", authError?.message);
       return new Response(
         JSON.stringify({ success: false, error: authError?.message ?? "No se pudo crear el usuario" } as CreateTenantResult),
         { status: 400, headers: jsonHeaders }

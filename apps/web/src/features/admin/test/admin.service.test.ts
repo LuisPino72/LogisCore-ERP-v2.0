@@ -153,17 +153,47 @@ describe("AdminService", () => {
     });
   });
 
-  describe("createTenant - error handling", () => {
-    it("debe manejar error al crear usuario", async () => {
-      const createUserFn = vi.fn().mockResolvedValue({ user: null, error: { message: "Error al crear usuario" } });
-      const supabase: any = {
-        from: () => ({}),
-        auth: {
-          admin: {
-            createUser: createUserFn
-          }
-        }
-      };
+  describe("createTenant - via Edge Function", () => {
+    it("debe crear tenant exitosamente", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          tenant: { id: "tenant-123", name: "Test", slug: "test" }
+        })
+      });
+      global.fetch = mockFetch;
+
+      const supabase: any = null;
+      const eventBus = createEventBusMock();
+      const service = createAdminService({ supabase, eventBus: eventBus as any });
+
+      const result = await service.createTenant({
+        name: "Test",
+        slug: "test",
+        ownerEmail: "test@test.com",
+        planId: "plan-123"
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data.id).toBe("tenant-123");
+        expect(result.data.name).toBe("Test");
+      }
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    it("debe manejar error cuando la API retorna error", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({
+          success: false,
+          error: "El email ya está registrado"
+        })
+      });
+      global.fetch = mockFetch;
+
+      const supabase: any = null;
       const eventBus = createEventBusMock();
       const service = createAdminService({ supabase, eventBus: eventBus as any });
 
@@ -176,44 +206,16 @@ describe("AdminService", () => {
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.code).toBe("ADMIN_CREATE_TENANT_USER_FAILED");
+        expect(result.error.code).toBe("ADMIN_CREATE_TENANT_FAILED");
+        expect(result.error.message).toBe("El email ya está registrado");
       }
-      expect(createUserFn).toHaveBeenCalled();
     });
 
-    it("debe manejar error al insertar tenant", async () => {
-      const mockAdminCreateUser = vi.fn().mockResolvedValue({ 
-        data: { user: { id: "123", email: "test@test.com" } }, 
-        error: null 
-      });
-      const supabase: any = {
-        from: vi.fn((table: string) => {
-          if (table === "tenants") {
-            return {
-              insert: vi.fn().mockReturnValue({
-                select: vi.fn().mockReturnValue({
-                  single: vi.fn().mockResolvedValue({ data: null, error: { message: "Error al crear tenant" } })
-                })
-              })
-            };
-          }
-          if (table === "user_roles") {
-            return {
-              insert: vi.fn().mockReturnValue({
-                select: vi.fn().mockReturnValue({
-                  single: vi.fn().mockResolvedValue({ data: {}, error: null })
-                })
-              })
-            };
-          }
-          return {};
-        }),
-        auth: {
-          admin: {
-            createUser: mockAdminCreateUser
-          }
-        }
-      };
+    it("debe manejar error de red", async () => {
+      const mockFetch = vi.fn().mockRejectedValue(new Error("Network error"));
+      global.fetch = mockFetch;
+
+      const supabase: any = null;
       const eventBus = createEventBusMock();
       const service = createAdminService({ supabase, eventBus: eventBus as any });
 
