@@ -22,7 +22,8 @@ const emptyFormData: any = {
   slug: "",
   ownerEmail: "",
   ownerUserId: "",
-  planId: "", // Nuevo campo obligatorio para creación
+  planId: "",
+  trialDays: 7,
   businessTypeId: "",
   contactEmail: "",
   phone: "",
@@ -151,6 +152,41 @@ export function TenantForm({ initialData, businessTypes, plans, securityUsers, o
                     ))}
                   </select>
                 </div>
+                {formData.planId && (
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="enableTrial"
+                      checked={formData.trialDays && formData.trialDays > 0}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        trialDays: e.target.checked ? 7 : 0 
+                      })}
+                      className="w-4 h-4"
+                    />
+                    <label htmlFor="enableTrial" className="text-sm">
+                      Habilitar período de prueba
+                    </label>
+                    {formData.trialDays && formData.trialDays > 0 && (
+                      <input
+                        type="number"
+                        className="input w-20"
+                        value={formData.trialDays}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          trialDays: Math.min(7, Math.max(1, parseInt(e.target.value) || 1)) 
+                        })}
+                        min={1}
+                        max={7}
+                      />
+                    )}
+                  </div>
+                )}
+                {formData.trialDays && formData.trialDays > 0 && (
+                  <p className="text-xs text-content-secondary">
+                    El tenant tendrá acceso gratuito por {formData.trialDays} días
+                  </p>
+                )}
               </div>
             </div>
           )}

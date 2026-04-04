@@ -213,14 +213,19 @@ export const createAdminService = ({
       is_active: true
     });
 
-    // Crear suscripción inicial de 1 mes
+    // Crear suscripción inicial (si es plan free con trial, usar trial days)
+    const trialDays = input.trialDays || 0;
+    const isTrial = trialDays > 0;
+    const daysToAdd = isTrial ? trialDays : 30;
+    
     await supabase.from("subscriptions").insert({
       tenant_id: result.data.id,
       plan_id: input.planId,
-      status: "active",
+      status: isTrial ? "trial" : "active",
       start_date: new Date().toISOString(),
-      end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      billing_cycle: "monthly"
+      end_date: new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000).toISOString(),
+      billing_cycle: "monthly",
+      trial_days: trialDays
     });
 
     eventBus.emit("ADMIN.TENANT_CREATED", { tenantId: result.data.id, slug: result.data.slug });
@@ -358,7 +363,7 @@ export const createAdminService = ({
   };
 
   const listPlans: AdminService["listPlans"] = async () => {
-    const result = await supabase.from("plans").select("*").order("price");
+    const result = await supabase.from("plans").select("*").eq("is_active", true).order("price");
     if (result.error) {
       return err(createAppError({
         code: "ADMIN_LIST_PLANS_FAILED",
@@ -376,6 +381,7 @@ export const createAdminService = ({
       maxUsers: row.max_users,
       maxProducts: row.max_products,
       isActive: row.is_active ?? true,
+      trialDays: row.trial_days,
       createdAt: row.created_at
     }));
 

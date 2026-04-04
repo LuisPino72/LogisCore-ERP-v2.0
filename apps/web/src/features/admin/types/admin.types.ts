@@ -34,7 +34,8 @@ export interface CreateTenantInput {
   name: string;
   slug: string;
   ownerEmail: string;
-  planId: string; // ID del plan inicial
+  planId: string;
+  trialDays?: number;
   businessTypeId?: string;
   contactEmail?: string;
   phone?: string;
@@ -108,6 +109,7 @@ export interface Plan {
   maxUsers: number;
   maxProducts: number;
   isActive: boolean;
+  trialDays?: number;
   createdAt: string;
 }
 
@@ -125,6 +127,7 @@ export interface Subscription {
   endDate?: string;
   features?: Record<string, unknown>;
   billingCycle?: string;
+  trialDays?: number;
   createdAt: string;
 }
 
