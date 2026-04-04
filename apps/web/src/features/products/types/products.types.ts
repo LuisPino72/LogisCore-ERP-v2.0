@@ -31,6 +31,7 @@ export interface Category {
  * id: UUID generado por Supabase
  * productLocalId: Referencia al producto padre
  * factor: Multiplicador para convertir a unidad base
+ * price: Precio en USD (se calcula Bs dinámicamente)
  * isDefault: Si es la presentación por defecto al vender
  */
 export interface ProductPresentation {
@@ -39,6 +40,7 @@ export interface ProductPresentation {
   productLocalId: string;
   name: string;
   factor: number;
+  price?: number;
   barcode?: string;
   isDefault?: boolean;
   createdAt: string;
@@ -149,11 +151,13 @@ export interface UpdateProductInput {
 /**
  * Input para crear una presentación (variante)
  * factor: Cantidad de unidades base que representa esta presentación
+ * price: Precio en USD (se calcula Bs dinámicamente)
  */
 export interface CreateProductPresentationInput {
   productLocalId: string;
   name: string;
   factor: number;
+  price?: number;
   barcode?: string;
   isDefault?: boolean;
 }
@@ -163,6 +167,7 @@ export interface UpdateProductPresentationInput {
   id: string;
   name: string;
   factor: number;
+  price?: number;
   barcode?: string;
   isDefault?: boolean;
 }

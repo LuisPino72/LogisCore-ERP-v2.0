@@ -46,6 +46,7 @@ export function ProductsForm({
   const [selectedProductForPresentation, setSelectedProductForPresentation] =
     useState("");
   const [presentationFactor, setPresentationFactor] = useState("1");
+  const [presentationPrice, setPresentationPrice] = useState("");
 
   return (
     <section
@@ -148,13 +149,22 @@ export function ProductsForm({
           min="0.0001"
           step="0.0001"
         />
+        <input
+          value={presentationPrice}
+          onChange={(event) => setPresentationPrice(event.target.value)}
+          placeholder="Precio en USD"
+          type="number"
+          min="0"
+          step="0.01"
+        />
         <button
           type="button"
           onClick={() =>
             onCreatePresentation({
               productLocalId: selectedProductForPresentation,
               name: presentationName,
-              factor: Number(presentationFactor)
+              factor: Number(presentationFactor),
+              price: presentationPrice ? Number(presentationPrice) : 0
             })
           }
         >

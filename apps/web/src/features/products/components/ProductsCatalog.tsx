@@ -4,12 +4,15 @@
  * Escucha eventos del bus para actualización automática.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { eventBus } from "@/lib/core/runtime";
 import { useProducts } from "../hooks/useProducts";
 import { productsService } from "../services/products.service.instance";
 import { ProductsList } from "./ProductsList";
 import type { ProductsActorContext } from "../types/products.types";
+import { exchangeRatesService } from "@/features/exchange-rates/services/exchange-rates.service.instance";
+
+const DEFAULT_EXCHANGE_RATE = 480;
 
 interface ProductsCatalogProps {
   tenantSlug: string;
@@ -22,10 +25,25 @@ export function ProductsCatalog({ tenantSlug, actor }: ProductsCatalogProps) {
     tenant: { tenantSlug },
     actor
   });
+  const [exchangeRate, setExchangeRate] = useState(DEFAULT_EXCHANGE_RATE);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const loadExchangeRate = async () => {
+      const rateResult = await exchangeRatesService.getActiveRate(
+        tenantSlug,
+        "USD",
+        "VES"
+      );
+      if (rateResult.ok && rateResult.data) {
+        setExchangeRate(rateResult.data.rate);
+      }
+    };
+    loadExchangeRate();
+  }, [tenantSlug]);
 
   useEffect(() => {
     const offCreatedCategory = eventBus.on("CATALOG.CATEGORY_CREATED", () => {
@@ -65,6 +83,7 @@ export function ProductsCatalog({ tenantSlug, actor }: ProductsCatalogProps) {
         categories={state.categories}
         products={state.products}
         presentations={state.presentations}
+        exchangeRate={exchangeRate}
       />
     </section>
   );

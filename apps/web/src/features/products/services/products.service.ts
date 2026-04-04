@@ -561,6 +561,7 @@ export const createProductsService = ({
         productLocalId: input.productLocalId,
         name: input.name.trim(),
         factor: input.factor,
+        price: input.price ?? 0,
         createdAt: now,
         updatedAt: now,
         ...(input.barcode !== undefined && { barcode: input.barcode }),

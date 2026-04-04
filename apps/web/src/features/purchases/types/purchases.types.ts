@@ -59,6 +59,8 @@ export interface Purchase {
   warehouseLocalId: string;
   supplierName?: string;
   status: "draft" | "received" | "cancelled";
+  currency: "VES" | "USD";
+  exchangeRate: number;
   subtotal: number;
   total: number;
   items: PurchaseItem[];

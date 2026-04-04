@@ -26,6 +26,7 @@ export interface ProductPresentationRecord {
   productLocalId: string;
   name: string;
   factor: number;
+  price?: number;
   barcode?: string;
   isDefault?: boolean;
   createdAt: string;
@@ -213,6 +214,8 @@ export interface PurchaseRecord {
   warehouseLocalId: string;
   supplierName?: string;
   status: "draft" | "received" | "cancelled";
+  currency: "VES" | "USD";
+  exchangeRate: number;
   subtotal: number;
   total: number;
   items: PurchaseItemRecord[];
