@@ -23,7 +23,7 @@ interface TenantsListProps {
 export function TenantsList({ 
   tenants, 
   businessTypes,
-  plans,
+  plans = [],
   securityUsers,
   isLoading, 
   onRefresh, 
