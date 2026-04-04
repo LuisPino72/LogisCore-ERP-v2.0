@@ -11,7 +11,7 @@ interface TaxpayerInfo {
 interface TenantFormProps {
   initialData?: Tenant | null;
   businessTypes: { id: string; name: string }[];
-  plans: { id: string; name: string; price: number }[];
+  plans?: { id: string; name: string; price: number }[];
   securityUsers: SecurityUser[];
   onSubmit: (input: any) => Promise<void>;
   onCancel: () => void;
@@ -35,7 +35,7 @@ const emptyFormData: any = {
   }
 };
 
-export function TenantForm({ initialData, businessTypes, securityUsers, onSubmit, onCancel }: TenantFormProps) {
+export function TenantForm({ initialData, businessTypes, plans, securityUsers, onSubmit, onCancel }: TenantFormProps) {
   const [formData, setFormData] = useState(initialData ? {
     ...initialData,
     businessTypeId: initialData.businessTypeId || "",
@@ -146,7 +146,7 @@ export function TenantForm({ initialData, businessTypes, securityUsers, onSubmit
                     required
                   >
                     <option value="">Seleccionar plan...</option>
-                    {plans.map(p => (
+                    {(plans || []).map(p => (
                       <option key={p.id} value={p.id}>{p.name} - ${p.price}/mes</option>
                     ))}
                   </select>
