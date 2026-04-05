@@ -1,38 +1,16 @@
 import { createAppError, err, ok, type AppError, type EventBus, type Result } from "@logiscore/core";
 import type { AuthSession } from "../types/auth.types";
 
-// Respuesta de Supabase al obtener sesión actual
-interface SupabaseAuthSessionResponse {
-  data: {
-    session: { user: { id: string; email?: string } } | null;
-  };
-  error: { message: string } | null;
-}
-
-// Respuesta de Supabase al iniciar sesión
-interface SupabaseSignInResponse {
-  data: { session: { user: { id: string; email?: string } } | null } | null;
-  error: { message: string } | null;
-}
-
-// Respuesta de Supabase al cerrar sesión
-interface SupabaseSignOutResponse {
-  error: { message: string } | null;
-}
-
-// Respuesta de Supabase al recuperar contraseña
-interface SupabaseResetPasswordResponse {
-  data: unknown;
-  error: { message: string } | null;
-}
-
-// Abstracción del cliente de autenticación (tipo Supabase)
+// Abstracción del cliente de autenticación
 export interface AuthSupabaseLike {
   auth: {
-    getSession: () => Promise<SupabaseAuthSessionResponse>;
-    signInWithPassword: (options: { email: string; password: string }) => Promise<SupabaseSignInResponse>;
-    signOut: () => Promise<SupabaseSignOutResponse>;
-    resetPasswordForEmail: (email: string, options?: { redirectTo?: string }) => Promise<SupabaseResetPasswordResponse>;
+    getSession: () => Promise<{ data: { session: { user: { id: string; email?: string } } | null }; error: { message: string } | null }>;
+    signInWithPassword: (options: { email: string; password: string }) => Promise<{ data: { session: { user: { id: string; email?: string } } | null } | null; error: { message: string } | null }>;
+    signOut: () => Promise<{ error: { message: string } | null }>;
+    resetPasswordForEmail: (email: string, options?: { redirectTo?: string }) => Promise<{ data: unknown; error: { message: string } | null }>;
+  };
+  from: (table: string) => {
+    insert: (data: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
   };
 }
 
@@ -42,6 +20,7 @@ export interface AuthService {
   signIn(email: string, password: string): Promise<Result<AuthSession, AppError>>; // Iniciar sesión
   signOut(): Promise<Result<void, AppError>>; // Cerrar sesión
   resetPassword(email: string): Promise<Result<void, AppError>>; // Recuperar contraseña
+  logAuditEvent(action: string, userId: string | null, email: string | null): Promise<void>; // Registrar evento de auditoría
 }
 
 // Dependencias necesarias para crear el servicio
@@ -102,6 +81,10 @@ export const createAuthService = ({
 
       // Emitir evento de fallo
       eventBus.emit("AUTH.SIGNIN_FAILED", { error: authError });
+
+      // Registrar intento fallido en auditoría
+      await this.logAuditEvent("LOGIN_FAILED", null, email);
+
       return err(authError);
     }
 
@@ -113,7 +96,35 @@ export const createAuthService = ({
 
     // Emitir evento de éxito
     eventBus.emit("AUTH.SIGNIN_SUCCESS", session);
+
+    // Registrar login exitoso en auditoría
+    await this.logAuditEvent("LOGIN", signInResponse.data.session.user.id, email);
+
     return ok(session);
+  },
+
+  // Registra evento de auditoría
+  async logAuditEvent(action: string, userId: string | null, email: string | null) {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !anonKey) {
+        console.warn("Supabase not configured, skipping audit log");
+        return;
+      }
+
+      await fetch(`${supabaseUrl}/functions/v1/audit-log`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${anonKey}`
+        },
+        body: JSON.stringify({ action, userId, email })
+      });
+    } catch (e) {
+      console.error("Error logging audit event:", e);
+    }
   },
 
   // Cierra la sesión del usuario

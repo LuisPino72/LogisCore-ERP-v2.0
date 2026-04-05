@@ -26,6 +26,14 @@ interface UpdateTenantInput {
   ownerUserId?: string;
 }
 
+interface EmployeeManagement {
+  email: string;
+  fullName?: string;
+  password?: string;
+  action: "create" | "update" | "delete";
+  userId?: string;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: jsonHeaders });
@@ -45,6 +53,20 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get tenant info first
+    const { data: tenantInfo, error: tenantInfoError } = await supabase
+      .from("tenants")
+      .select("id, slug")
+      .eq("id", tenantId)
+      .single();
+
+    if (tenantInfoError || !tenantInfo) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Tenant no encontrado" }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
 
     if (action === "update") {
       if (!data) {
@@ -133,6 +155,20 @@ Deno.serve(async (req: Request) => {
 
     if (action === "delete") {
       if (permanent) {
+        const { data: usersToDelete } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("tenant_id", tenantId);
+
+        if (usersToDelete && usersToDelete.length > 0) {
+          for (const user of usersToDelete) {
+            const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(user.user_id);
+            if (deleteAuthError) {
+              console.error("Error deleting user from auth:", deleteAuthError);
+            }
+          }
+        }
+
         await supabase.from("subscriptions").delete().eq("tenant_id", tenantId);
         await supabase.from("user_roles").delete().eq("tenant_id", tenantId);
 
@@ -182,8 +218,93 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (action === "manage_employees") {
+      const employees = data?.employees as EmployeeManagement[] | undefined;
+      
+      if (!employees || !Array.isArray(employees)) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Se requiere un array de empleados" }),
+          { status: 400, headers: jsonHeaders }
+        );
+      }
+
+      const results: Array<{ email: string; success: boolean; userId?: string; error?: string }> = [];
+
+      for (const emp of employees) {
+        try {
+          if (emp.action === "create") {
+            if (!emp.email || !emp.password || !emp.fullName) {
+              results.push({ email: emp.email, success: false, error: "Faltan datos para crear empleado" });
+              continue;
+            }
+
+            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+              email: emp.email,
+              password: emp.password,
+              email_confirm: true,
+              user_metadata: { full_name: emp.fullName }
+            });
+
+            if (authError || !authData.user) {
+              results.push({ email: emp.email, success: false, error: authError?.message });
+              continue;
+            }
+
+            await supabase.from("user_roles").insert({
+              user_id: authData.user.id,
+              tenant_id: tenantId,
+              role: "employee",
+              email: emp.email,
+              full_name: emp.fullName,
+              is_active: true
+            });
+
+            results.push({ email: emp.email, success: true, userId: authData.user.id });
+          } 
+          else if (emp.action === "update") {
+            if (!emp.userId) {
+              results.push({ email: emp.email, success: false, error: "userId requerido para actualizar" });
+              continue;
+            }
+
+            const updateData: Record<string, unknown> = {};
+            if (emp.fullName) updateData.full_name = emp.fullName;
+            if (emp.email) updateData.email = emp.email;
+
+            await supabase.from("user_roles").update(updateData).eq("user_id", emp.userId);
+            results.push({ email: emp.email, success: true, userId: emp.userId });
+          } 
+          else if (emp.action === "delete") {
+            if (!emp.userId) {
+              results.push({ email: emp.email, success: false, error: "userId requerido para eliminar" });
+              continue;
+            }
+
+            const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(emp.userId);
+            if (deleteAuthError) {
+              console.error("Error deleting user from auth:", deleteAuthError);
+            }
+            
+            await supabase.from("user_roles").delete().eq("user_id", emp.userId);
+            results.push({ email: emp.email, success: true, userId: emp.userId });
+          }
+        } catch (err) {
+          results.push({ email: emp.email, success: false, error: String(err) });
+        }
+      }
+
+      const allSuccess = results.every(r => r.success);
+      return new Response(
+        JSON.stringify({
+          success: allSuccess,
+          employees: results
+        }),
+        { headers: jsonHeaders }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ success: false, error: "Acción no válida. Use: update, deactivate, o delete" }),
+      JSON.stringify({ success: false, error: "Acción no válida. Use: update, deactivate, delete, o manage_employees" }),
       { status: 400, headers: jsonHeaders }
     );
 

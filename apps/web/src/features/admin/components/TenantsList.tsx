@@ -39,6 +39,7 @@ export function TenantsList({
 }: TenantsListProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [tenantEmployees, setTenantEmployees] = useState<SecurityUser[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; tenant: Tenant | null; permanent: boolean }>({
     isOpen: false,
     tenant: null,
@@ -52,6 +53,24 @@ export function TenantsList({
     onLoadSecurityUsers();
     onLoadPlans();
   }, [onRefresh, onLoadBusinessTypes, onLoadSecurityUsers, onLoadPlans]);
+
+  useEffect(() => {
+    if (editingTenant) {
+      const employees = securityUsers.filter(u => {
+        const tenantId = u.tenantId;
+        return tenantId === editingTenant.id && u.role === "employee";
+      });
+      setTenantEmployees(employees);
+    } else {
+      setTenantEmployees([]);
+    }
+  }, [editingTenant, securityUsers]);
+
+  useEffect(() => {
+    if (showForm && editingTenant && securityUsers.length === 0) {
+      onLoadSecurityUsers();
+    }
+  }, [showForm, editingTenant, securityUsers, onLoadSecurityUsers]);
 
   const handleSubmit = async (formData: unknown) => {
     if (editingTenant) {
@@ -129,20 +148,27 @@ export function TenantsList({
       ) : (
         <>
           {showForm ? (
-             <TenantForm
+              <TenantForm
                 initialData={editingTenant}
                 businessTypes={businessTypes}
                 plans={plans}
                 securityUsers={securityUsers}
+                tenantEmployees={tenantEmployees}
                 onSubmit={handleSubmit}
                 onCancel={() => { setShowForm(false); setEditingTenant(null); }}
-             />
+              />
             ) : (
                <TenantTable
-                  tenants={tenants}
-                  securityUsers={securityUsers}
-                  onEdit={(t) => { setEditingTenant(t); setShowForm(true); }}
-                  onDelete={(id, permanent = false) => {
+                   tenants={tenants}
+                   securityUsers={securityUsers}
+                   onEdit={async (t) => { 
+                     if (securityUsers.length === 0) {
+                       await onLoadSecurityUsers();
+                     }
+                     setEditingTenant(t); 
+                     setShowForm(true); 
+                   }}
+                   onDelete={(id, permanent = false) => {
                     const tenant = tenants.find(t => t.id === id);
                     if (tenant) handleDeleteClick(tenant, permanent);
                   }}

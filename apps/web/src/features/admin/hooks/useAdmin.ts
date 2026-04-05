@@ -10,7 +10,7 @@
 
 import { useCallback, useState } from "react";
 import type { AdminService } from "../services/admin.service";
-import type { AdminUiState, AdminModule, DashboardStats, Tenant, BusinessType, Plan, Subscription, SecurityUser, GlobalConfig } from "../types/admin.types";
+import type { AdminUiState, AdminModule, DashboardStats, Tenant, BusinessType, Plan, Subscription, SecurityUser, GlobalConfig, AuditLogEntry } from "../types/admin.types";
 
 interface UseAdminOptions {
   service: AdminService;
@@ -35,6 +35,8 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [securityUsers, setSecurityUsers] = useState<SecurityUser[]>([]);
   const [globalConfig, setGlobalConfig] = useState<GlobalConfig | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [auditLogsTotal, setAuditLogsTotal] = useState(0);
   const [activeModule, setActiveModule] = useState<AdminModule>("dashboard");
 
   const loadStats = useCallback(async () => {
@@ -111,6 +113,18 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
       return;
     }
     setGlobalConfig(result.data);
+    setState(prev => ({ ...prev, isLoading: false }));
+  }, [service]);
+
+  const loadAuditLogs = useCallback(async (limit = 50, offset = 0) => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.getAuditLogs(limit, offset);
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return;
+    }
+    setAuditLogs(result.data.logs);
+    setAuditLogsTotal(result.data.total);
     setState(prev => ({ ...prev, isLoading: false }));
   }, [service]);
 
@@ -326,6 +340,9 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     updateSubscription,
     renewSubscription,
     renewSubscriptionWithPlan,
-    updateGlobalConfig
+    updateGlobalConfig,
+    loadAuditLogs,
+    auditLogs,
+    auditLogsTotal
   };
 };

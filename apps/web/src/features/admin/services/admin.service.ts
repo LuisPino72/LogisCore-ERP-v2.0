@@ -30,7 +30,9 @@ import type {
   CreateUserInput,
   UpdateUserInput,
   GlobalConfig,
-  UpdateGlobalConfigInput
+  UpdateGlobalConfigInput,
+  EmployeeManagement,
+  AuditLogEntry
 } from "../types/admin.types";
 
 /**
@@ -61,6 +63,7 @@ export interface AdminService {
   renewSubscriptionWithPlan(subscriptionId: string, newPlanId?: string): Promise<Result<{ newPlanName: string; newEndDate: string; status: string }, AppError>>;
   getGlobalConfig(): Promise<Result<GlobalConfig, AppError>>;
   updateGlobalConfig(input: UpdateGlobalConfigInput): Promise<Result<GlobalConfig, AppError>>;
+  getAuditLogs(limit?: number, offset?: number): Promise<Result<{ logs: AuditLogEntry[]; total: number }, AppError>>;
 }
 
 /** Dependencias necesarias para crear el servicio */
@@ -220,31 +223,87 @@ export const createAdminService = ({
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${anonKey}`
-        },
-        body: JSON.stringify({ action: "update", tenantId: id, data: input })
-      });
+      const { employees, ...tenantData } = input as UpdateTenantInput & { employees?: EmployeeManagement[] };
+      
+      if (tenantData && Object.keys(tenantData).length > 0) {
+        const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${anonKey}`
+          },
+          body: JSON.stringify({ action: "update", tenantId: id, data: tenantData })
+        });
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (!response.ok || !result.success) {
-        return err(createAppError({
-          code: "ADMIN_UPDATE_TENANT_FAILED",
-          message: result.error ?? "Error al actualizar tenant",
-          retryable: false
-        }));
+        if (!response.ok || !result.success) {
+          return err(createAppError({
+            code: "ADMIN_UPDATE_TENANT_FAILED",
+            message: result.error ?? "Error al actualizar tenant",
+            retryable: false
+          }));
+        }
+      }
+
+      if (employees && employees.length > 0) {
+        const empResponse = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${anonKey}`
+          },
+          body: JSON.stringify({ action: "manage_employees", tenantId: id, data: { employees } })
+        });
+
+        const empResult = await empResponse.json();
+
+        if (!empResponse.ok || !empResult.success) {
+          return err(createAppError({
+            code: "ADMIN_UPDATE_TENANT_EMPLOYEES_FAILED",
+            message: empResult.error ?? "Error al gestionar empleados",
+            retryable: false
+          }));
+        }
       }
 
       eventBus.emit("ADMIN.TENANT_UPDATED", { tenantId: id });
 
+      if (supabase) {
+        const getResult = await supabase.from("tenants").select("*").eq("id", id).single();
+        if (getResult.error) {
+          return ok({
+            id,
+            name: input.name || "",
+            slug: "",
+            ownerUserId: input.ownerUserId || "",
+            businessTypeId: input.businessTypeId || "",
+            isActive: input.isActive ?? true,
+            contactEmail: input.contactEmail || "",
+            phone: input.phone || "",
+            address: input.address || "",
+            createdAt: new Date().toISOString()
+          });
+        }
+
+        return ok({
+          id: getResult.data.id,
+          name: getResult.data.name,
+          slug: getResult.data.slug,
+          ownerUserId: getResult.data.owner_user_id,
+          businessTypeId: getResult.data.business_type_id,
+          isActive: getResult.data.is_active ?? true,
+          contactEmail: getResult.data.contact_email,
+          phone: getResult.data.phone,
+          address: getResult.data.address,
+          createdAt: getResult.data.created_at
+        });
+      }
+
       return ok({
-        id: result.tenant.id,
-        name: result.tenant.name,
-        slug: result.tenant.slug,
+        id,
+        name: input.name || "",
+        slug: "",
         ownerUserId: input.ownerUserId || "",
         businessTypeId: input.businessTypeId || "",
         isActive: input.isActive ?? true,
@@ -702,24 +761,14 @@ export const createAdminService = ({
 
     return ok({
       id: result.data.id,
-      systemName: result.data.system_name,
-      defaultCurrency: result.data.default_currency,
-      globalTaxRules: result.data.global_tax_rules,
-      maintenanceMode: result.data.maintenance_mode,
-      supportContact: result.data.support_contact,
-      welcomeMessage: result.data.welcome_message,
+      globalTaxRules: result.data.global_tax_rules || [],
       updatedAt: result.data.updated_at
     });
   };
 
   const updateGlobalConfig: AdminService["updateGlobalConfig"] = async (input) => {
     const updateData: Record<string, unknown> = {};
-    if (input.systemName !== undefined) updateData.system_name = input.systemName;
-    if (input.defaultCurrency !== undefined) updateData.default_currency = input.defaultCurrency;
     if (input.globalTaxRules !== undefined) updateData.global_tax_rules = input.globalTaxRules;
-    if (input.maintenanceMode !== undefined) updateData.maintenance_mode = input.maintenanceMode;
-    if (input.supportContact !== undefined) updateData.support_contact = input.supportContact;
-    if (input.welcomeMessage !== undefined) updateData.welcome_message = input.welcomeMessage;
     updateData.updated_at = new Date().toISOString();
 
     const configResult = await getGlobalConfig();
@@ -736,14 +785,58 @@ export const createAdminService = ({
 
     return ok({
       id: result.data.id,
-      systemName: result.data.system_name,
-      defaultCurrency: result.data.default_currency,
-      globalTaxRules: result.data.global_tax_rules,
-      maintenanceMode: result.data.maintenance_mode,
-      supportContact: result.data.support_contact,
-      welcomeMessage: result.data.welcome_message,
+      globalTaxRules: result.data.global_tax_rules || [],
       updatedAt: result.data.updated_at
     });
+  };
+
+  const getAuditLogs: AdminService["getAuditLogs"] = async (limit = 50, offset = 0) => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    try {
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/admin-audit-logs?limit=${limit}&offset=${offset}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${anonKey}`
+          }
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.logs) {
+        return err(createAppError({
+          code: "ADMIN_GET_AUDIT_LOGS_FAILED",
+          message: result.error ?? "Error al obtener logs de auditoría",
+          retryable: true
+        }));
+      }
+
+      const logs: AuditLogEntry[] = result.logs.map((log: Record<string, unknown>) => ({
+        id: log.id as string,
+        timestamp: log.timestamp as string,
+        action: log.action as string,
+        userId: log.userId as string | null,
+        email: log.email as string | null,
+        ipAddress: log.ipAddress as string | null,
+        metadata: log.metadata as Record<string, unknown> | null
+      }));
+
+      return ok({
+        logs,
+        total: result.total as number
+      });
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_GET_AUDIT_LOGS_FAILED",
+        message: String(error),
+        retryable: true
+      }));
+    }
   };
 
   return {
@@ -769,6 +862,7 @@ export const createAdminService = ({
     updateUser,
     toggleUserStatus,
     getGlobalConfig,
-    updateGlobalConfig
+    updateGlobalConfig,
+    getAuditLogs
   };
 };

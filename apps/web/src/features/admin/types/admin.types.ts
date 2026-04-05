@@ -92,6 +92,19 @@ export interface UpdateTenantInput {
     regimen?: string | undefined;
   };
   ownerUserId?: string | undefined;
+  employees?: EmployeeManagement[];
+}
+
+/**
+ * Datos para gestionar empleados desde el formulario de tenant.
+ */
+export interface EmployeeManagement {
+  email: string;
+  fullName: string;
+  password?: string;
+  action: "create" | "update" | "delete";
+  userId: string;
+  isActive: boolean;
 }
 
 /**
@@ -228,16 +241,11 @@ export interface DashboardStats {
  */
 export interface GlobalConfig {
   id: string;
-  systemName: string;
-  defaultCurrency: string;
   globalTaxRules: Array<{
     name: string;
     rate: number;
     type: "iva" | "islr" | "igtf";
   }>;
-  maintenanceMode: boolean;
-  supportContact?: string;
-  welcomeMessage?: string;
   updatedAt: string;
 }
 
@@ -245,16 +253,23 @@ export interface GlobalConfig {
  * Datos para actualizar la configuración global.
  */
 export interface UpdateGlobalConfigInput {
-  systemName?: string;
-  defaultCurrency?: string;
   globalTaxRules?: Array<{
     name: string;
     rate: number;
     type: "iva" | "islr" | "igtf";
   }>;
-  maintenanceMode?: boolean;
-  supportContact?: string | undefined;
-  welcomeMessage?: string | undefined;
+}
+
+/**
+ * Entrada de log de auditoría.
+ */
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  userId: string | null;
+  email: string | null;
+  metadata: Record<string, unknown> | null;
 }
 
 /**

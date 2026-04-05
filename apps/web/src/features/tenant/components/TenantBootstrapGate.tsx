@@ -154,6 +154,9 @@ export function TenantBootstrapGate({
             isLoading={admin.state.isLoading}
             onRefresh={refreshSecurity}
             onToggleUser={admin.toggleUserStatus}
+            auditLogs={admin.auditLogs}
+            auditLogsTotal={admin.auditLogsTotal}
+            onLoadAuditLogs={admin.loadAuditLogs}
           />
         )}
         {activeAdminModule === "businessTypes" && (

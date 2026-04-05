@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import type { SecurityUser, Tenant, EmployeeInput, WarehouseInput } from "../types/admin.types";
+import type { SecurityUser, Tenant, EmployeeInput, WarehouseInput, EmployeeManagement } from "../types/admin.types";
 import { 
   validateRequired, 
   validateMaxLength, 
@@ -23,6 +23,7 @@ interface TenantFormProps {
   businessTypes: { id: string; name: string }[];
   plans?: { id: string; name: string; price: number }[];
   securityUsers: SecurityUser[];
+  tenantEmployees?: SecurityUser[];
   onSubmit: (input: unknown) => Promise<void>;
   onCancel: () => void;
 }
@@ -43,6 +44,7 @@ interface FormData {
   logoUrl: string;
   taxpayerInfo: TaxpayerInfo;
   employees: EmployeeInput[];
+  existingEmployees: EmployeeManagement[];
   hasWarehouse: boolean;
   warehouse: WarehouseInput;
 }
@@ -76,11 +78,12 @@ const defaultFormData: FormData = {
   logoUrl: "",
   taxpayerInfo: defaultTaxpayerInfo,
   employees: [{ email: "", password: "", fullName: "" }],
+  existingEmployees: [],
   hasWarehouse: false,
   warehouse: defaultWarehouse
 };
 
-function getInitialFormData(initialData: Tenant | null | undefined): FormData {
+function getInitialFormData(initialData: Tenant | null | undefined, tenantEmployees?: SecurityUser[]): FormData {
   if (!initialData) return defaultFormData;
   
   const ti = initialData.taxpayerInfo;
@@ -93,6 +96,14 @@ function getInitialFormData(initialData: Tenant | null | undefined): FormData {
       parsedTi = { ...parsedTi, ...(ti as Record<string, unknown>) };
     }
   }
+  
+  const existingEmployees: EmployeeManagement[] = (tenantEmployees || []).map(emp => ({
+    email: emp.email,
+    fullName: emp.fullName || "",
+    action: "update" as const,
+    userId: emp.userId,
+    isActive: emp.isActive
+  }));
   
   return {
     name: initialData.name ?? "",
@@ -115,25 +126,36 @@ function getInitialFormData(initialData: Tenant | null | undefined): FormData {
       regimen: parsedTi.regimen
     },
     employees: [{ email: "", password: "", fullName: "" }],
+    existingEmployees,
     hasWarehouse: false,
     warehouse: defaultWarehouse
   };
 }
 
-export function TenantForm({ initialData, businessTypes, plans, securityUsers, onSubmit, onCancel }: TenantFormProps) {
-  const [formData, setFormData] = useState<FormData>(getInitialFormData(initialData));
+export function TenantForm({ 
+  initialData, 
+  businessTypes, 
+  plans, 
+  securityUsers, 
+  tenantEmployees,
+  onSubmit, 
+  onCancel 
+}: TenantFormProps) {
+  const [formData, setFormData] = useState<FormData>(getInitialFormData(initialData, tenantEmployees));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(initialData?.logoUrl || null);
+  const [deletedEmployeeIds, setDeletedEmployeeIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isNew = !initialData;
 
   useEffect(() => {
-    setFormData(getInitialFormData(initialData));
+    setFormData(getInitialFormData(initialData, tenantEmployees));
     setLogoPreview(initialData?.logoUrl || null);
     setErrors({});
-  }, [initialData]);
+    setDeletedEmployeeIds([]);
+  }, [initialData, tenantEmployees]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -252,9 +274,48 @@ export function TenantForm({ initialData, businessTypes, plans, securityUsers, o
       };
     }
 
+    const existingEmployeesWithChanges = formData.existingEmployees
+      .filter(e => e.action !== "update" || e.fullName !== undefined)
+      .map(e => {
+        const emp: EmployeeManagement = {
+          email: e.email || "",
+          fullName: e.fullName || "",
+          action: e.action,
+          userId: e.userId || "",
+          isActive: e.isActive
+        };
+        return emp;
+      });
+
+    const newEmployeesToCreate = formData.employees
+      .filter(e => e.email && e.password && e.fullName)
+      .map(e => ({
+        email: e.email || "",
+        password: e.password || "",
+        fullName: e.fullName || "",
+        action: "create" as const,
+        userId: "",
+        isActive: true
+      }));
+
+    const deletedEmployees = deletedEmployeeIds.map(userId => ({
+      email: "",
+      fullName: "",
+      action: "delete" as const,
+      userId,
+      isActive: false
+    }));
+
+    const allEmployees: EmployeeManagement[] = [
+      ...existingEmployeesWithChanges, 
+      ...newEmployeesToCreate,
+      ...deletedEmployees
+    ];
+
     return {
       ...baseData,
-      ownerUserId: formData.ownerUserId || undefined
+      ownerUserId: formData.ownerUserId || undefined,
+      employees: allEmployees.length > 0 ? allEmployees : undefined
     };
   };
 
@@ -316,6 +377,54 @@ export function TenantForm({ initialData, businessTypes, plans, securityUsers, o
     setFormData(prev => ({
       ...prev,
       employees: prev.employees.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateExistingEmployee = (index: number, field: keyof EmployeeManagement, value: string | boolean) => {
+    setFormData(prev => {
+      const newEmployees = [...prev.existingEmployees];
+      const current = newEmployees[index];
+      if (!current) return prev;
+      
+      const updated: EmployeeManagement = { 
+        email: current.email, 
+        fullName: current.fullName, 
+        userId: current.userId, 
+        isActive: current.isActive,
+        action: current.action
+      };
+      
+      if (field === "fullName") updated.fullName = value as string;
+      if (field === "email") updated.email = value as string;
+      if (field === "isActive") updated.isActive = value as boolean;
+      if (field === "userId") updated.userId = value as string;
+      
+      if (field === "fullName" || field === "email") {
+        updated.action = "update";
+      }
+      
+      newEmployees[index] = updated;
+      return { ...prev, existingEmployees: newEmployees };
+    });
+    const errorKey = `existing_${index}_${field}`;
+    if (errors[errorKey]) setErrors(prev => ({ ...prev, [errorKey]: "" }));
+  };
+
+  const markEmployeeForDeletion = (index: number) => {
+    const employee = formData.existingEmployees[index];
+    if (employee?.userId) {
+      setDeletedEmployeeIds(prev => [...prev, employee.userId]);
+    }
+    setFormData(prev => ({
+      ...prev,
+      existingEmployees: prev.existingEmployees.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addNewEmployee = () => {
+    setFormData(prev => ({
+      ...prev,
+      employees: [...prev.employees, { email: "", password: "", fullName: "" }]
     }));
   };
 
@@ -444,6 +553,209 @@ export function TenantForm({ initialData, businessTypes, plans, securityUsers, o
                   <option key={u.userId} value={u.userId}>{u.email}</option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {!isNew && formData.existingEmployees.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3 border-b pb-1">
+                <h3 className="text-sm font-medium text-content-primary">Empleados Existentes</h3>
+              </div>
+              <div className="space-y-3">
+                {formData.existingEmployees.map((employee, index) => (
+                  <div key={employee.userId || index} className="p-3 bg-surface-50 rounded-lg border">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${employee.isActive ? 'bg-state-success' : 'bg-state-error'}`}></span>
+                        <span className="text-xs font-medium text-content-secondary">{employee.email}</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => markEmployeeForDeletion(index)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <label className="label text-xs">Nombre Completo</label>
+                        <input
+                          type="text"
+                          className={`input ${errors[`existing_${index}_fullName`] ? "border-red-500" : ""}`}
+                          value={employee.fullName}
+                          onChange={(e) => updateExistingEmployee(index, "fullName", e.target.value)}
+                          placeholder="María García"
+                          maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
+                        />
+                        {errors[`existing_${index}_fullName`] && (
+                          <p className="text-xs text-red-500 mt-1">{errors[`existing_${index}_fullName`]}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button 
+                type="button" 
+                onClick={addNewEmployee}
+                className="mt-3 btn btn-secondary text-sm"
+              >
+                + Agregar Nuevo Empleado
+              </button>
+            </div>
+          )}
+
+          {!isNew && formData.existingEmployees.length > 0 && formData.employees.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-content-primary mb-3 border-b pb-1">Nuevos Empleados</h3>
+              <div className="space-y-4">
+                {formData.employees.map((employee, index) => (
+                  <div key={`new-${index}`} className="p-3 bg-surface-50 rounded-lg border">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-medium text-content-secondary">Nuevo Empleado {index + 1}</span>
+                      {formData.employees.length > 1 && (
+                        <button 
+                          type="button" 
+                          onClick={() => removeEmployee(index)}
+                          className="text-xs text-red-500 hover:text-red-700"
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="label text-xs">Email</label>
+                        <input
+                          type="email"
+                          className={`input ${errors[`employee_${index}_email`] ? "border-red-500" : ""}`}
+                          value={employee.email}
+                          onChange={(e) => updateEmployee(index, "email", e.target.value)}
+                          placeholder="empleado@empresa.com"
+                        />
+                        {errors[`employee_${index}_email`] && (
+                          <p className="text-xs text-red-500 mt-1">{errors[`employee_${index}_email`]}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="label text-xs">Nombre Completo</label>
+                        <input
+                          type="text"
+                          className={`input ${errors[`employee_${index}_fullName`] ? "border-red-500" : ""}`}
+                          value={employee.fullName}
+                          onChange={(e) => updateEmployee(index, "fullName", e.target.value)}
+                          placeholder="María García"
+                          maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
+                        />
+                        {errors[`employee_${index}_fullName`] && (
+                          <p className="text-xs text-red-500 mt-1">{errors[`employee_${index}_fullName`]}</p>
+                        )}
+                      </div>
+                      <div className="col-span-2">
+                        <label className="label text-xs">Contraseña</label>
+                        <input
+                          type="password"
+                          className={`input ${errors[`employee_${index}_password`] ? "border-red-500" : ""}`}
+                          value={employee.password}
+                          onChange={(e) => updateEmployee(index, "password", e.target.value)}
+                          placeholder="Mínimo 6 caracteres"
+                        />
+                        {errors[`employee_${index}_password`] && (
+                          <p className="text-xs text-red-500 mt-1">{errors[`employee_${index}_password`]}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!isNew && formData.existingEmployees.length === 0 && formData.employees.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-content-primary mb-3 border-b pb-1">Nuevos Empleados</h3>
+              <div className="space-y-4">
+                {formData.employees.map((employee, index) => (
+                  <div key={`new-${index}`} className="p-3 bg-surface-50 rounded-lg border">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-medium text-content-secondary">Nuevo Empleado {index + 1}</span>
+                      {formData.employees.length > 1 && (
+                        <button 
+                          type="button" 
+                          onClick={() => removeEmployee(index)}
+                          className="text-xs text-red-500 hover:text-red-700"
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="label text-xs">Email</label>
+                        <input
+                          type="email"
+                          className={`input ${errors[`employee_${index}_email`] ? "border-red-500" : ""}`}
+                          value={employee.email}
+                          onChange={(e) => updateEmployee(index, "email", e.target.value)}
+                          placeholder="empleado@empresa.com"
+                        />
+                        {errors[`employee_${index}_email`] && (
+                          <p className="text-xs text-red-500 mt-1">{errors[`employee_${index}_email`]}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="label text-xs">Nombre Completo</label>
+                        <input
+                          type="text"
+                          className={`input ${errors[`employee_${index}_fullName`] ? "border-red-500" : ""}`}
+                          value={employee.fullName}
+                          onChange={(e) => updateEmployee(index, "fullName", e.target.value)}
+                          placeholder="María García"
+                          maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
+                        />
+                        {errors[`employee_${index}_fullName`] && (
+                          <p className="text-xs text-red-500 mt-1">{errors[`employee_${index}_fullName`]}</p>
+                        )}
+                      </div>
+                      <div className="col-span-2">
+                        <label className="label text-xs">Contraseña</label>
+                        <input
+                          type="password"
+                          className={`input ${errors[`employee_${index}_password`] ? "border-red-500" : ""}`}
+                          value={employee.password}
+                          onChange={(e) => updateEmployee(index, "password", e.target.value)}
+                          placeholder="Mínimo 6 caracteres"
+                        />
+                        {errors[`employee_${index}_password`] && (
+                          <p className="text-xs text-red-500 mt-1">{errors[`employee_${index}_password`]}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button 
+                type="button" 
+                onClick={addNewEmployee}
+                className="mt-3 btn btn-secondary text-sm"
+              >
+                + Agregar Otro
+              </button>
+            </div>
+          )}
+
+          {!isNew && formData.existingEmployees.length === 0 && formData.employees.length === 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-content-primary mb-3 border-b pb-1">Empleados</h3>
+              <p className="text-sm text-content-secondary mb-3">No hay empleados creados para este tenant.</p>
+              <button 
+                type="button" 
+                onClick={addNewEmployee}
+                className="btn btn-secondary text-sm"
+              >
+                + Agregar Empleado
+              </button>
             </div>
           )}
 

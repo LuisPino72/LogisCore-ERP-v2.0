@@ -3,7 +3,8 @@ import { supabase } from "@/lib/supabase/client";
 import { eventBus } from "@/lib/core/runtime";
 import { createAuthService, type AuthSupabaseLike } from "./auth.service";
 
-const supabaseClient: AuthSupabaseLike = supabase as AuthSupabaseLike;
+// El cliente de Supabase tiene tanto auth como from
+const supabaseClient = supabase as AuthSupabaseLike;
 
 export const authService = createAuthService({
   supabase: supabaseClient,
