@@ -5,6 +5,23 @@ import { usePurchases } from "../hooks/usePurchases";
 import type { PurchasesService } from "../services/purchases.service";
 
 const createServiceMock = (): PurchasesService => ({
+  createSupplier: vi.fn(async () => ok({
+    localId: "sup-1",
+    tenantId: "tenant-demo",
+    name: "Proveedor Test",
+    isActive: true,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  })),
+  updateSupplier: vi.fn(async () => ok({
+    localId: "sup-1",
+    tenantId: "tenant-demo",
+    name: "Proveedor Test",
+    isActive: true,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  })),
+  listSuppliers: vi.fn(async () => ok([])),
   requestCreateCategory: vi.fn(async () => ok<void>(undefined)),
   requestCreateProduct: vi.fn(async () => ok<void>(undefined)),
   requestCreatePresentation: vi.fn(async () => ok<void>(undefined)),
@@ -14,9 +31,12 @@ const createServiceMock = (): PurchasesService => ({
       tenantId: "tenant-demo",
       warehouseLocalId: "wh-1",
       status: "draft" as const,
+      currency: "USD" as const,
+      exchangeRate: 1,
       subtotal: 10,
       total: 10,
       items: [{ productLocalId: "prod-1", qty: 1, unitCost: 10 }],
+      receivedItems: [],
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z"
     })
@@ -45,7 +65,7 @@ describe("usePurchases", () => {
     const service = createServiceMock();
     vi.mocked(service.createPurchase).mockResolvedValueOnce(
       err({
-        code: "PURCHASE_ITEMS_REQUIRED",
+        code: "PURCHASES_ITEMS_REQUIRED",
         message: "La compra requiere al menos un item.",
         retryable: false,
         timestamp: new Date().toISOString()
@@ -78,6 +98,6 @@ describe("usePurchases", () => {
       });
     });
 
-    expect(result.current.state.lastError?.code).toBe("PURCHASE_ITEMS_REQUIRED");
+    expect(result.current.state.lastError?.code).toBe("PURCHASES_ITEMS_REQUIRED");
   });
 });

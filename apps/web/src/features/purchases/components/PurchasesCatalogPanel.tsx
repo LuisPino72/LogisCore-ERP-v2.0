@@ -34,26 +34,18 @@ export function PurchasesCatalogPanel({
   const [presentationFactor, setPresentationFactor] = useState("1");
 
   return (
-    <section
-      style={{
-        border: "1px solid var(--border)",
-        borderRadius: "8px",
-        background: "white",
-        padding: "12px",
-        marginTop: "16px",
-        marginBottom: "16px"
-      }}
-    >
-      <h2 style={{ marginTop: 0 }}>Compras: Gestion de Catalogo</h2>
-      <p style={{ marginTop: 0 }}>
+    <section className="border border-surface-200 rounded-xl bg-surface-50 p-3 mt-4 mb-4">
+      <h2 className="mt-0 text-lg font-semibold text-content-primary">Compras: Gestion de Catalogo</h2>
+      <p className="mt-0 text-sm text-content-secondary">
         Regla 7.5 aplicada: categorias y productos se crean desde Compras.
       </p>
 
-      <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
+      <div className="grid gap-2 mb-3">
         <input
           value={categoryName}
           onChange={(event) => setCategoryName(event.target.value)}
           placeholder="Nueva categoria"
+          className="px-3 py-2 border border-surface-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
         />
         <button
           type="button"
@@ -61,18 +53,24 @@ export function PurchasesCatalogPanel({
           onClick={() => {
             void requestCreateCategory({ name: categoryName });
           }}
+          className="px-3 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
         >
           Crear categoria
         </button>
       </div>
 
-      <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
+      <div className="grid gap-2 mb-3">
         <input
           value={productName}
           onChange={(event) => setProductName(event.target.value)}
           placeholder="Nuevo producto"
+          className="px-3 py-2 border border-surface-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
         />
-        <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+        <select
+          value={categoryId}
+          onChange={(event) => setCategoryId(event.target.value)}
+          className="px-3 py-2 border border-surface-300 rounded-lg text-sm"
+        >
           <option value="">Sin categoria</option>
           {categories.map((category) => (
             <option key={category.localId} value={category.localId}>
@@ -83,6 +81,7 @@ export function PurchasesCatalogPanel({
         <select
           value={defaultPresentationId}
           onChange={(event) => setDefaultPresentationId(event.target.value)}
+          className="px-3 py-2 border border-surface-300 rounded-lg text-sm"
         >
           <option value="">Sin presentacion por defecto</option>
           {presentations.map((presentation) => (
@@ -107,15 +106,17 @@ export function PurchasesCatalogPanel({
             }
             void requestCreateProduct(input);
           }}
+          className="px-3 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
         >
           Crear producto
         </button>
       </div>
 
-      <div style={{ display: "grid", gap: "8px" }}>
+      <div className="grid gap-2">
         <select
           value={presentationProductLocalId}
           onChange={(event) => setPresentationProductLocalId(event.target.value)}
+          className="px-3 py-2 border border-surface-300 rounded-lg text-sm"
         >
           <option value="">Producto para presentacion</option>
           {products.map((product) => (
@@ -128,6 +129,7 @@ export function PurchasesCatalogPanel({
           value={presentationName}
           onChange={(event) => setPresentationName(event.target.value)}
           placeholder="Nombre presentacion"
+          className="px-3 py-2 border border-surface-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
         />
         <input
           value={presentationFactor}
@@ -135,6 +137,7 @@ export function PurchasesCatalogPanel({
           type="number"
           min="0.0001"
           step="0.0001"
+          className="px-3 py-2 border border-surface-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
         />
         <button
           type="button"
@@ -146,13 +149,14 @@ export function PurchasesCatalogPanel({
               factor: Number(presentationFactor)
             });
           }}
+          className="px-3 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
         >
           Crear presentacion
         </button>
       </div>
 
       {state.lastError ? (
-        <p className="text-red-700 mb-0">{state.lastError.message}</p>
+        <p className="text-state-error mt-2 text-sm">{state.lastError.message}</p>
       ) : null}
     </section>
   );

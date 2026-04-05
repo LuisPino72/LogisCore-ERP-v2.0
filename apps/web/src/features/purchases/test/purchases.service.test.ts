@@ -6,7 +6,7 @@ import {
   type PurchasesDb,
   type PurchasesService
 } from "../services/purchases.service";
-import type { InventoryLot, Purchase, Receiving } from "../types/purchases.types";
+import type { EditPurchaseInput, InventoryLot, Purchase, Receiving, Supplier } from "../types/purchases.types";
 
 const createSyncEngineMock = (): SyncEngine => ({
   enqueue: vi.fn(async () => ok<void>(undefined)),
@@ -17,13 +17,37 @@ const createSyncEngineMock = (): SyncEngine => ({
 });
 
 const createDbMock = (): PurchasesDb => {
+  const suppliers = new Map<string, Supplier>();
   const purchases = new Map<string, Purchase>();
   const receivings = new Map<string, Receiving>();
   const inventoryLots = new Map<string, InventoryLot>();
+  const products = new Map<string, { localId: string; tenantId: string; preferredSupplierLocalId?: string | null }>();
 
   return {
+    async createSupplier(supplier) {
+      suppliers.set(supplier.localId, supplier);
+    },
+    async updateSupplier(supplier) {
+      suppliers.set(supplier.localId, supplier);
+    },
+    async listSuppliers(tenantId) {
+      return [...suppliers.values()].filter((item) => item.tenantId === tenantId);
+    },
+    async getSupplierByLocalId(tenantId, localId) {
+      const supplier = suppliers.get(localId);
+      if (!supplier || supplier.tenantId !== tenantId) {
+        return undefined;
+      }
+      return supplier;
+    },
     async createPurchase(purchase) {
       purchases.set(purchase.localId, purchase);
+    },
+    async updatePurchase(purchase) {
+      const existing = purchases.get(purchase.localId);
+      if (existing) {
+        purchases.set(purchase.localId, { ...existing, ...purchase });
+      }
     },
     async listPurchases(tenantId) {
       return [...purchases.values()].filter((item) => item.tenantId === tenantId);
@@ -59,6 +83,16 @@ const createDbMock = (): PurchasesDb => {
       for (const lot of lots) {
         inventoryLots.set(lot.localId, lot);
       }
+    },
+    async updateProductPreferredSupplier(tenantId, productLocalId, supplierLocalId) {
+      const product = products.get(productLocalId);
+      if (!product || product.tenantId !== tenantId) return;
+      products.set(productLocalId, { ...product, preferredSupplierLocalId: supplierLocalId });
+    },
+    async getProductByLocalId(tenantId, localId) {
+      const product = products.get(localId);
+      if (!product || product.tenantId !== tenantId) return undefined;
+      return product;
     }
   };
 };
@@ -86,6 +120,68 @@ const createService = (db: PurchasesDb = createDbMock()): PurchasesService =>
   });
 
 describe("purchases.service", () => {
+  it("crea un proveedor", async () => {
+    const eventBus = new InMemoryEventBus();
+    const spy = vi.fn();
+    eventBus.on("PURCHASES.SUPPLIER_CREATED", spy);
+    const service = createPurchasesService({
+      eventBus,
+      db: createDbMock(),
+      syncEngine: createSyncEngineMock()
+    });
+
+    const result = await service.createSupplier(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { name: "Proveedor Test", rif: "J-123456789", phone: "04141234567" }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.name).toBe("Proveedor Test");
+    expect(result.data.isActive).toBe(true);
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it("lista proveedores", async () => {
+    const service = createService();
+    await service.createSupplier(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { name: "Proveedor A" }
+    );
+    await service.createSupplier(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { name: "Proveedor B" }
+    );
+
+    const result = await service.listSuppliers({ tenantSlug: "tenant-demo" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data).toHaveLength(2);
+  });
+
+  it("actualiza un proveedor", async () => {
+    const service = createService();
+    const created = await service.createSupplier(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { name: "Proveedor Original" }
+    );
+    if (!created.ok) return;
+
+    const updated = await service.updateSupplier(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { localId: created.data.localId, name: "Proveedor Modificado" }
+    );
+
+    expect(updated.ok).toBe(true);
+    if (!updated.ok) return;
+    expect(updated.data.name).toBe("Proveedor Modificado");
+  });
+
   it("emite comando para crear categoria desde compras", async () => {
     const eventBus = new InMemoryEventBus();
     const spy = vi.fn();
@@ -114,11 +210,11 @@ describe("purchases.service", () => {
     );
 
     expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
+    if (!result.ok) return;
     expect(result.data.status).toBe("draft");
     expect(result.data.total).toBe(20);
+    expect(result.data.currency).toBe("USD");
+    expect(result.data.exchangeRate).toBe(1);
   });
 
   it("recibe una compra draft y la marca como received", async () => {
@@ -132,29 +228,65 @@ describe("purchases.service", () => {
       }
     );
     expect(created.ok).toBe(true);
-    if (!created.ok) {
-      return;
-    }
+    if (!created.ok) return;
 
     const received = await service.receivePurchase(
       { tenantSlug: "tenant-demo" },
       ownerActor,
-      { purchaseLocalId: created.data.localId }
+      {
+        purchaseLocalId: created.data.localId,
+        receivedItems: [{ productLocalId: "prod-1", qty: 1 }]
+      }
     );
 
     expect(received.ok).toBe(true);
-    if (!received.ok) {
-      return;
-    }
+    if (!received.ok) return;
     expect(received.data.status).toBe("posted");
     expect(received.data.totalCost).toBe(12);
 
     const lots = await service.listInventoryLots({ tenantSlug: "tenant-demo" });
     expect(lots.ok).toBe(true);
-    if (!lots.ok) {
-      return;
-    }
+    if (!lots.ok) return;
     expect(lots.data).toHaveLength(1);
+  });
+
+  it("recibe una compra parcialmente", async () => {
+    const service = createService();
+    const created = await service.createPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        warehouseLocalId: "wh-1",
+        items: [
+          { productLocalId: "prod-1", qty: 10, unitCost: 5 },
+          { productLocalId: "prod-2", qty: 5, unitCost: 10 }
+        ]
+      }
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const received = await service.receivePurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        purchaseLocalId: created.data.localId,
+        receivedItems: [
+          { productLocalId: "prod-1", qty: 5 },
+          { productLocalId: "prod-2", qty: 5 }
+        ]
+      }
+    );
+
+    expect(received.ok).toBe(true);
+    if (!received.ok) return;
+    expect(received.data.status).toBe("posted");
+
+    const purchases = await service.listPurchases({ tenantSlug: "tenant-demo" });
+    expect(purchases.ok).toBe(true);
+    if (!purchases.ok) return;
+    const purchase = purchases.data[0];
+    expect(purchase?.status).toBe("partial_received");
   });
 
   it("rechaza recepcion de compra anulada", async () => {
@@ -164,9 +296,12 @@ describe("purchases.service", () => {
       tenantId: "tenant-demo",
       warehouseLocalId: "wh-1",
       status: "cancelled",
+      currency: "USD",
+      exchangeRate: 1,
       subtotal: 10,
       total: 10,
       items: [{ productLocalId: "prod-1", qty: 1, unitCost: 10 }],
+      receivedItems: [],
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z"
     });
@@ -175,14 +310,15 @@ describe("purchases.service", () => {
     const received = await service.receivePurchase(
       { tenantSlug: "tenant-demo" },
       ownerActor,
-      { purchaseLocalId: "pur-cancelled" }
+      {
+        purchaseLocalId: "pur-cancelled",
+        receivedItems: [{ productLocalId: "prod-1", qty: 1 }]
+      }
     );
 
     expect(received.ok).toBe(false);
-    if (received.ok) {
-      return;
-    }
-    expect(received.error.code).toBe("PURCHASE_CANCELLED_NOT_RECEIVABLE");
+    if (received.ok) return;
+    expect(received.error.code).toBe("PURCHASES_CANCELLED_NOT_RECEIVABLE");
   });
 
   it("bloquea recepcion para empleado sin acceso a bodega", async () => {
@@ -196,9 +332,7 @@ describe("purchases.service", () => {
       }
     );
     expect(created.ok).toBe(true);
-    if (!created.ok) {
-      return;
-    }
+    if (!created.ok) return;
 
     const received = await service.receivePurchase(
       { tenantSlug: "tenant-demo" },
@@ -216,13 +350,251 @@ describe("purchases.service", () => {
           allowedWarehouseLocalIds: []
         }
       },
-      { purchaseLocalId: created.data.localId }
+      {
+        purchaseLocalId: created.data.localId,
+        receivedItems: [{ productLocalId: "prod-1", qty: 1 }]
+      }
     );
 
     expect(received.ok).toBe(false);
-    if (received.ok) {
-      return;
-    }
-    expect(received.error.code).toBe("WAREHOUSE_ACCESS_DENIED");
+    if (received.ok) return;
+    expect(received.error.code).toBe("PURCHASES_WAREHOUSE_ACCESS_DENIED");
+  });
+
+  it("confirma una compra en estado draft", async () => {
+    const eventBus = new InMemoryEventBus();
+    const spy = vi.fn();
+    eventBus.on("PURCHASES.CONFIRMED", spy);
+    const service = createPurchasesService({
+      eventBus,
+      db: createDbMock(),
+      syncEngine: createSyncEngineMock()
+    });
+
+    const created = await service.createPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { warehouseLocalId: "wh-1", items: [{ productLocalId: "prod-1", qty: 2, unitCost: 10 }] }
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const confirmed = await service.confirmPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      created.data.localId
+    );
+
+    expect(confirmed.ok).toBe(true);
+    if (!confirmed.ok) return;
+    expect(confirmed.data.status).toBe("confirmed");
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it("rechaza confirmar compra que no está en draft", async () => {
+    const db = createDbMock();
+    await db.createPurchase({
+      localId: "pur-confirmed",
+      tenantId: "tenant-demo",
+      warehouseLocalId: "wh-1",
+      status: "confirmed",
+      currency: "USD",
+      exchangeRate: 1,
+      subtotal: 20,
+      total: 20,
+      items: [{ productLocalId: "prod-1", qty: 2, unitCost: 10 }],
+      receivedItems: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    });
+    const service = createService(db);
+
+    const confirmed = await service.confirmPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      "pur-confirmed"
+    );
+
+    expect(confirmed.ok).toBe(false);
+    if (confirmed.ok) return;
+    expect(confirmed.error.code).toBe("PURCHASES_NOT_DRAFT");
+  });
+
+  it("cancela una compra en estado draft", async () => {
+    const eventBus = new InMemoryEventBus();
+    const spy = vi.fn();
+    eventBus.on("PURCHASES.CANCELLED", spy);
+    const service = createPurchasesService({
+      eventBus,
+      db: createDbMock(),
+      syncEngine: createSyncEngineMock()
+    });
+
+    const created = await service.createPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { warehouseLocalId: "wh-1", items: [{ productLocalId: "prod-1", qty: 1, unitCost: 15 }] }
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const cancelled = await service.cancelPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      created.data.localId
+    );
+
+    expect(cancelled.ok).toBe(true);
+    if (!cancelled.ok) return;
+    expect(cancelled.data.status).toBe("cancelled");
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it("rechaza cancelar una compra ya recibida", async () => {
+    const db = createDbMock();
+    await db.createPurchase({
+      localId: "pur-received",
+      tenantId: "tenant-demo",
+      warehouseLocalId: "wh-1",
+      status: "received",
+      currency: "USD",
+      exchangeRate: 1,
+      subtotal: 10,
+      total: 10,
+      items: [{ productLocalId: "prod-1", qty: 1, unitCost: 10 }],
+      receivedItems: [],
+      receivedAt: "2026-01-01T00:00:00.000Z",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    });
+    const service = createService(db);
+
+    const cancelled = await service.cancelPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      "pur-received"
+    );
+
+    expect(cancelled.ok).toBe(false);
+    if (cancelled.ok) return;
+    expect(cancelled.error.code).toBe("PURCHASES_RECEIVED_NOT_CANCELLABLE");
+  });
+
+  it("rechaza cancelar una compra ya cancelada", async () => {
+    const db = createDbMock();
+    await db.createPurchase({
+      localId: "pur-cancelled2",
+      tenantId: "tenant-demo",
+      warehouseLocalId: "wh-1",
+      status: "cancelled",
+      currency: "USD",
+      exchangeRate: 1,
+      subtotal: 10,
+      total: 10,
+      items: [{ productLocalId: "prod-1", qty: 1, unitCost: 10 }],
+      receivedItems: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    });
+    const service = createService(db);
+
+    const cancelled = await service.cancelPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      "pur-cancelled2"
+    );
+
+    expect(cancelled.ok).toBe(false);
+    if (cancelled.ok) return;
+    expect(cancelled.error.code).toBe("PURCHASES_ALREADY_CANCELLED");
+  });
+
+  it("edita una compra en estado draft", async () => {
+    const eventBus = new InMemoryEventBus();
+    const spy = vi.fn();
+    eventBus.on("PURCHASES.UPDATED", spy);
+    const service = createPurchasesService({
+      eventBus,
+      db: createDbMock(),
+      syncEngine: createSyncEngineMock()
+    });
+
+    const created = await service.createPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { warehouseLocalId: "wh-1", items: [{ productLocalId: "prod-1", qty: 1, unitCost: 10 }] }
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const editInput: EditPurchaseInput = {
+      purchaseLocalId: created.data.localId,
+      items: [
+        { productLocalId: "prod-1", qty: 5, unitCost: 20 },
+        { productLocalId: "prod-2", qty: 3, unitCost: 15 }
+      ]
+    };
+
+    const edited = await service.editPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      editInput
+    );
+
+    expect(edited.ok).toBe(true);
+    if (!edited.ok) return;
+    expect(edited.data.items).toHaveLength(2);
+    expect(edited.data.total).toBe(145); // 5*20 + 3*15
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it("rechaza editar una compra que no está en draft", async () => {
+    const db = createDbMock();
+    await db.createPurchase({
+      localId: "pur-edit-confirmed",
+      tenantId: "tenant-demo",
+      warehouseLocalId: "wh-1",
+      status: "confirmed",
+      currency: "USD",
+      exchangeRate: 1,
+      subtotal: 10,
+      total: 10,
+      items: [{ productLocalId: "prod-1", qty: 1, unitCost: 10 }],
+      receivedItems: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    });
+    const service = createService(db);
+
+    const edited = await service.editPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { purchaseLocalId: "pur-edit-confirmed", items: [{ productLocalId: "prod-1", qty: 2, unitCost: 5 }] }
+    );
+
+    expect(edited.ok).toBe(false);
+    if (edited.ok) return;
+    expect(edited.error.code).toBe("PURCHASES_NOT_DRAFT_NOT_EDITABLE");
+  });
+
+  it("rechaza editar compra sin items", async () => {
+    const service = createService();
+    const created = await service.createPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { warehouseLocalId: "wh-1", items: [{ productLocalId: "prod-1", qty: 1, unitCost: 10 }] }
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const edited = await service.editPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { purchaseLocalId: created.data.localId, items: [] }
+    );
+
+    expect(edited.ok).toBe(false);
+    if (edited.ok) return;
+    expect(edited.error.code).toBe("PURCHASES_ITEMS_REQUIRED");
   });
 });

@@ -48,6 +48,7 @@ export interface ProductRecord {
   height?: number | null;
   isSerialized?: boolean | null;
   defaultPresentationId?: string | null;
+  preferredSupplierLocalId?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -202,23 +203,45 @@ export interface BoxClosingRecord {
   deletedAt?: string;
 }
 
+export interface SupplierRecord {
+  localId: string;
+  tenantId: string;
+  name: string;
+  rif?: string;
+  phone?: string;
+  contactPerson?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
 export interface PurchaseItemRecord {
   productLocalId: string;
   qty: number;
   unitCost: number;
 }
 
+export interface PurchaseReceivedItemRecord {
+  productLocalId: string;
+  qtyOrdered: number;
+  qtyReceived: number;
+}
+
 export interface PurchaseRecord {
   localId: string;
   tenantId: string;
   warehouseLocalId: string;
+  supplierLocalId?: string;
   supplierName?: string;
-  status: "draft" | "received" | "cancelled";
+  status: "draft" | "confirmed" | "partial_received" | "received" | "cancelled";
   currency: "VES" | "USD";
   exchangeRate: number;
   subtotal: number;
   total: number;
   items: PurchaseItemRecord[];
+  receivedItems?: PurchaseReceivedItemRecord[];
   createdBy?: string;
   receivedAt?: string;
   createdAt: string;
@@ -239,6 +262,7 @@ export interface ReceivingRecord {
   warehouseLocalId: string;
   status: "posted";
   items: ReceivingItemRecord[];
+  receivedItems?: ReceivingItemRecord[];
   totalItems: number;
   totalCost: number;
   receivedBy?: string;
@@ -403,6 +427,7 @@ export class LogisCoreDexie extends Dexie {
   bootstrap_state!: EntityTable<CoreBootstrapState, "id">;
   sync_queue!: EntityTable<SyncQueueEntity, "id">;
   sync_errors!: EntityTable<SyncErrorRecord, "id">;
+  suppliers!: EntityTable<SupplierRecord, "localId">;
   categories!: EntityTable<CategoryRecord, "localId">;
   products!: EntityTable<ProductRecord, "localId">;
   product_presentations!: EntityTable<ProductPresentationRecord, "id">;
@@ -577,6 +602,76 @@ export class LogisCoreDexie extends Dexie {
       bootstrap_state: "&id, tenantId, userId, bootstrappedAt",
       sync_queue: "&id, tenantId, table, operation, createdAt, attempts, status",
       sync_errors: "&id, queueItemId, tenantId, failedAt",
+      categories: "&localId, tenantId, name, createdAt",
+      products:
+        "&localId, tenantId, categoryId, visible, defaultPresentationId, createdAt",
+      product_presentations: "&id, tenantId, productLocalId, name, createdAt",
+      warehouses: "&localId, tenantId, name, code, createdAt",
+      product_size_colors: "&localId, tenantId, productLocalId, size, color, createdAt",
+      stock_movements:
+        "&localId, tenantId, productLocalId, warehouseLocalId, movementType, createdAt",
+      inventory_counts:
+        "&localId, tenantId, warehouseLocalId, productLocalId, status, createdAt",
+      sales: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      suspended_sales: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      box_closings: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      purchases: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      receivings: "&localId, tenantId, purchaseLocalId, warehouseLocalId, createdAt",
+      inventory_lots:
+        "&localId, tenantId, productLocalId, warehouseLocalId, sourceType, sourceLocalId, createdAt",
+      recipes: "&localId, tenantId, productLocalId, createdAt",
+      production_orders: "&localId, tenantId, recipeLocalId, warehouseLocalId, status, createdAt",
+      production_logs:
+        "&localId, tenantId, productionOrderLocalId, recipeLocalId, warehouseLocalId, createdAt",
+      invoices:
+        "&localId, tenantId, saleLocalId, customerId, status, createdAt",
+      tax_rules:
+        "&localId, tenantId, type, isActive, createdAt",
+      exchange_rates:
+        "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt",
+      security_audit_log:
+        "&localId, tenantId, userId, eventType, createdAt"
+    });
+    this.version(10).stores({
+      bootstrap_state: "&id, tenantId, userId, bootstrappedAt",
+      sync_queue: "&id, tenantId, table, operation, createdAt, attempts, status",
+      sync_errors: "&id, queueItemId, tenantId, failedAt",
+      suppliers: "&localId, tenantId, name, createdAt",
+      categories: "&localId, tenantId, name, createdAt",
+      products:
+        "&localId, tenantId, categoryId, visible, defaultPresentationId, createdAt",
+      product_presentations: "&id, tenantId, productLocalId, name, createdAt",
+      warehouses: "&localId, tenantId, name, code, createdAt",
+      product_size_colors: "&localId, tenantId, productLocalId, size, color, createdAt",
+      stock_movements:
+        "&localId, tenantId, productLocalId, warehouseLocalId, movementType, createdAt",
+      inventory_counts:
+        "&localId, tenantId, warehouseLocalId, productLocalId, status, createdAt",
+      sales: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      suspended_sales: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      box_closings: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      purchases: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      receivings: "&localId, tenantId, purchaseLocalId, warehouseLocalId, createdAt",
+      inventory_lots:
+        "&localId, tenantId, productLocalId, warehouseLocalId, sourceType, sourceLocalId, createdAt",
+      recipes: "&localId, tenantId, productLocalId, createdAt",
+      production_orders: "&localId, tenantId, recipeLocalId, warehouseLocalId, status, createdAt",
+      production_logs:
+        "&localId, tenantId, productionOrderLocalId, recipeLocalId, warehouseLocalId, createdAt",
+      invoices:
+        "&localId, tenantId, saleLocalId, customerId, status, createdAt",
+      tax_rules:
+        "&localId, tenantId, type, isActive, createdAt",
+      exchange_rates:
+        "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt",
+      security_audit_log:
+        "&localId, tenantId, userId, eventType, createdAt"
+    });
+    this.version(11).stores({
+      bootstrap_state: "&id, tenantId, userId, bootstrappedAt",
+      sync_queue: "&id, tenantId, table, operation, createdAt, attempts, status",
+      sync_errors: "&id, queueItemId, tenantId, failedAt",
+      suppliers: "&localId, tenantId, name, createdAt",
       categories: "&localId, tenantId, name, createdAt",
       products:
         "&localId, tenantId, categoryId, visible, defaultPresentationId, createdAt",

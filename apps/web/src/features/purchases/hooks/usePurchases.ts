@@ -1,29 +1,25 @@
-/**
- * Hook personalizado para gestionar las compras.
- * Provee estado y métodos para:
- * - Listar compras, recepciones y lotes de inventario
- * - Crear órdenes de compra y recibir compras
- * - Gestionar el catálogo de compras
- * Utiliza el patrón Result<T, AppError> para manejo de errores.
- */
-
 import { useCallback, useState } from "react";
 import type { PurchasesService } from "../services/purchases.service";
 import { purchasesService } from "../services/purchases.service.instance";
 import type {
   CreatePurchaseInput,
+  CreateSupplierInput,
+  EditPurchaseInput,
   PurchasesActorContext,
   PurchasesCatalogCreateCategoryCommand,
   PurchasesCatalogCreatePresentationCommand,
   PurchasesCatalogCreateProductCommand,
   PurchasesTenantContext,
   ReceivePurchaseInput,
-  PurchasesUiState
+  PurchasesUiState,
+  UpdateSupplierInput,
+  Supplier
 } from "../types/purchases.types";
 
 const initialState: PurchasesUiState = {
   isLoading: false,
   isSubmitting: false,
+  suppliers: [],
   purchases: [],
   receivings: [],
   inventoryLots: [],
@@ -45,33 +41,19 @@ export const usePurchases = ({
 
   const refresh = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
-    const [purchasesResult, receivingsResult, lotsResult] = await Promise.all([
+    const [suppliersResult, purchasesResult, receivingsResult, lotsResult] = await Promise.all([
+      service.listSuppliers(tenant),
       service.listPurchases(tenant),
       service.listReceivings(tenant),
       service.listInventoryLots(tenant)
     ]);
 
-    if (!purchasesResult.ok) {
+    const firstError = [suppliersResult, purchasesResult, receivingsResult, lotsResult].find(r => !r.ok);
+    if (firstError && !firstError.ok) {
       setState((previous) => ({
         ...previous,
         isLoading: false,
-        lastError: purchasesResult.error
-      }));
-      return;
-    }
-    if (!receivingsResult.ok) {
-      setState((previous) => ({
-        ...previous,
-        isLoading: false,
-        lastError: receivingsResult.error
-      }));
-      return;
-    }
-    if (!lotsResult.ok) {
-      setState((previous) => ({
-        ...previous,
-        isLoading: false,
-        lastError: lotsResult.error
+        lastError: firstError.error
       }));
       return;
     }
@@ -79,12 +61,51 @@ export const usePurchases = ({
     setState((previous) => ({
       ...previous,
       isLoading: false,
-      purchases: purchasesResult.data,
-      receivings: receivingsResult.data,
-      inventoryLots: lotsResult.data,
+      suppliers: suppliersResult.ok ? suppliersResult.data : [],
+      purchases: purchasesResult.ok ? purchasesResult.data : [],
+      receivings: receivingsResult.ok ? receivingsResult.data : [],
+      inventoryLots: lotsResult.ok ? lotsResult.data : [],
       lastError: null
     }));
   }, [service, tenant]);
+
+  const createSupplier = useCallback(
+    async (input: CreateSupplierInput) => {
+      setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
+      const result = await service.createSupplier(tenant, actor, input);
+      if (!result.ok) {
+        setState((previous) => ({
+          ...previous,
+          isSubmitting: false,
+          lastError: result.error
+        }));
+        return null;
+      }
+      setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
+      await refresh();
+      return result.data;
+    },
+    [actor, refresh, service, tenant]
+  );
+
+  const updateSupplier = useCallback(
+    async (input: UpdateSupplierInput) => {
+      setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
+      const result = await service.updateSupplier(tenant, actor, input);
+      if (!result.ok) {
+        setState((previous) => ({
+          ...previous,
+          isSubmitting: false,
+          lastError: result.error
+        }));
+        return null;
+      }
+      setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
+      await refresh();
+      return result.data;
+    },
+    [actor, refresh, service, tenant]
+  );
 
   const requestCreateCategory = useCallback(
     async (input: PurchasesCatalogCreateCategoryCommand) => {
@@ -175,13 +196,95 @@ export const usePurchases = ({
     [actor, refresh, service, tenant]
   );
 
+  const confirmPurchase = useCallback(
+    async (purchaseLocalId: string) => {
+      setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
+      const result = await service.confirmPurchase(tenant, actor, purchaseLocalId);
+      if (!result.ok) {
+        setState((previous) => ({
+          ...previous,
+          isSubmitting: false,
+          lastError: result.error
+        }));
+        return null;
+      }
+      setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
+      await refresh();
+      return result.data;
+    },
+    [actor, refresh, service, tenant]
+  );
+
+  const cancelPurchase = useCallback(
+    async (purchaseLocalId: string) => {
+      setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
+      const result = await service.cancelPurchase(tenant, actor, purchaseLocalId);
+      if (!result.ok) {
+        setState((previous) => ({
+          ...previous,
+          isSubmitting: false,
+          lastError: result.error
+        }));
+        return null;
+      }
+      setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
+      await refresh();
+      return result.data;
+    },
+    [actor, refresh, service, tenant]
+  );
+
+  const editPurchase = useCallback(
+    async (input: EditPurchaseInput) => {
+      setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
+      const result = await service.editPurchase(tenant, actor, input);
+      if (!result.ok) {
+        setState((previous) => ({
+          ...previous,
+          isSubmitting: false,
+          lastError: result.error
+        }));
+        return null;
+      }
+      setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
+      await refresh();
+      return result.data;
+    },
+    [actor, refresh, service, tenant]
+  );
+
+  const setProductPreferredSupplier = useCallback(
+    async (productLocalId: string, supplierLocalId: string | null) => {
+      setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
+      const result = await service.setProductPreferredSupplier(tenant, productLocalId, supplierLocalId);
+      if (!result.ok) {
+        setState((previous) => ({
+          ...previous,
+          isSubmitting: false,
+          lastError: result.error
+        }));
+        return false;
+      }
+      setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
+      await refresh();
+      return true;
+    },
+    [actor, refresh, service, tenant]
+  );
+
   return {
     state,
     refresh,
+    createSupplier,
+    updateSupplier,
     requestCreateCategory,
     requestCreateProduct,
     requestCreatePresentation,
     createPurchase,
-    receivePurchase
+    receivePurchase,
+    confirmPurchase,
+    cancelPurchase,
+    editPurchase,
+    setProductPreferredSupplier
   };
 };

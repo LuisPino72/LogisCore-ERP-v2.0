@@ -44,7 +44,7 @@ function ModuleRenderer({ moduleId, tenantSlug, actor }: { moduleId: ModuleId, t
         return (
           <>
             <PurchasesCatalogPanel tenantSlug={tenantSlug} actor={actor as never} categories={[]} products={[]} presentations={[]} />
-            <PurchasesPanel tenantSlug={tenantSlug} actor={actor as never} products={[]} />
+            <PurchasesPanel tenantSlug={tenantSlug} actor={actor as never} products={[]} warehouses={[]} />
           </>
         );
       case "sales":

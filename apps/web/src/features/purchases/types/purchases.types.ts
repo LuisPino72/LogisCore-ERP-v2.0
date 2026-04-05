@@ -1,17 +1,9 @@
 import type { AppError } from "@logiscore/core";
 
-/**
- * Contexto del tenant para operaciones de compras.
- * Identifica el tenant (empresa/organización) en curso.
- */
 export interface PurchasesTenantContext {
   tenantSlug: string;
 }
 
-/**
- * Permisos del actor para operaciones de compras.
- * Define qué operaciones puede realizar el usuario actual.
- */
 export interface PurchasesActorPermissions {
   canApplyDiscount: boolean;
   maxDiscountPercent: number;
@@ -23,47 +15,53 @@ export interface PurchasesActorPermissions {
   allowedWarehouseLocalIds?: string[];
 }
 
-/**
- * Contexto del actor (usuario) para operaciones de compras.
- * Combina el rol y los permisos del usuario.
- */
-/**
- * Contexto del actor (usuario) para operaciones de compras.
- * Combina el rol y los permisos del usuario.
- */
 export interface PurchasesActorContext {
   role: "owner" | "employee" | "admin";
   userId?: string;
   permissions: PurchasesActorPermissions;
 }
 
-/**
- * Ítem de una orden de compra.
- */
-/**
- * Ítem de una orden de compra.
- */
+export interface Supplier {
+  localId: string;
+  tenantId: string;
+  name: string;
+  rif?: string;
+  phone?: string;
+  contactPerson?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export type PurchaseStatus = "draft" | "confirmed" | "partial_received" | "received" | "cancelled";
+
 export interface PurchaseItem {
   productLocalId: string;
   qty: number;
   unitCost: number;
 }
 
-/**
- * Orden de compra.
- * Representa una solicitud de compra a un proveedor.
- */
+export interface PurchaseReceivedItem {
+  productLocalId: string;
+  qtyOrdered: number;
+  qtyReceived: number;
+}
+
 export interface Purchase {
   localId: string;
   tenantId: string;
   warehouseLocalId: string;
+  supplierLocalId?: string;
   supplierName?: string;
-  status: "draft" | "received" | "cancelled";
+  status: PurchaseStatus;
   currency: "VES" | "USD";
   exchangeRate: number;
   subtotal: number;
   total: number;
   items: PurchaseItem[];
+  receivedItems?: PurchaseReceivedItem[];
   createdBy?: string;
   receivedAt?: string;
   createdAt: string;
@@ -71,22 +69,12 @@ export interface Purchase {
   deletedAt?: string;
 }
 
-/**
- * Ítem de una recepción de compra.
- */
-/**
- * Ítem de una recepción de compra.
- */
 export interface ReceivingItem {
   productLocalId: string;
   qty: number;
   unitCost: number;
 }
 
-/**
- * Recepción de compra.
- * Registra la recepción de productos en bodega.
- */
 export interface Receiving {
   localId: string;
   tenantId: string;
@@ -103,10 +91,6 @@ export interface Receiving {
   deletedAt?: string;
 }
 
-/**
- * Lote de inventario.
- * tracking de lotes para control de calidad y caducidad.
- */
 export interface InventoryLot {
   localId: string;
   tenantId: string;
@@ -121,45 +105,45 @@ export interface InventoryLot {
   updatedAt: string;
 }
 
-/**
- * Datos de entrada para crear una orden de compra.
- */
-/**
- * Datos de entrada para crear una orden de compra.
- */
+export interface CreateSupplierInput {
+  name: string;
+  rif?: string;
+  phone?: string;
+  contactPerson?: string;
+  notes?: string;
+}
+
+export interface UpdateSupplierInput {
+  localId: string;
+  name?: string;
+  rif?: string;
+  phone?: string;
+  contactPerson?: string;
+  notes?: string;
+}
+
 export interface CreatePurchaseInput {
   warehouseLocalId: string;
+  supplierLocalId?: string;
   supplierName?: string;
   items: PurchaseItem[];
 }
 
-/**
- * Datos de entrada para recibir una orden de compra.
- */
-/**
- * Datos de entrada para recibir una orden de compra.
- */
 export interface ReceivePurchaseInput {
   purchaseLocalId: string;
+  receivedItems: { productLocalId: string; qty: number }[];
   notes?: string;
 }
 
-/**
- * Comando para crear una categoría en el catálogo de compras.
- */
-/**
- * Comando para crear una categoría en el catálogo de compras.
- */
+export interface EditPurchaseInput {
+  purchaseLocalId: string;
+  items: PurchaseItem[];
+}
+
 export interface PurchasesCatalogCreateCategoryCommand {
   name: string;
 }
 
-/**
- * Comando para crear un producto en el catálogo de compras.
- */
-/**
- * Comando para crear un producto en el catálogo de compras.
- */
 export interface PurchasesCatalogCreateProductCommand {
   name: string;
   categoryId?: string;
@@ -167,12 +151,6 @@ export interface PurchasesCatalogCreateProductCommand {
   defaultPresentationId?: string;
 }
 
-/**
- * Comando para crear una presentación en el catálogo de compras.
- */
-/**
- * Comando para crear una presentación en el catálogo de compras.
- */
 export interface PurchasesCatalogCreatePresentationCommand {
   productLocalId: string;
   name: string;
@@ -180,12 +158,10 @@ export interface PurchasesCatalogCreatePresentationCommand {
   barcode?: string;
 }
 
-/**
- * Estado de la UI para el módulo de compras.
- */
 export interface PurchasesUiState {
   isLoading: boolean;
   isSubmitting: boolean;
+  suppliers: Supplier[];
   purchases: Purchase[];
   receivings: Receiving[];
   inventoryLots: InventoryLot[];

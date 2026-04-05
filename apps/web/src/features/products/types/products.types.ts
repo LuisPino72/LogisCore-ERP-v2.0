@@ -72,6 +72,7 @@ export interface Product {
   isSerialized?: boolean | null;
   isTaxable?: boolean | null;
   defaultPresentationId?: string | null;
+  preferredSupplierLocalId?: string | null;
   deletedAt?: string | null;
 }
 
