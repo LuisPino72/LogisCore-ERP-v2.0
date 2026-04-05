@@ -45,31 +45,79 @@ describe("AdminService", () => {
   });
 
   describe("deleteTenant", () => {
-    it("debe eliminar tenant", async () => {
-      const supabase: any = {
-        from: () => ({ delete: () => ({ eq: () => Promise.resolve({ error: null }) }) })
-      };
+    it("debe eliminar tenant permanentemente (hard delete)", async () => {
+      const mockFetch = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true })
+        })
+      );
+      vi.stubGlobal("fetch", mockFetch);
+
+      const supabase = {} as any;
       const eventBus = createEventBusMock();
       const service = createAdminService({ supabase, eventBus: eventBus as any });
 
-      const result = await service.deleteTenant("tenant-123");
+      const result = await service.deleteTenant("tenant-123", true);
 
       expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("admin-manage-tenant"),
+        expect.objectContaining({
+          body: JSON.stringify({ action: "delete", tenantId: "tenant-123", permanent: true })
+        })
+      );
+
+      vi.unstubAllGlobals();
+    });
+
+    it("debe desactivar tenant (soft delete)", async () => {
+      const mockFetch = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, tenant: { id: "tenant-123", name: "Test", slug: "test" } })
+        })
+      );
+      vi.stubGlobal("fetch", mockFetch);
+
+      const supabase = {} as any;
+      const eventBus = createEventBusMock();
+      const service = createAdminService({ supabase, eventBus: eventBus as any });
+
+      const result = await service.deleteTenant("tenant-123", false);
+
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("admin-manage-tenant"),
+        expect.objectContaining({
+          body: JSON.stringify({ action: "delete", tenantId: "tenant-123", permanent: false })
+        })
+      );
+
+      vi.unstubAllGlobals();
     });
 
     it("debe manejar error al eliminar tenant", async () => {
-      const supabase: any = {
-        from: () => ({ delete: () => ({ eq: () => Promise.resolve({ error: { message: "Error al eliminar" } }) }) })
-      };
+      const mockFetch = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: false, error: "Error al eliminar" })
+        })
+      );
+      vi.stubGlobal("fetch", mockFetch);
+
+      const supabase = {} as any;
       const eventBus = createEventBusMock();
       const service = createAdminService({ supabase, eventBus: eventBus as any });
 
-      const result = await service.deleteTenant("tenant-123");
+      const result = await service.deleteTenant("tenant-123", true);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("ADMIN_DELETE_TENANT_FAILED");
       }
+
+      vi.unstubAllGlobals();
     });
   });
 
@@ -104,20 +152,16 @@ describe("AdminService", () => {
 
   describe("updateTenant", () => {
     it("debe actualizar tenant", async () => {
-      const supabase: any = {
-        from: () => ({
-          update: () => ({
-            eq: () => ({
-              select: () => ({
-                single: async () => ({
-                  data: { id: "1", name: "Updated", slug: "updated", owner_user_id: "u1", is_active: true },
-                  error: null
-                })
-              })
-            })
-          })
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          tenant: { id: "1", name: "Updated", slug: "updated" }
         })
-      };
+      });
+      global.fetch = mockFetch;
+
+      const supabase: any = null;
       const eventBus = createEventBusMock();
       const service = createAdminService({ supabase, eventBus: eventBus as any });
 
@@ -127,20 +171,20 @@ describe("AdminService", () => {
       if (result.ok) {
         expect(result.data.name).toBe("Updated");
       }
+      expect(mockFetch).toHaveBeenCalled();
     });
 
     it("debe manejar error al actualizar tenant", async () => {
-      const supabase: any = {
-        from: () => ({
-          update: () => ({
-            eq: () => ({
-              select: () => ({
-                single: async () => ({ data: null, error: { message: "Error al actualizar" } })
-              })
-            })
-          })
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({
+          success: false,
+          error: "Error al actualizar"
         })
-      };
+      });
+      global.fetch = mockFetch;
+
+      const supabase: any = null;
       const eventBus = createEventBusMock();
       const service = createAdminService({ supabase, eventBus: eventBus as any });
 
@@ -355,12 +399,12 @@ describe("AdminService", () => {
       const result = await service.listTenants();
 
       expect(result.ok).toBe(true);
-      if (result.ok) {
+      if (result.ok && result.data) {
         expect(result.data).toHaveLength(2);
-        expect(result.data[0].name).toBe("Empresa 1");
-        expect(result.data[0].businessTypeName).toBe("Tienda");
-        expect(result.data[0].logoUrl).toBe("https://example.com/logo.png");
-        expect(result.data[1].isActive).toBe(false);
+        expect(result.data[0]?.name).toBe("Empresa 1");
+        expect(result.data[0]?.businessTypeName).toBe("Tienda");
+        expect(result.data[0]?.logoUrl).toBe("https://example.com/logo.png");
+        expect(result.data[1]?.isActive).toBe(false);
       }
     });
 

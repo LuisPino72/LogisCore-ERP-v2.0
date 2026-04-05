@@ -1,10 +1,11 @@
 /**
  * Panel de Suscripciones.
  * Gestión de planes y suscripciones de tenants.
+ * Solo muestra lista (las suscripciones se crean automáticamente al crear tenant).
  */
 
 import { useEffect, useState } from "react";
-import type { Subscription, Plan, Tenant, CreateSubscriptionInput, UpdateSubscriptionInput } from "../types/admin.types";
+import type { Subscription, Plan, Tenant } from "../types/admin.types";
 
 interface SubscriptionsPanelProps {
   subscriptions: Subscription[];
@@ -14,8 +15,36 @@ interface SubscriptionsPanelProps {
   onRefreshSubscriptions: () => void;
   onRefreshPlans: () => void;
   onRefreshTenants: () => void;
-  onCreate: (input: CreateSubscriptionInput) => Promise<{ ok: boolean; error?: { message: string } }>;
-  onUpdate: (id: string, input: UpdateSubscriptionInput) => Promise<{ ok: boolean; error?: { message: string } }>;
+  onRenewSubscription: (subscriptionId: string, newPlanId?: string) => Promise<{ ok: boolean; error?: { message: string } }>;
+}
+
+function shouldShowRenewButton(subscription: Subscription): boolean {
+  if (!subscription.endDate) return true;
+  
+  const now = new Date();
+  const endDate = new Date(subscription.endDate);
+  const diffTime = endDate.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Mostrar botón si:
+  // - Quedan <= 3 días para que venza, O
+  // - Ya está vencida (end_date < now), O
+  // - Estado != 'active'
+  return diffDays <= 3 || diffDays < 0 || subscription.status !== 'active';
+}
+
+function getDaysRemaining(endDate: string | undefined): string {
+  if (!endDate) return "Indefinido";
+  
+  const now = new Date();
+  const end = new Date(endDate);
+  const diffTime = end.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return "Vencida";
+  if (diffDays === 0) return "Hoy";
+  if (diffDays === 1) return "1 día";
+  return `${diffDays} días`;
 }
 
 export function SubscriptionsPanel({ 
@@ -26,17 +55,20 @@ export function SubscriptionsPanel({
   onRefreshSubscriptions, 
   onRefreshPlans,
   onRefreshTenants,
-  onCreate,
-  onUpdate
+  onRenewSubscription
 }: SubscriptionsPanelProps) {
-  const [showForm, setShowForm] = useState(false);
-  const [editingSub, setEditingSub] = useState<Subscription | null>(null);
-  const [formData, setFormData] = useState<CreateSubscriptionInput>({
-    tenantId: "",
-    planId: "",
-    status: "active",
-    billingCycle: "monthly"
+  const [renewModal, setRenewModal] = useState<{
+    open: boolean;
+    subscription: Subscription | null;
+    changePlan: boolean;
+    selectedPlanId: string;
+  }>({
+    open: false,
+    subscription: null,
+    changePlan: false,
+    selectedPlanId: ""
   });
+  const [isRenewing, setIsRenewing] = useState(false);
 
   useEffect(() => {
     onRefreshSubscriptions();
@@ -44,36 +76,36 @@ export function SubscriptionsPanel({
     onRefreshTenants();
   }, [onRefreshSubscriptions, onRefreshPlans, onRefreshTenants]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingSub) {
-      const result = await onUpdate(editingSub.id, {
-        planId: formData.planId,
-        status: formData.status,
-        billingCycle: formData.billingCycle
-      });
-      if (result.ok) {
-        setShowForm(false);
-        setEditingSub(null);
-      }
-    } else {
-      const result = await onCreate(formData);
-      if (result.ok) {
-        setShowForm(false);
-        setFormData({ tenantId: "", planId: "", status: "active", billingCycle: "monthly" });
-      }
-    }
+  const openRenewModal = (sub: Subscription) => {
+    setRenewModal({
+      open: true,
+      subscription: sub,
+      changePlan: false,
+      selectedPlanId: sub.planId || ""
+    });
   };
 
-  const startEdit = (sub: Subscription) => {
-    setEditingSub(sub);
-    setFormData({
-      tenantId: sub.tenantId,
-      planId: sub.planId || "",
-      status: sub.status,
-      billingCycle: (sub.billingCycle as any) || "monthly"
+  const closeRenewModal = () => {
+    setRenewModal({
+      open: false,
+      subscription: null,
+      changePlan: false,
+      selectedPlanId: ""
     });
-    setShowForm(true);
+  };
+
+  const handleRenew = async () => {
+    if (!renewModal.subscription) return;
+    
+    setIsRenewing(true);
+    const newPlanId = renewModal.changePlan ? renewModal.selectedPlanId : undefined;
+    const result = await onRenewSubscription(renewModal.subscription.id, newPlanId);
+    setIsRenewing(false);
+    
+    if (result.ok) {
+      closeRenewModal();
+      onRefreshSubscriptions();
+    }
   };
 
   return (
@@ -83,103 +115,10 @@ export function SubscriptionsPanel({
           <h1 className="text-2xl font-bold text-content-primary">Suscripciones</h1>
           <p className="text-content-secondary">Gestión de planes activos y facturación</p>
         </div>
-        <div className="flex gap-3">
-          <button 
-            onClick={() => {
-              setEditingSub(null);
-              setFormData({ tenantId: "", planId: "", status: "active", billingCycle: "monthly" });
-              setShowForm(prev => !prev);
-            }} 
-            className="btn btn-primary"
-          >
-            {showForm ? "Cancelar" : "+ Nueva Suscripción"}
-          </button>
-          <button onClick={onRefreshSubscriptions} disabled={isLoading} className="btn btn-secondary">
-            {isLoading ? <span className="spinner" /> : "Actualizar"}
-          </button>
-        </div>
+        <button onClick={onRefreshSubscriptions} disabled={isLoading} className="btn btn-secondary">
+          {isLoading ? <span className="spinner" /> : "Actualizar"}
+        </button>
       </div>
-
-      {showForm && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="font-semibold text-content-primary">
-              {editingSub ? `Editar Suscripción: ${editingSub.tenantName}` : "Nueva Suscripción"}
-            </h2>
-          </div>
-          <div className="card-body">
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Tenant (Empresa)</label>
-                <select
-                  className="input"
-                  value={formData.tenantId}
-                  onChange={e => setFormData({ ...formData, tenantId: e.target.value })}
-                  disabled={!!editingSub}
-                  required
-                >
-                  <option value="">Seleccione un tenant...</option>
-                  {tenants.map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">Plan</label>
-                <select
-                  className="input"
-                  value={formData.planId}
-                  onChange={e => setFormData({ ...formData, planId: e.target.value })}
-                  required
-                >
-                  <option value="">Seleccione un plan...</option>
-                  {plans.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} - {p.price} USD</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">Estado</label>
-                <select
-                  className="input"
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value })}
-                  required
-                >
-                  <option value="active">Activa</option>
-                  <option value="trialing">Prueba</option>
-                  <option value="past_due">Atrasada</option>
-                  <option value="canceled">Cancelada</option>
-                </select>
-              </div>
-              <div>
-                <label className="label">Ciclo de Facturación</label>
-                <select
-                  className="input"
-                  value={formData.billingCycle}
-                  onChange={e => setFormData({ ...formData, billingCycle: e.target.value })}
-                  required
-                >
-                  <option value="monthly">Mensual</option>
-                  <option value="yearly">Anual</option>
-                </select>
-              </div>
-              <div className="md:col-span-2 flex gap-3 pt-4 border-t border-border mt-4">
-                <button type="submit" className="btn btn-primary" disabled={isLoading}>
-                  {editingSub ? "Guardar Cambios" : "Crear Suscripción"}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => setShowForm(false)} 
-                  className="btn btn-secondary"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       <div className="card overflow-hidden">
         <div className="card-body p-0 overflow-x-auto">
@@ -212,15 +151,26 @@ export function SubscriptionsPanel({
                   </td>
                   <td className="px-4 py-3 text-content-secondary uppercase">{sub.billingCycle}</td>
                   <td className="px-4 py-3 text-content-secondary">
-                    {sub.endDate ? new Date(sub.endDate).toLocaleDateString() : "Indefinido"}
+                    <span className={sub.endDate && new Date(sub.endDate) < new Date() ? "text-red-500" : ""}>
+                      {sub.endDate ? new Date(sub.endDate).toLocaleDateString() : "Indefinido"}
+                    </span>
+                    {sub.endDate && (
+                      <span className="ml-2 text-xs text-content-secondary">
+                        ({getDaysRemaining(sub.endDate)})
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => startEdit(sub)}
-                      className="text-brand-600 hover:text-brand-700"
-                    >
-                      Gestionar
-                    </button>
+                    {shouldShowRenewButton(sub) ? (
+                      <button
+                        onClick={() => openRenewModal(sub)}
+                        className="btn btn-primary text-sm py-1 px-3"
+                      >
+                        Renovar
+                      </button>
+                    ) : (
+                      <span className="text-content-secondary text-xs">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -233,6 +183,97 @@ export function SubscriptionsPanel({
           )}
         </div>
       </div>
+
+      {/* Modal de Renovación */}
+      {renewModal.open && renewModal.subscription && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="card w-full max-w-md mx-4">
+            <div className="card-header">
+              <h2 className="font-semibold text-content-primary">Renovar Suscripción</h2>
+            </div>
+            <div className="card-body space-y-4">
+              <div className="bg-surface-50 p-3 rounded-lg">
+                <p className="text-sm text-content-secondary">Tenant</p>
+                <p className="font-medium text-content-primary">{renewModal.subscription.tenantName}</p>
+              </div>
+              
+              <div className="bg-surface-50 p-3 rounded-lg">
+                <p className="text-sm text-content-secondary">Plan Actual</p>
+                <p className="font-medium text-content-primary">{renewModal.subscription.planName}</p>
+              </div>
+              
+              <div className="bg-surface-50 p-3 rounded-lg">
+                <p className="text-sm text-content-secondary">Estado</p>
+                <span className={`badge ${
+                  renewModal.subscription.status === "active" ? "badge-success" : 
+                  renewModal.subscription.status === "trialing" ? "badge-info" : 
+                  "badge-error"
+                }`}>
+                  {renewModal.subscription.status === "active" ? "Activa" : 
+                   renewModal.subscription.status === "trialing" ? "Prueba" : 
+                   renewModal.subscription.status === "past_due" ? "Atrasada" : "Cancelada"}
+                </span>
+              </div>
+
+              <div className="border-t pt-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={renewModal.changePlan}
+                    onChange={(e) => setRenewModal(prev => ({
+                      ...prev,
+                      changePlan: e.target.checked,
+                      selectedPlanId: e.target.checked ? prev.selectedPlanId : ""
+                    }))}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-content-primary">¿Desea cambiar de plan?</span>
+                </label>
+              </div>
+
+              {renewModal.changePlan && (
+                <div>
+                  <label className="label">Seleccionar Nuevo Plan</label>
+                  <select
+                    className="input"
+                    value={renewModal.selectedPlanId}
+                    onChange={(e) => setRenewModal(prev => ({ ...prev, selectedPlanId: e.target.value }))}
+                    required
+                  >
+                    <option value="">Seleccione un plan...</option>
+                    {plans.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} - {p.price} USD/mes</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {!renewModal.changePlan && (
+                <p className="text-sm text-content-secondary">
+                  Se renovará con el plan actual: <strong>{renewModal.subscription.planName}</strong>
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button 
+                  onClick={handleRenew}
+                  disabled={isRenewing || (renewModal.changePlan && !renewModal.selectedPlanId)}
+                  className="btn btn-primary flex-1"
+                >
+                  {isRenewing ? "Renovando..." : "Confirmar Renovación"}
+                </button>
+                <button 
+                  onClick={closeRenewModal}
+                  disabled={isRenewing}
+                  className="btn btn-secondary flex-1"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

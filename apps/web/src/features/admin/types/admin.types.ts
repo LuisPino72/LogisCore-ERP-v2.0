@@ -34,6 +34,8 @@ export interface CreateTenantInput {
   name: string;
   slug: string;
   ownerEmail: string;
+  ownerPassword: string;
+  ownerFullName: string;
   planId: string;
   trialDays?: number;
   businessTypeId?: string;
@@ -47,6 +49,27 @@ export interface CreateTenantInput {
     direccionFiscal: string;
     regimen?: string;
   };
+  employees?: EmployeeInput[];
+  hasWarehouse?: boolean;
+  warehouse?: WarehouseInput;
+}
+
+/**
+ * Datos de un empleado a crear con el tenant.
+ */
+export interface EmployeeInput {
+  email?: string;
+  password?: string;
+  fullName?: string;
+}
+
+/**
+ * Datos del warehouse inicial del tenant.
+ */
+export interface WarehouseInput {
+  name?: string;
+  address?: string;
+  isDefault?: boolean;
 }
 
 /**

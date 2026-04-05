@@ -4,11 +4,12 @@ interface TenantTableProps {
   tenants: Tenant[];
   securityUsers: SecurityUser[];
   onEdit: (tenant: Tenant) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, permanent?: boolean) => void;
+  onDeactivate: (tenant: Tenant) => void;
   onAccess: (tenant: Tenant) => void;
 }
 
-export function TenantTable({ tenants, securityUsers, onEdit, onDelete, onAccess }: TenantTableProps) {
+export function TenantTable({ tenants, securityUsers, onEdit, onDelete, onDeactivate, onAccess }: TenantTableProps) {
   const getOwnerEmail = (userId: string) => {
     const user = securityUsers.find(u => u.userId === userId);
     return user?.email || "Sin owner";
@@ -56,7 +57,11 @@ export function TenantTable({ tenants, securityUsers, onEdit, onDelete, onAccess
                    <div className="flex gap-3">
                       <button onClick={() => onAccess(tenant)} className="text-sm text-brand-600 hover:text-brand-700 font-medium">Entrar</button>
                       <button onClick={() => onEdit(tenant)} className="text-sm text-content-secondary hover:text-content-primary">Editar</button>
-                      <button onClick={() => onDelete(tenant.id)} className="text-sm text-state-error hover:text-red-700">Eliminar</button>
+                      {tenant.isActive ? (
+                        <button onClick={() => onDeactivate(tenant)} className="text-sm text-orange-600 hover:text-orange-700">Desactivar</button>
+                      ) : (
+                        <button onClick={() => onDelete(tenant.id, true)} className="text-sm text-state-error hover:text-red-700">Eliminar</button>
+                      )}
                    </div>
                 </td>
               </tr>

@@ -7,6 +7,7 @@ interface AppLayoutProps {
   children: ReactNode;
   activeModule: ModuleId;
   onModuleChange: (module: ModuleId) => void;
+  onLogout?: () => void;
 }
 
 const modules = [
@@ -20,7 +21,7 @@ const modules = [
   { id: "reports" as const, label: "Reportes", icon: null }
 ];
 
-export function AppLayout({ children, activeModule, onModuleChange }: AppLayoutProps) {
+export function AppLayout({ children, activeModule, onModuleChange, onLogout }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -31,6 +32,7 @@ export function AppLayout({ children, activeModule, onModuleChange }: AppLayoutP
         onItemClick={(id) => onModuleChange(id as ModuleId)}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed(!collapsed)}
+        onLogout={onLogout}
       />
       <main className="flex-1 overflow-auto">
         {children}

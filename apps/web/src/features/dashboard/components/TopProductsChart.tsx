@@ -46,7 +46,7 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
                 boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
                 padding: "12px"
               }}
-              formatter={(value: any) => [`${value} unidades`, "Cantidad"]}
+              formatter={(value) => [`${value} unidades`, "Cantidad"]}
             />
             <Bar dataKey="qty" radius={[0, 8, 8, 0]} barSize={24}>
               {data.map((_, index) => (

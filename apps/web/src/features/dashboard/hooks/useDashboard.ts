@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { DashboardUiState, DashboardData } from "../types/dashboard.types";
+import type { DashboardUiState } from "../types/dashboard.types";
 import { dashboardService } from "../services/dashboard.service.instance";
 import type { SalesTenantContext } from "@/features/sales/types/sales.types";
 import type { InventoryTenantContext, InventoryActorContext } from "@/features/inventory/types/inventory.types";

@@ -43,7 +43,8 @@ export interface AdminService {
   getTenant(id: string): Promise<Result<Tenant, AppError>>;
   createTenant(input: CreateTenantInput): Promise<Result<Tenant, AppError>>;
   updateTenant(id: string, input: UpdateTenantInput): Promise<Result<Tenant, AppError>>;
-  deleteTenant(id: string): Promise<Result<void, AppError>>;
+  deactivateTenant(id: string): Promise<Result<Tenant, AppError>>;
+  deleteTenant(id: string, permanent?: boolean): Promise<Result<void, AppError>>;
   listBusinessTypes(): Promise<Result<BusinessType[], AppError>>;
   createBusinessType(input: CreateBusinessTypeInput): Promise<Result<BusinessType, AppError>>;
   updateBusinessType(id: string, input: UpdateBusinessTypeInput): Promise<Result<BusinessType, AppError>>;
@@ -57,6 +58,7 @@ export interface AdminService {
   updateUser(userId: string, input: UpdateUserInput): Promise<Result<SecurityUser, AppError>>;
   toggleUserStatus(userId: string, isActive: boolean): Promise<Result<void, AppError>>;
   renewSubscription(subscriptionId: string): Promise<Result<void, AppError>>;
+  renewSubscriptionWithPlan(subscriptionId: string, newPlanId?: string): Promise<Result<{ newPlanName: string; newEndDate: string; status: string }, AppError>>;
   getGlobalConfig(): Promise<Result<GlobalConfig, AppError>>;
   updateGlobalConfig(input: UpdateGlobalConfigInput): Promise<Result<GlobalConfig, AppError>>;
 }
@@ -92,7 +94,7 @@ export const createAdminService = ({
     const tenants = tenantsResult.data || [];
     const activeTenants = tenants.filter(t => t.is_active !== false).length;
 
-    const usersResult = await supabase.from("user_roles").select("id, is_active");
+    const usersResult = await supabase.from("user_roles").select("id, is_active").neq("role", "admin");
     const users = usersResult.data || [];
     const activeUsers = users.filter(u => u.is_active !== false).length;
 
@@ -214,56 +216,128 @@ export const createAdminService = ({
   };
 
   const updateTenant: AdminService["updateTenant"] = async (id, input) => {
-    const updateData: Record<string, unknown> = {};
-    if (input.name !== undefined) updateData.name = input.name;
-    if (input.businessTypeId !== undefined) updateData.business_type_id = input.businessTypeId;
-    if (input.isActive !== undefined) updateData.is_active = input.isActive;
-    if (input.logoUrl !== undefined) updateData.logo_url = input.logoUrl;
-    if (input.contactEmail !== undefined) updateData.contact_email = input.contactEmail;
-    if (input.phone !== undefined) updateData.phone = input.phone;
-    if (input.address !== undefined) updateData.address = input.address;
-    if (input.timezone !== undefined) updateData.timezone = input.timezone;
-    if (input.currency !== undefined) updateData.currency = input.currency;
-    if (input.taxpayerInfo !== undefined) updateData.taxpayer_info = input.taxpayerInfo;
-    if (input.ownerUserId !== undefined) updateData.owner_user_id = input.ownerUserId;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${anonKey}`
+        },
+        body: JSON.stringify({ action: "update", tenantId: id, data: input })
+      });
 
-    const result = await supabase.from("tenants").update(updateData).eq("id", id).select().single();
-    if (result.error) {
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        return err(createAppError({
+          code: "ADMIN_UPDATE_TENANT_FAILED",
+          message: result.error ?? "Error al actualizar tenant",
+          retryable: false
+        }));
+      }
+
+      eventBus.emit("ADMIN.TENANT_UPDATED", { tenantId: id });
+
+      return ok({
+        id: result.tenant.id,
+        name: result.tenant.name,
+        slug: result.tenant.slug,
+        ownerUserId: input.ownerUserId || "",
+        businessTypeId: input.businessTypeId || "",
+        isActive: input.isActive ?? true,
+        contactEmail: input.contactEmail || "",
+        phone: input.phone || "",
+        address: input.address || "",
+        createdAt: new Date().toISOString()
+      });
+    } catch (error) {
       return err(createAppError({
         code: "ADMIN_UPDATE_TENANT_FAILED",
-        message: result.error.message,
+        message: String(error),
         retryable: false
       }));
     }
-
-    eventBus.emit("ADMIN.TENANT_UPDATED", { tenantId: id });
-
-    return ok({
-      id: result.data.id,
-      name: result.data.name,
-      slug: result.data.slug,
-      ownerUserId: result.data.owner_user_id,
-      businessTypeId: result.data.business_type_id,
-      isActive: result.data.is_active ?? true,
-      logoUrl: result.data.logo_url,
-      contactEmail: result.data.contact_email,
-      phone: result.data.phone,
-      address: result.data.address,
-      createdAt: result.data.created_at
-    });
   };
 
-  const deleteTenant: AdminService["deleteTenant"] = async (id) => {
-    const result = await supabase.from("tenants").delete().eq("id", id);
-    if (result.error) {
+  const deleteTenant: AdminService["deleteTenant"] = async (id, permanent = false) => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${anonKey}`
+        },
+        body: JSON.stringify({ action: "delete", tenantId: id, permanent })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        return err(createAppError({
+          code: "ADMIN_DELETE_TENANT_FAILED",
+          message: result.error ?? "Error al eliminar tenant",
+          retryable: false
+        }));
+      }
+
+      eventBus.emit("ADMIN.TENANT_DELETED", { tenantId: id });
+      return ok(undefined);
+    } catch (error) {
       return err(createAppError({
         code: "ADMIN_DELETE_TENANT_FAILED",
-        message: result.error.message,
+        message: String(error),
         retryable: false
       }));
     }
-    eventBus.emit("ADMIN.TENANT_DELETED", { tenantId: id });
-    return ok(undefined);
+  };
+
+  const deactivateTenant: AdminService["deactivateTenant"] = async (id) => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${anonKey}`
+        },
+        body: JSON.stringify({ action: "deactivate", tenantId: id })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        return err(createAppError({
+          code: "ADMIN_DEACTIVATE_TENANT_FAILED",
+          message: result.error ?? "Error al desactivar tenant",
+          retryable: false
+        }));
+      }
+
+      eventBus.emit("ADMIN.TENANT_DEACTIVATED", { tenantId: id });
+
+      return ok({
+        id: result.tenant.id,
+        name: result.tenant.name,
+        slug: result.tenant.slug,
+        ownerUserId: "",
+        isActive: false,
+        createdAt: new Date().toISOString()
+      });
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_DEACTIVATE_TENANT_FAILED",
+        message: String(error),
+        retryable: false
+      }));
+    }
   };
 
   const listBusinessTypes: AdminService["listBusinessTypes"] = async () => {
@@ -466,6 +540,36 @@ export const createAdminService = ({
     return ok(undefined);
   };
 
+  const renewSubscriptionWithPlan: AdminService["renewSubscriptionWithPlan"] = async (subscriptionId, newPlanId) => {
+    const result = await supabase.rpc("renew_subscription_with_plan", { 
+      p_subscription_id: subscriptionId,
+      p_new_plan_id: newPlanId || null
+    });
+    if (result.error) {
+      return err(createAppError({
+        code: "ADMIN_RENEW_SUBSCRIPTION_WITH_PLAN_FAILED",
+        message: result.error.message,
+        retryable: false
+      }));
+    }
+    // Supabase RPC returns array for RETURNS TABLE. Data might be an array or null.
+    const rows = result.data as any[];
+    if (!rows || rows.length === 0) {
+      return err(createAppError({
+        code: "ADMIN_RENEW_SUBSCRIPTION_WITH_PLAN_FAILED",
+        message: "No se recibió respuesta de la renovación",
+        retryable: false
+      }));
+    }
+    const data = rows[0] as { new_plan_name: string; new_end_date: string; new_status: string };
+    eventBus.emit("ADMIN.SUBSCRIPTION_RENEWED", { subscriptionId, newPlanId });
+    return ok({
+      newPlanName: data.new_plan_name,
+      newEndDate: data.new_end_date,
+      status: data.new_status
+    });
+  };
+
   const listSecurityUsers: AdminService["listSecurityUsers"] = async (tenantId) => {
     const query = tenantId 
       ? supabase.from("user_roles").select("*, tenants(name)").eq("tenant_id", tenantId)
@@ -643,6 +747,7 @@ export const createAdminService = ({
     getTenant,
     createTenant,
     updateTenant,
+    deactivateTenant,
     deleteTenant,
     listBusinessTypes,
     createBusinessType,
@@ -653,6 +758,7 @@ export const createAdminService = ({
     createSubscription,
     updateSubscription,
     renewSubscription,
+    renewSubscriptionWithPlan,
     listSecurityUsers,
     createUser,
     updateUser,

@@ -35,9 +35,9 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
         systemName: config.systemName,
         defaultCurrency: config.defaultCurrency,
         maintenanceMode: config.maintenanceMode,
-        supportContact: config.supportContact ?? undefined,
-        welcomeMessage: config.welcomeMessage ?? undefined,
-        globalTaxRules: config.globalTaxRules
+        supportContact: config.supportContact ?? "",
+        welcomeMessage: config.welcomeMessage ?? "",
+        globalTaxRules: config.globalTaxRules || []
       });
     }
   }, [config]);
@@ -186,7 +186,7 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
                   <select
                     className="input input-sm"
                     value={newTax.type}
-                    onChange={e => setNewTax({ ...newTax, type: e.target.value as any })}
+                    onChange={e => setNewTax({ ...newTax, type: e.target.value as "iva" | "islr" | "igtf" })}
                   >
                     <option value="iva">IVA</option>
                     <option value="islr">ISLR</option>

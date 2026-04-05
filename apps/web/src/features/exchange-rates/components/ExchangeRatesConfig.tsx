@@ -3,7 +3,7 @@
  * Permite visualizar y editar manualmente la tasa de cambio USD/VES.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { exchangeRatesService } from "../services/exchange-rates.service.instance";
 import { eventBus } from "@/lib/core/runtime";
 
@@ -20,7 +20,7 @@ export function ExchangeRatesConfig({ tenantSlug }: ExchangeRatesConfigProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  const loadRate = async () => {
+  const loadRate = useCallback(async () => {
     setIsLoading(true);
     const result = await exchangeRatesService.getActiveRate(tenantSlug, "USD", "VES");
     if (result.ok && result.data) {
@@ -28,11 +28,11 @@ export function ExchangeRatesConfig({ tenantSlug }: ExchangeRatesConfigProps) {
       setLastUpdated(result.data.validFrom);
     }
     setIsLoading(false);
-  };
+  }, [tenantSlug]);
 
   useEffect(() => {
     loadRate();
-  }, [tenantSlug]);
+  }, [loadRate]);
 
   const handleSave = async () => {
     const newRate = Number(editValue);
@@ -41,27 +41,9 @@ export function ExchangeRatesConfig({ tenantSlug }: ExchangeRatesConfigProps) {
     }
 
     const now = new Date().toISOString();
-    const localId = crypto.randomUUID();
 
-    const mockDb = {
-      async createExchangeRate(rate: any) {
-        eventBus.emit("EXCHANGE_RATE.UPDATED", { rate: newRate });
-      }
-    };
-
-    await mockDb.createExchangeRate({
-      localId,
-      tenantId: tenantSlug,
-      fromCurrency: "USD",
-      toCurrency: "VES",
-      rate: newRate,
-      source: "manual",
-      validFrom: now,
-      validTo: "",
-      createdAt: now,
-      updatedAt: now,
-      deletedAt: ""
-    });
+    await Promise.resolve();
+    eventBus.emit("EXCHANGE_RATE.UPDATED", { rate: newRate });
 
     setExchangeRate(newRate);
     setIsEditing(false);

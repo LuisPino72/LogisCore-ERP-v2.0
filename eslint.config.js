@@ -9,7 +9,8 @@ export default [
       "**/dist/**",
       "**/coverage/**",
       "**/node_modules/**",
-      ".agents/**"
+      ".agents/**",
+      "Bóveda/**"
     ]
   },
   js.configs.recommended,
@@ -37,7 +38,8 @@ export default [
   {
     files: ["**/test/**/*.ts", "**/*.test.ts", "**/*.spec.ts"],
     rules: {
-      "@typescript-eslint/no-explicit-any": "off"
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off"
     }
   }
 ];

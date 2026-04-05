@@ -26,6 +26,12 @@ interface TenantSupabaseLike {
   from: (table: string) => {
     select: (columns: string) => {
       eq: (column: string, value: string) => {
+        order: (column: string, options?: { ascending: boolean }) => {
+          limit: (n: number) => {
+            maybeSingle: <T>() => Promise<SupabaseRowResponse<T>>;
+          };
+          maybeSingle: <T>() => Promise<SupabaseRowResponse<T>>;
+        };
         maybeSingle: <T>() => Promise<SupabaseRowResponse<T>>;
       };
     };
@@ -42,7 +48,7 @@ interface TenantSupabaseLike {
 export interface TenantService {
   resolveTenantContext(userId: string): Promise<Result<TenantContext, AppError>>;
   resolveUserRole(userId: string): Promise<Result<UserRole, AppError>>;
-  checkSubscription(tenantSlug: string): Promise<Result<{ isActive: boolean; endDate?: string; isLastDay?: boolean }, AppError>>;
+  checkSubscription(tenantSlug: string): Promise<Result<{ isActive: boolean; endDate: string | null; isLastDay: boolean }, AppError>>;
   bootstrapTenant(userId: string): Promise<Result<TenantBootstrapResult, AppError>>;
 }
 
@@ -196,14 +202,18 @@ export const createTenantService = ({
   const checkSubscription: TenantService["checkSubscription"] = async (
     tenantSlug
   ) => {
-    const subscriptionQuery = await supabase.rpc<{
-      isActive: boolean;
-      status?: string;
-    }>("check_subscriptions", {
+    const subscriptionQuery = await supabase.rpc<
+      {
+        is_active: boolean;
+        status?: string;
+        end_date?: string;
+        is_last_day?: boolean;
+      }[]
+    >("check_subscriptions", {
       p_tenant_slug: tenantSlug
     });
 
-    if (subscriptionQuery.error) {
+    if (subscriptionQuery.error || !subscriptionQuery.data) {
       const tenantLookup = await supabase
         .from("tenants")
         .select("id")
@@ -214,7 +224,7 @@ export const createTenantService = ({
         return err(
           createAppError({
             code: "SUBSCRIPTION_CHECK_FAILED",
-            message: subscriptionQuery.error.message,
+            message: subscriptionQuery.error?.message ?? "Unknown error",
             retryable: true,
             context: { tenantSlug, fallback: "tenant_lookup_failed" }
           })
@@ -223,48 +233,66 @@ export const createTenantService = ({
 
       const fallbackSubscription = await supabase
         .from("subscriptions")
-        .select("status")
+        .select("end_date, status")
         .eq("tenant_id", tenantLookup.data.id)
-        .maybeSingle<{ status: string }>();
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ end_date: string; status: string }>();
 
-      if (fallbackSubscription.error) {
-        return err(
-          createAppError({
-            code: "SUBSCRIPTION_CHECK_FAILED",
-            message: fallbackSubscription.error.message,
-            retryable: true,
-            context: { tenantSlug, fallback: "subscriptions_table_failed" }
-          })
-        );
+      const endDate = fallbackSubscription?.data?.end_date;
+      const today = new Date();
+      const expirationDate = endDate ? new Date(endDate) : null;
+      const isLastDay = expirationDate
+        ? expirationDate.toDateString() === today.toDateString()
+        : false;
+      const isExpired = expirationDate ? expirationDate < today : true;
+
+      if (!fallbackSubscription.data || fallbackSubscription.error) {
+        return ok({
+          isActive: false,
+          endDate: endDate ?? null,
+          isLastDay
+        });
       }
 
-      const fallbackIsActive = fallbackSubscription.data?.status === "active";
-      if (!fallbackIsActive) {
-        eventBus.emit("SUBSCRIPTION.BLOCKED", { tenantSlug });
-      }
-      return ok({ isActive: fallbackIsActive });
+      const status = fallbackSubscription.data.status;
+      const isActive = (status === "active" || status === "trial") && !isExpired;
+
+      return ok({
+        isActive,
+        endDate: endDate ?? null,
+        isLastDay
+      });
     }
 
-    if (!subscriptionQuery.data || typeof subscriptionQuery.data.isActive !== "boolean") {
-      return err(
-        createAppError({
-          code: "SUBSCRIPTION_RESPONSE_INVALID",
-          message: "Respuesta invalida de check_subscriptions.",
-          retryable: true,
-          context: { tenantSlug }
-        })
-      );
+    const rows = subscriptionQuery.data;
+    if (!rows || rows.length === 0) {
+      return ok({
+        isActive: false,
+        endDate: null,
+        isLastDay: false
+      });
     }
 
-    const isActive = subscriptionQuery.data.isActive;
+    const data = rows[0];
+    if (!data) {
+      return ok({
+        isActive: false,
+        endDate: null,
+        isLastDay: false
+      });
+    }
+
+    const isActive = data.is_active;
+
     if (!isActive) {
       eventBus.emit("SUBSCRIPTION.BLOCKED", { tenantSlug });
     }
 
     return ok({
       isActive,
-      endDate: (subscriptionQuery.data as any).endDate,
-      isLastDay: (subscriptionQuery.data as any).isLastDay
+      endDate: data.end_date ?? null,
+      isLastDay: data.is_last_day ?? false
     });
   };
 

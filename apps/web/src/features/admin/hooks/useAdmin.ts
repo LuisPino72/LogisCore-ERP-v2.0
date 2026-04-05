@@ -138,14 +138,26 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     return result;
   }, [service]);
 
-  const deleteTenant = useCallback(async (id: string) => {
+  const deleteTenant = useCallback(async (id: string, permanent = false) => {
     setState(prev => ({ ...prev, isLoading: true, lastError: null }));
-    const result = await service.deleteTenant(id);
+    const result = await service.deleteTenant(id, permanent);
     if (!result.ok) {
       setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
       return result;
     }
     setTenants(prev => prev.filter(t => t.id !== id));
+    setState(prev => ({ ...prev, isLoading: false }));
+    return result;
+  }, [service]);
+
+  const deactivateTenant = useCallback(async (id: string) => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.deactivateTenant(id);
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return result;
+    }
+    setTenants(prev => prev.map(t => t.id === id ? { ...t, isActive: false } : t));
     setState(prev => ({ ...prev, isLoading: false }));
     return result;
   }, [service]);
@@ -253,7 +265,18 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
       setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
       return result;
     }
-    // Recargar suscripciones para ver las nuevas fechas
+    await loadSubscriptions();
+    setState(prev => ({ ...prev, isLoading: false }));
+    return result;
+  }, [service, loadSubscriptions]);
+
+  const renewSubscriptionWithPlan = useCallback(async (subscriptionId: string, newPlanId?: string) => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.renewSubscriptionWithPlan(subscriptionId, newPlanId);
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return result;
+    }
     await loadSubscriptions();
     setState(prev => ({ ...prev, isLoading: false }));
     return result;
@@ -291,6 +314,7 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     loadGlobalConfig,
     createTenant,
     updateTenant,
+    deactivateTenant,
     deleteTenant,
     createBusinessType,
     updateBusinessType,
@@ -301,6 +325,7 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     createSubscription,
     updateSubscription,
     renewSubscription,
+    renewSubscriptionWithPlan,
     updateGlobalConfig
   };
 };

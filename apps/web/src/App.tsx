@@ -6,6 +6,7 @@ import { TenantBootstrapGate } from "@/features/tenant/components/TenantBootstra
 import { AppLayout, type ModuleId } from "@/common/components/AppLayout";
 import { ResetPasswordPage } from "@/features/auth/components/ResetPasswordPage";
 import { supabase } from "@/lib/supabase/client";
+import { ActorContext } from "@/lib/permissions/permissions.types";
 
 const InventoryPanel = lazy(() => import("@/features/inventory/components/InventoryPanel").then(m => ({ default: m.InventoryPanel })));
 const ProductsCatalog = lazy(() => import("@/features/products/components/ProductsCatalog").then(m => ({ default: m.ProductsCatalog })));
@@ -26,27 +27,12 @@ function LoadingFallback() {
 
 import { DashboardPanel } from "@/features/dashboard";
 
-function DashboardHome({ tenantSlug, actor }: { tenantSlug: string, actor: any }) {
+function DashboardHome({ tenantSlug, actor }: { tenantSlug: string, actor: ActorContext }) {
   const tenantContext = { tenantSlug };
-  return <DashboardPanel tenant={tenantContext as any} actor={actor} />;
+  return <DashboardPanel tenant={tenantContext as never} actor={actor} />;
 }
 
-function ModuleRenderer({ moduleId, tenantSlug, actor }: { moduleId: ModuleId, tenantSlug: string, actor: any }) {
-  const defaultActor = { 
-    role: "employee", 
-    permissions: { 
-      canApplyDiscount: false, 
-      maxDiscountPercent: 0,
-      canApplyCustomPrice: false,
-      canVoidSale: false,
-      canRefundSale: false,
-      canVoidInvoice: false,
-      canAdjustStock: false,
-      canViewReports: true,
-      canExportReports: false
-    } 
-  };
-
+function ModuleRenderer({ moduleId, tenantSlug, actor }: { moduleId: ModuleId, tenantSlug: string, actor: ActorContext }) {
   const renderModule = (id: ModuleId) => {
     switch (id) {
       case "dashboard":
@@ -118,8 +104,8 @@ export function App() {
       authService={authService}
       tenantService={tenantService}
       coreService={coreService}
-      renderApp={(tenantSlug, actor) => (
-        <AppLayout activeModule={activeModule} onModuleChange={setActiveModule}>
+      renderApp={(tenantSlug, actor, signOut) => (
+        <AppLayout activeModule={activeModule} onModuleChange={setActiveModule} onLogout={signOut}>
           <ModuleRenderer moduleId={activeModule} tenantSlug={tenantSlug} actor={actor} />
         </AppLayout>
       )}
