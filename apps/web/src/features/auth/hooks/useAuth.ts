@@ -104,5 +104,19 @@ export const useAuth = ({ service }: UseAuthOptions) => {
     return ok<void>(undefined);
   }, [service]);
 
-  return { state, loadSession, signIn, resetPassword, signOut };
+  /**
+   * Actualiza la contraseña del usuario
+   * Llama a updatePassword del servicio
+   */
+  const updatePassword = useCallback(async (password: string) => {
+    setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
+    const result = await service.updatePassword(password);
+    setState((previous) => ({ ...previous, isLoading: false }));
+    if (!result.ok) {
+      setState((previous) => ({ ...previous, lastError: result.error }));
+    }
+    return result;
+  }, [service]);
+
+  return { state, loadSession, signIn, resetPassword, signOut, updatePassword };
 };

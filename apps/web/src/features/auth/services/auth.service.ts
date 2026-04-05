@@ -8,6 +8,7 @@ export interface AuthSupabaseLike {
     signInWithPassword: (options: { email: string; password: string }) => Promise<{ data: { session: { user: { id: string; email?: string } } | null } | null; error: { message: string } | null }>;
     signOut: () => Promise<{ error: { message: string } | null }>;
     resetPasswordForEmail: (email: string, options?: { redirectTo?: string }) => Promise<{ data: unknown; error: { message: string } | null }>;
+    updateUser: (options: { password: string }) => Promise<{ data: unknown; error: { message: string } | null }>;
   };
   from: (table: string) => {
     insert: (data: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
@@ -20,7 +21,8 @@ export interface AuthService {
   signIn(email: string, password: string): Promise<Result<AuthSession, AppError>>; // Iniciar sesión
   signOut(): Promise<Result<void, AppError>>; // Cerrar sesión
   resetPassword(email: string): Promise<Result<void, AppError>>; // Recuperar contraseña
-  logAuditEvent(action: string, userId: string | null, email: string | null): Promise<void>; // Registrar evento de auditoría
+  updatePassword(password: string): Promise<Result<void, AppError>>; // Actualizar contraseña
+  logAuditEvent(action: string, userId: string | null, email: string | null): Promise<Result<void, AppError>>; // Registrar evento de auditoría
 }
 
 // Dependencias necesarias para crear el servicio
@@ -104,17 +106,17 @@ export const createAuthService = ({
   },
 
   // Registra evento de auditoría
-  async logAuditEvent(action: string, userId: string | null, email: string | null) {
+  async logAuditEvent(action: string, userId: string | null, email: string | null): Promise<Result<void, AppError>> {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       if (!supabaseUrl || !anonKey) {
         console.warn("Supabase not configured, skipping audit log");
-        return;
+        return ok(undefined);
       }
 
-      await fetch(`${supabaseUrl}/functions/v1/audit-log`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/audit-log`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -122,8 +124,26 @@ export const createAuthService = ({
         },
         body: JSON.stringify({ action, userId, email })
       });
+
+      if (!response.ok) {
+        return err(
+          createAppError({
+            code: "AUTH_AUDIT_LOG_FAILED",
+            message: "Error al registrar evento de auditoría",
+            retryable: true
+          })
+        );
+      }
+
+      return ok(undefined);
     } catch (e) {
-      console.error("Error logging audit event:", e);
+      return err(
+        createAppError({
+          code: "AUTH_AUDIT_LOG_ERROR",
+          message: e instanceof Error ? e.message : "Error desconocido al registrar auditoría",
+          retryable: true
+        })
+      );
     }
   },
 
@@ -166,5 +186,23 @@ export const createAuthService = ({
 
     eventBus.emit("AUTH.RESET_PASSWORD_SENT", { email });
     return ok<void>(undefined);
+  },
+
+  // Actualiza la contraseña del usuario
+  async updatePassword(password: string): Promise<Result<void, AppError>> {
+    const response = await supabase.auth.updateUser({ password });
+
+    if (response.error) {
+      const authError = createAppError({
+        code: "AUTH_UPDATE_PASSWORD_FAILED",
+        message: response.error.message,
+        retryable: false
+      });
+      eventBus.emit("AUTH.PASSWORD_UPDATE_FAILED", { error: authError });
+      return err(authError);
+    }
+
+    eventBus.emit("AUTH.PASSWORD_UPDATED", {});
+    return ok(undefined);
   }
 });

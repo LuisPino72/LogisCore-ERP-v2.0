@@ -6,13 +6,11 @@ interface BlockedAccessScreenProps {
 export function BlockedAccessScreen({ tenantSlug }: BlockedAccessScreenProps) {
   return (
     <section
+      className="p-4 rounded-lg border mb-4"
       style={{
-        border: "1px solid var(--color-state-error)",
-        background: "rgb(254 242 242 / 0.5)",
+        borderColor: "var(--color-state-error)",
+        background: "var(--color-surface-50)",
         color: "var(--color-state-error)",
-        padding: "16px",
-        borderRadius: "8px",
-        marginBottom: "16px"
       }}
     >
       <h2 style={{ marginTop: 0 }}>Acceso bloqueado</h2>

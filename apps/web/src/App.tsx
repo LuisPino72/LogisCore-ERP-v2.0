@@ -5,7 +5,6 @@ import { tenantService } from "@/features/tenant/services/tenant.service.instanc
 import { TenantBootstrapGate } from "@/features/tenant/components/TenantBootstrapGate";
 import { AppLayout, type ModuleId } from "@/common/components/AppLayout";
 import { ResetPasswordPage } from "@/features/auth/components/ResetPasswordPage";
-import { supabase } from "@/lib/supabase/client";
 import { ActorContext } from "@/lib/permissions/permissions.types";
 
 const InventoryPanel = lazy(() => import("@/features/inventory/components/InventoryPanel").then(m => ({ default: m.InventoryPanel })));
@@ -89,7 +88,7 @@ export function App() {
   if (isPasswordReset) {
     return (
       <ResetPasswordPage
-        supabase={supabase as never}
+        onUpdatePassword={(password) => authService.updatePassword(password)}
         onPasswordReset={() => {
           window.location.hash = "";
           window.location.search = "";

@@ -4,17 +4,14 @@
  */
 
 import { useState, type FormEvent } from "react";
+import type { Result, AppError } from "@logiscore/core";
 
 interface ResetPasswordPageProps {
-  supabase: {
-    auth: {
-      updateUser: (options: { password: string }) => Promise<{ data: unknown; error: { message: string } | null }>;
-    };
-  };
+  onUpdatePassword: (password: string) => Promise<Result<void, AppError>>;
   onPasswordReset: () => void;
 }
 
-export function ResetPasswordPage({ supabase, onPasswordReset }: ResetPasswordPageProps) {
+export function ResetPasswordPage({ onUpdatePassword, onPasswordReset }: ResetPasswordPageProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -36,11 +33,11 @@ export function ResetPasswordPage({ supabase, onPasswordReset }: ResetPasswordPa
     }
 
     setIsLoading(true);
-    const response = await supabase.auth.updateUser({ password });
+    const result = await onUpdatePassword(password);
     setIsLoading(false);
 
-    if (response.error) {
-      setError(response.error.message);
+    if (!result.ok) {
+      setError(result.error.message);
       return;
     }
 

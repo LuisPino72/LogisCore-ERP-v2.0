@@ -33,11 +33,10 @@ export function CoreBootstrapGate() {
 
   return (
     <section
+      className="p-4 rounded-lg border"
       style={{
-        border: "1px solid var(--color-state-info)",
-        background: "rgb(59 130 246 / 0.1)",
-        padding: "16px",
-        borderRadius: "8px"
+        borderColor: "var(--color-state-info)",
+        background: "var(--color-surface-50)",
       }}
     >
       <h2 style={{ marginTop: 0 }}>Bootstrap completado</h2>
