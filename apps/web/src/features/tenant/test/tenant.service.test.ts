@@ -23,6 +23,9 @@ const createSupabaseMock = ({
   role?: UserRole["role"];
   subscriptionActive?: boolean;
 }) => {
+  const futureDate = new Date();
+  futureDate.setMonth(futureDate.getMonth() + 1);
+  
   const mock = {
     from: vi.fn((table: string) => ({
       select: vi.fn((_columns?: string) => ({
@@ -35,7 +38,7 @@ const createSupabaseMock = ({
                 : table === "user_roles" && column === "user_id"
                   ? { role: role }
                   : table === "subscriptions" && column === "tenant_id"
-                    ? { status: subscriptionActive ? "active" : "inactive" }
+                    ? { status: subscriptionActive ? "active" : "inactive", end_date: futureDate.toISOString(), is_last_day: false }
                     : null,
             error: null
           })
@@ -58,7 +61,7 @@ const createSupabaseMock = ({
       }
       if (fn === "check_subscriptions") {
         return Promise.resolve({
-          data: { isActive: subscriptionActive, status: subscriptionActive ? "active" : "inactive" },
+          data: [{ is_active: subscriptionActive, status: subscriptionActive ? "active" : "inactive" }],
           error: null
         });
       }

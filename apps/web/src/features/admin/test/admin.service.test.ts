@@ -295,13 +295,15 @@ describe("AdminService", () => {
           }
           if (table === "user_roles") {
             return {
-              select: () => Promise.resolve({
-                data: [
-                  { id: "1", is_active: true },
-                  { id: "2", is_active: true },
-                  { id: "3", is_active: false }
-                ],
-                error: null
+              select: () => ({
+                neq: () => Promise.resolve({
+                  data: [
+                    { id: "1", is_active: true },
+                    { id: "2", is_active: true },
+                    { id: "3", is_active: false }
+                  ],
+                  error: null
+                })
               })
             };
           }

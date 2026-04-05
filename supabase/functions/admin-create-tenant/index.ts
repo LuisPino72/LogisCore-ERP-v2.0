@@ -39,8 +39,6 @@ interface CreateTenantInput {
   };
 }
 
-const DEFAULT_CATEGORIES_BY_BUSINESS_TYPE: Record<string, string[]> = {}; // Now managed globally in DB
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: jsonHeaders });
@@ -174,7 +172,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    let categoriesCreatedCount = 0; // Managed by database architecture (Global)
+    const categoriesCreatedCount = 0; // Managed by database architecture (Global)
 
     const trialDays = input.trialDays || 0;
     const isTrial = trialDays > 0;

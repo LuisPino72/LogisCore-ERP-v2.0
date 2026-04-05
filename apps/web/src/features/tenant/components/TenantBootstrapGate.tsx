@@ -45,7 +45,7 @@ export function TenantBootstrapGate({
   const refreshSecurity = useCallback(() => {
     admin.loadSecurityUsers();
     admin.loadTenants();
-  }, [admin.loadSecurityUsers, admin.loadTenants]);
+  }, [admin]);
 
   useEffect(() => {
     void (async () => {
@@ -170,7 +170,6 @@ export function TenantBootstrapGate({
           <SubscriptionsPanel
             subscriptions={admin.subscriptions}
             plans={admin.plans}
-            tenants={admin.tenants}
             isLoading={admin.state.isLoading}
             onRefreshSubscriptions={admin.loadSubscriptions}
             onRefreshPlans={admin.loadPlans}

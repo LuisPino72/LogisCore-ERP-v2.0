@@ -5,12 +5,11 @@
  */
 
 import { useEffect, useState } from "react";
-import type { Subscription, Plan, Tenant } from "../types/admin.types";
+import type { Subscription, Plan } from "../types/admin.types";
 
 interface SubscriptionsPanelProps {
   subscriptions: Subscription[];
   plans: Plan[];
-  tenants: Tenant[];
   isLoading: boolean;
   onRefreshSubscriptions: () => void;
   onRefreshPlans: () => void;
@@ -50,7 +49,6 @@ function getDaysRemaining(endDate: string | undefined): string {
 export function SubscriptionsPanel({ 
   subscriptions, 
   plans, 
-  tenants,
   isLoading, 
   onRefreshSubscriptions, 
   onRefreshPlans,

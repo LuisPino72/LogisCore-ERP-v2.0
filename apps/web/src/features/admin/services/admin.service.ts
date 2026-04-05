@@ -553,7 +553,12 @@ export const createAdminService = ({
       }));
     }
     // Supabase RPC returns array for RETURNS TABLE. Data might be an array or null.
-    const rows = result.data as any[];
+    interface RenewResult {
+      new_plan_name: string;
+      new_end_date: string;
+      new_status: string;
+    }
+    const rows = result.data as RenewResult[] | null;
     if (!rows || rows.length === 0) {
       return err(createAppError({
         code: "ADMIN_RENEW_SUBSCRIPTION_WITH_PLAN_FAILED",
