@@ -10,7 +10,7 @@ export default [
       "**/coverage/**",
       "**/node_modules/**",
       ".agents/**",
-      "Bóveda/**"
+      "memoria/**"
     ]
   },
   js.configs.recommended,
