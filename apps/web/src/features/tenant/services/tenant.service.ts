@@ -314,13 +314,42 @@ export const createTenantService = ({
       });
     }
 
-    const tenantQuery = await supabase
+    // Try finding tenant as owner first
+    let tenantSlug: string | null = null;
+    let tenantId: string | null = null;
+
+    const ownerQuery = await supabase
       .from("tenants")
       .select("id, slug")
       .eq("owner_user_id", userId)
       .maybeSingle<{ id: string; slug: string }>();
 
-    if (!tenantQuery.data) {
+    if (ownerQuery.data) {
+      tenantSlug = ownerQuery.data.slug;
+      tenantId = ownerQuery.data.id;
+    } else {
+      // Try as employee — find tenant_id from user_roles
+      const roleQuery = await supabase
+        .from("user_roles")
+        .select("tenant_id")
+        .eq("user_id", userId)
+        .maybeSingle<{ tenant_id: string }>();
+
+      if (roleQuery.data?.tenant_id) {
+        const tenantByIdQuery = await supabase
+          .from("tenants")
+          .select("id, slug")
+          .eq("id", roleQuery.data.tenant_id)
+          .maybeSingle<{ id: string; slug: string }>();
+
+        if (tenantByIdQuery.data) {
+          tenantSlug = tenantByIdQuery.data.slug;
+          tenantId = tenantByIdQuery.data.id;
+        }
+      }
+    }
+
+    if (!tenantSlug || !tenantId) {
       return err(
         createAppError({
           code: "TENANT_RESOLVE_FAILED",
@@ -331,13 +360,13 @@ export const createTenantService = ({
     }
 
     const tenant = {
-      tenantUuid: tenantQuery.data.id,
-      tenantSlug: tenantQuery.data.slug,
+      tenantUuid: tenantId,
+      tenantSlug: tenantSlug,
       userId
     };
     eventBus.emit("TENANT.RESOLVED", tenant);
 
-    const subscriptionResult = await checkSubscription(tenantQuery.data.slug);
+    const subscriptionResult = await checkSubscription(tenantSlug);
     if (!subscriptionResult.ok) {
       return err(subscriptionResult.error);
     }

@@ -70,6 +70,7 @@ export interface Product {
   width?: number | null;
   height?: number | null;
   isSerialized?: boolean | null;
+  isTaxable?: boolean | null;
   defaultPresentationId?: string | null;
   deletedAt?: string | null;
 }
@@ -127,6 +128,7 @@ export interface CreateProductInput {
   width?: number;
   height?: number;
   isSerialized?: boolean;
+  isTaxable?: boolean;
   visible: boolean;
   defaultPresentationId?: string;
   sourceModule: "purchases";
@@ -144,6 +146,7 @@ export interface UpdateProductInput {
   width?: number;
   height?: number;
   isSerialized?: boolean;
+  isTaxable?: boolean;
   visible: boolean;
   defaultPresentationId?: string;
 }

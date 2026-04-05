@@ -42,6 +42,7 @@ export function ProductsForm({
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedDefaultPresentationId, setSelectedDefaultPresentationId] =
     useState("");
+  const [isTaxable, setIsTaxable] = useState(true);
   const [presentationName, setPresentationName] = useState("");
   const [selectedProductForPresentation, setSelectedProductForPresentation] =
     useState("");
@@ -107,6 +108,14 @@ export function ProductsForm({
             </option>
           ))}
         </select>
+        <label style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "14px" }}>
+          <input
+            type="checkbox"
+            checked={isTaxable}
+            onChange={(e) => setIsTaxable(e.target.checked)}
+          />
+          Aplicar IVA (Impuestos globales)
+        </label>
         <button
           type="button"
           onClick={() =>
@@ -116,6 +125,7 @@ export function ProductsForm({
               categoryId: selectedCategoryId || "",
               defaultPresentationId: selectedDefaultPresentationId || "",
               visible: true,
+              isTaxable: isTaxable,
               sourceModule: "purchases"
             })
           }

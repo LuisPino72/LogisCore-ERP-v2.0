@@ -30,7 +30,7 @@ function shouldShowRenewButton(subscription: Subscription): boolean {
   // - Quedan <= 3 días para que venza, O
   // - Ya está vencida (end_date < now), O
   // - Estado != 'active'
-  return diffDays <= 3 || diffDays < 0 || subscription.status !== 'active';
+  return diffDays <= 3 || diffDays < 0 || (subscription.status !== 'active' && subscription.status !== 'trial');
 }
 
 function getDaysRemaining(endDate: string | undefined): string {
@@ -141,11 +141,12 @@ export function SubscriptionsPanel({
                   <td className="px-4 py-3">
                     <span className={`badge ${
                       sub.status === "active" ? "badge-success" : 
-                      sub.status === "trialing" ? "badge-info" : 
+                      sub.status === "trial" ? "badge-info" : 
+                      sub.status === "past_due" ? "badge-warning" :
                       "badge-error"
                     }`}>
                       {sub.status === "active" ? "Activa" : 
-                       sub.status === "trialing" ? "Prueba" : 
+                       sub.status === "trial" ? "🧪 Prueba" : 
                        sub.status === "past_due" ? "Atrasada" : "Cancelada"}
                     </span>
                   </td>
@@ -206,11 +207,12 @@ export function SubscriptionsPanel({
                 <p className="text-sm text-content-secondary">Estado</p>
                 <span className={`badge ${
                   renewModal.subscription.status === "active" ? "badge-success" : 
-                  renewModal.subscription.status === "trialing" ? "badge-info" : 
+                  renewModal.subscription.status === "trial" ? "badge-info" : 
+                  renewModal.subscription.status === "past_due" ? "badge-warning" :
                   "badge-error"
                 }`}>
                   {renewModal.subscription.status === "active" ? "Activa" : 
-                   renewModal.subscription.status === "trialing" ? "Prueba" : 
+                   renewModal.subscription.status === "trial" ? "🧪 Prueba" : 
                    renewModal.subscription.status === "past_due" ? "Atrasada" : "Cancelada"}
                 </span>
               </div>

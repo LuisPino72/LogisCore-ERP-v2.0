@@ -151,12 +151,9 @@ export function TenantBootstrapGate({
         {activeAdminModule === "security" && (
           <SecurityPanel
             users={admin.securityUsers}
-            tenants={admin.tenants}
             isLoading={admin.state.isLoading}
             onRefresh={refreshSecurity}
             onToggleUser={admin.toggleUserStatus}
-            onCreate={admin.createUser}
-            onUpdate={admin.updateUser}
           />
         )}
         {activeAdminModule === "businessTypes" && (
