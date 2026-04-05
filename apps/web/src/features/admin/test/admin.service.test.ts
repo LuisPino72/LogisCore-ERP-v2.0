@@ -338,7 +338,11 @@ describe("AdminService", () => {
 
     it("maneja error al obtener stats", async () => {
       const supabase: any = {
-        from: () => ({ select: () => Promise.resolve({ data: null, error: { message: "DB Error" } }) })
+        from: (table: string) => ({
+          select: () => ({
+            neq: () => Promise.resolve({ data: null, error: { message: "DB Error" } })
+          })
+        })
       };
       const eventBus = createEventBusMock();
       const service = createAdminService({ supabase, eventBus: eventBus as any });

@@ -85,11 +85,16 @@ export const createAdminService = ({
    * Cuenta tenants, usuarios y suscripciones activas.
    */
   const getDashboardStats: AdminService["getDashboardStats"] = async () => {
-    const tenantsResult = await supabase.from("tenants").select("id, is_active");
-    if (tenantsResult.error) {
+    const [tenantsResult, usersResult, subsResult] = await Promise.all([
+      supabase.from("tenants").select("id, is_active"),
+      supabase.from("user_roles").select("id, is_active").neq("role", "admin"),
+      supabase.from("subscriptions").select("status")
+    ]);
+
+    if (tenantsResult.error || usersResult.error || subsResult.error) {
       return err(createAppError({
         code: "ADMIN_DASHBOARD_STATS_FAILED",
-        message: tenantsResult.error.message,
+        message: tenantsResult.error?.message || usersResult.error?.message || subsResult.error?.message || "Error al cargar estadísticas",
         retryable: true
       }));
     }
@@ -97,11 +102,9 @@ export const createAdminService = ({
     const tenants = tenantsResult.data || [];
     const activeTenants = tenants.filter(t => t.is_active !== false).length;
 
-    const usersResult = await supabase.from("user_roles").select("id, is_active").neq("role", "admin");
     const users = usersResult.data || [];
     const activeUsers = users.filter(u => u.is_active !== false).length;
 
-    const subsResult = await supabase.from("subscriptions").select("status");
     const subs = subsResult.data || [];
     const activeSubs = subs.filter(s => s.status === "active").length;
 

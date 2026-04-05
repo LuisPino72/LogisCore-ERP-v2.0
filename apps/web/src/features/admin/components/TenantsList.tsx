@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { LoadingSpinner, toastHelpers, ConfirmDialog } from "@/common";
 import { TenantTable } from "./TenantTable";
 import { TenantForm } from "./TenantForm";
@@ -39,32 +39,30 @@ export function TenantsList({
 }: TenantsListProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
-  const [tenantEmployees, setTenantEmployees] = useState<SecurityUser[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; tenant: Tenant | null; permanent: boolean }>({
     isOpen: false,
     tenant: null,
     permanent: false
   });
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const initialLoadDone = useRef(false);
+
+  const tenantEmployees = useMemo(() => {
+    if (!editingTenant) return [];
+    return securityUsers.filter(u => u.tenantId === editingTenant.id && u.role === "employee");
+  }, [editingTenant, securityUsers]);
 
   useEffect(() => {
+    if (initialLoadDone.current) return;
+    initialLoadDone.current = true;
+    
     onRefresh();
     onLoadBusinessTypes();
     onLoadSecurityUsers();
     onLoadPlans();
-  }, [onRefresh, onLoadBusinessTypes, onLoadSecurityUsers, onLoadPlans]);
-
-  useEffect(() => {
-    if (editingTenant) {
-      const employees = securityUsers.filter(u => {
-        const tenantId = u.tenantId;
-        return tenantId === editingTenant.id && u.role === "employee";
-      });
-      setTenantEmployees(employees);
-    } else {
-      setTenantEmployees([]);
-    }
-  }, [editingTenant, securityUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (showForm && editingTenant && securityUsers.length === 0) {

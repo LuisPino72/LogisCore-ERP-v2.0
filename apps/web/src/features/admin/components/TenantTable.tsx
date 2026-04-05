@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { Tenant, SecurityUser } from "../types/admin.types";
 
 interface TenantTableProps {
@@ -10,10 +11,10 @@ interface TenantTableProps {
 }
 
 export function TenantTable({ tenants, securityUsers, onEdit, onDelete, onDeactivate, onAccess }: TenantTableProps) {
-  const getOwnerEmail = (userId: string) => {
-    const user = securityUsers.find(u => u.userId === userId);
-    return user?.email || "Sin owner";
-  };
+  const ownerEmailMap = useMemo(
+    () => new Map(securityUsers.map(u => [u.userId, u.email])),
+    [securityUsers]
+  );
 
   return (
     <div className="card">
@@ -46,7 +47,7 @@ export function TenantTable({ tenants, securityUsers, onEdit, onDelete, onDeacti
                    </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-content-secondary">
-                   {getOwnerEmail(tenant.ownerUserId)}
+                   {ownerEmailMap.get(tenant.ownerUserId) || "Sin owner"}
                 </td>
                 <td className="px-4 py-3">
                    <span className={`badge ${tenant.isActive ? "badge-success" : "badge-error"}`}>

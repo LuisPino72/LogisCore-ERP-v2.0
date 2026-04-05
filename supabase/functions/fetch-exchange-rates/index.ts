@@ -59,45 +59,51 @@ Deno.serve(async (req: Request) => {
     console.log(`Fetching rates from ve.dolarapi.com, found ${rates.length} rates`);
     console.log(`Rates data:`, JSON.stringify(rates));
 
-    let inserted = 0;
-    for (const rate of rates) {
-      console.log(`Processing rate: ${rate.name} - ${rate.rate} (source: ${rate.source})`);
-      
-      if (rate.rate <= 0) {
-        console.log(`Skipping rate ${rate.name} because rate <= 0`);
-        continue;
-      }
+    // Filtrar tasas válidas
+    const validRates = rates.filter(r => r.rate > 0 && r.source === "oficial");
 
-      // Solo guardar tasa oficial (oficial = BCV), paralelo no se usa en frontend
-      if (rate.source !== "oficial") {
-        console.log(`Skipping non-official rate ${rate.name} (saved to DB but not used in frontend)`);
-        continue;
-      }
-
-      const insertData = {
-        local_id: crypto.randomUUID(),
-        from_currency: "USD",
-        to_currency: "VES",
-        rate: rate.rate,
-        source: rate.source,
-        jurisdiction: "VE",
-        valid_from: now.toISOString()
-      };
-      
-      console.log(`Inserting rate: ${JSON.stringify(insertData)}`);
-
-      const { error } = await supabase
-        .from("exchange_rates")
-        .insert(insertData);
-
-      if (error) {
-        console.error(`Error inserting rate from ${rate.source}:`, error.message);
-      } else {
-        inserted++;
-      }
+    if (validRates.length === 0) {
+      console.log("No valid rates to insert");
+      return new Response(
+        JSON.stringify({
+          success: true,
+          rates,
+          message: "No valid rates to insert"
+        } as ExchangeRateResult),
+        { headers: jsonHeaders }
+      );
     }
 
-    console.log(`Successfully inserted ${inserted} rates`);
+    // Batch insert
+    const insertData = validRates.map(rate => ({
+      local_id: crypto.randomUUID(),
+      from_currency: "USD",
+      to_currency: "VES",
+      rate: rate.rate,
+      source: rate.source,
+      jurisdiction: "VE",
+      valid_from: now.toISOString()
+    }));
+
+    console.log(`Inserting ${insertData.length} rates:`, JSON.stringify(insertData));
+
+    const { error } = await supabase
+      .from("exchange_rates")
+      .insert(insertData);
+
+    if (error) {
+      console.error("Error inserting rates:", error.message);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          rates: [],
+          error: error.message
+        } as ExchangeRateResult),
+        { status: 500, headers: jsonHeaders }
+      );
+    }
+
+    console.log(`Successfully inserted ${insertData.length} rates`);
 
     return new Response(
       JSON.stringify({
