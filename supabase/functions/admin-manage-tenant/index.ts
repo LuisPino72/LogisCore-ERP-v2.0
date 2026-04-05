@@ -142,6 +142,7 @@ Deno.serve(async (req: Request) => {
           .eq("id", tenantId);
 
         if (deleteError) {
+          console.error("Error deleting tenant:", deleteError);
           return new Response(
             JSON.stringify({ success: false, error: deleteError.message }),
             { status: 400, headers: jsonHeaders }

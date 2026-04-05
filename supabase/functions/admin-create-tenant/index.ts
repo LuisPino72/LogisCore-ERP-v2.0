@@ -39,59 +39,7 @@ interface CreateTenantInput {
   };
 }
 
-const DEFAULT_CATEGORIES_BY_BUSINESS_TYPE: Record<string, string[]> = {
-  "Bodega": [
-    "Bebidas",
-    "Galletas",
-    "Panadería",
-    "Abarrotes",
-    "Víveres",
-    "Lácteos",
-    "Frituras",
-    "Confitería",
-    "Productos Frescos",
-    "Varios"
-  ],
-  "Manufactura": [
-    "Materia Prima",
-    "Producto Terminado",
-    "Insumos",
-    "Empaque",
-    "Herramientas",
-    "Maquinaria",
-    "Mantenimiento",
-    "Control de Calidad",
-    "Producción",
-    "Envases"
-  ],
-  "Restaurante": [
-    "Bebidas",
-    "Comidas",
-    "Postres",
-    "Despensa",
-    "Panadería",
-    "Delivery",
-    "Reservas",
-    "Catering",
-    "Personal",
-    "Mesas"
-  ],
-  "Servicios": [
-    "Consultoría",
-    "Servicios",
-    "Repuestos",
-    "Mantenimiento",
-    "Alquiler",
-    "Delivery",
-    "Caja",
-    "Inventario",
-    "Reportes",
-    "Auditoría"
-  ],
-  "Otro": [
-    "General"
-  ]
-};
+const DEFAULT_CATEGORIES_BY_BUSINESS_TYPE: Record<string, string[]> = {}; // Now managed globally in DB
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -226,32 +174,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    let businessTypeName = "Otro";
-    let categoriesCreatedCount = 0;
-
-    if (input.businessTypeId) {
-      const { data: btData } = await supabase
-        .from("business_types")
-        .select("name")
-        .eq("id", input.businessTypeId)
-        .single();
-      
-      businessTypeName = btData?.name || "Otro";
-      const categories = DEFAULT_CATEGORIES_BY_BUSINESS_TYPE[businessTypeName] || DEFAULT_CATEGORIES_BY_BUSINESS_TYPE["Otro"];
-      categoriesCreatedCount = categories.length;
-      const tenantSlug = tenantData.slug;
-      
-      for (const catName of categories) {
-        await supabase.from("categories").insert({
-          local_id: crypto.randomUUID(),
-          tenant_id: tenantId,
-          tenant_slug: tenantSlug,
-          name: catName,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-      }
-    }
+    let categoriesCreatedCount = 0; // Managed by database architecture (Global)
 
     const trialDays = input.trialDays || 0;
     const isTrial = trialDays > 0;
