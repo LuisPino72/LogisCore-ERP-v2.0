@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { 
   BarChart, 
   Bar, 
@@ -15,14 +15,26 @@ interface TopProductsChartProps {
 }
 
 export function TopProductsChart({ data }: TopProductsChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [mounted, setMounted] = useState(false);
   const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
 
   useEffect(() => {
     setMounted(true);
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setDimensions({ width, height });
+      }
+    };
+    updateDimensions();
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    if (containerRef.current) resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
   }, []);
 
-  if (!mounted || !data?.length) {
+  if (!mounted || !data?.length || dimensions.width <= 0 || dimensions.height <= 0) {
     return (
       <div className="h-[300px] w-full bg-white p-6 rounded-2xl border shadow-sm flex items-center justify-center">
         <p className="text-content-tertiary">{data?.length ? "Cargando gráfico..." : "No hay productos vendidos"}</p>
@@ -31,7 +43,7 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
   }
 
   return (
-    <div className="h-full min-h-[300px] w-full bg-white dark:bg-slate-900/50 p-6 rounded-2xl border dark:border-slate-800 shadow-sm">
+    <div ref={containerRef} className="h-full min-h-[300px] w-full bg-white dark:bg-slate-900/50 p-6 rounded-2xl border dark:border-slate-800 shadow-sm">
       <div className="mb-6 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
           Productos más vendidos

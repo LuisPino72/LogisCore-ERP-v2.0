@@ -115,7 +115,7 @@ export const createAuthService = ({
         return ok(undefined);
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/audit-log`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/audit-log-v2`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
