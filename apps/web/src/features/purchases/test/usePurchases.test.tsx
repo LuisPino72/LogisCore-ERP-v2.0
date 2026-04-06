@@ -57,7 +57,50 @@ const createServiceMock = (): PurchasesService => ({
   ),
   listPurchases: vi.fn(async () => ok([])),
   listReceivings: vi.fn(async () => ok([])),
-  listInventoryLots: vi.fn(async () => ok([]))
+  listInventoryLots: vi.fn(async () => ok([])),
+  confirmPurchase: vi.fn(async () => ok({
+    localId: "pur-1",
+    tenantId: "tenant-demo",
+    warehouseLocalId: "wh-1",
+    status: "confirmed" as const,
+    currency: "USD" as const,
+    exchangeRate: 1,
+    subtotal: 10,
+    total: 10,
+    items: [{ productLocalId: "prod-1", qty: 1, unitCost: 10 }],
+    receivedItems: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  })),
+  cancelPurchase: vi.fn(async () => ok({
+    localId: "pur-1",
+    tenantId: "tenant-demo",
+    warehouseLocalId: "wh-1",
+    status: "cancelled" as const,
+    currency: "USD" as const,
+    exchangeRate: 1,
+    subtotal: 10,
+    total: 10,
+    items: [{ productLocalId: "prod-1", qty: 1, unitCost: 10 }],
+    receivedItems: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  })),
+  editPurchase: vi.fn(async () => ok({
+    localId: "pur-1",
+    tenantId: "tenant-demo",
+    warehouseLocalId: "wh-1",
+    status: "draft" as const,
+    currency: "USD" as const,
+    exchangeRate: 1,
+    subtotal: 20,
+    total: 20,
+    items: [{ productLocalId: "prod-1", qty: 2, unitCost: 10 }],
+    receivedItems: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  })),
+  setProductPreferredSupplier: vi.fn(async () => ok<void>(undefined))
 });
 
 describe("usePurchases", () => {
