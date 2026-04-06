@@ -11,6 +11,7 @@ const initialState: CoreUiState = {
   isBootstrapping: false,
   isBlocked: false,
   tenantSlug: null,
+  tenantName: null,
   syncStatus: "stopped",
   lastError: null
 };
@@ -54,6 +55,7 @@ export const useCore = ({ service }: UseCoreOptions) => {
       isBootstrapping: false,
       isBlocked: !result.data.subscriptionActive,
       tenantSlug: result.data.tenantContext.tenantSlug,
+      tenantName: result.data.tenantContext.tenantName,
       syncStatus: syncStartResult.data,
       lastError: null
     });

@@ -32,14 +32,16 @@ const createSupabaseMock = ({
         eq: vi.fn((column: string, value: string) => ({
           maybeSingle: vi.fn().mockResolvedValue({
             data: table === "tenants" && column === "owner_user_id"
-              ? { id: "tenant-uuid", slug: "tenant-demo" }
+              ? { id: "tenant-uuid", slug: "tenant-demo", name: "Tenant Demo" }
               : table === "tenants" && column === "slug"
-                ? { id: "tenant-uuid" }
-                : table === "user_roles" && column === "user_id"
-                  ? { role: role }
-                  : table === "subscriptions" && column === "tenant_id"
-                    ? { status: subscriptionActive ? "active" : "inactive", end_date: futureDate.toISOString(), is_last_day: false }
-                    : null,
+                ? { id: "tenant-uuid", slug: "tenant-demo", name: "Tenant Demo" }
+                : table === "tenants" && column === "id"
+                  ? { id: "tenant-uuid", slug: "tenant-demo", name: "Tenant Demo" }
+                  : table === "user_roles" && column === "user_id"
+                    ? { role: role }
+                    : table === "subscriptions" && column === "tenant_id"
+                      ? { status: subscriptionActive ? "active" : "inactive", end_date: futureDate.toISOString(), is_last_day: false }
+                      : null,
             error: null
           })
         }))

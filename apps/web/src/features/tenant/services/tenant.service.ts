@@ -119,9 +119,9 @@ export const createTenantService = ({
   ) => {
     const tenantQuery = await supabase
       .from("tenants")
-      .select("id, slug")
+      .select("id, slug, name")
       .eq("owner_user_id", userId)
-      .maybeSingle<{ id: string; slug: string }>();
+      .maybeSingle<{ id: string; slug: string; name: string }>();
 
     if (tenantQuery.error || !tenantQuery.data) {
       return err(
@@ -138,6 +138,7 @@ export const createTenantService = ({
     const tenant = {
       tenantUuid: tenantQuery.data.id,
       tenantSlug: tenantQuery.data.slug,
+      name: tenantQuery.data.name,
       userId
     };
     eventBus.emit("TENANT.RESOLVED", tenant);
@@ -317,16 +318,18 @@ export const createTenantService = ({
     // Try finding tenant as owner first
     let tenantSlug: string | null = null;
     let tenantId: string | null = null;
+    let tenantName: string | null = null;
 
     const ownerQuery = await supabase
       .from("tenants")
-      .select("id, slug")
+      .select("id, slug, name")
       .eq("owner_user_id", userId)
-      .maybeSingle<{ id: string; slug: string }>();
+      .maybeSingle<{ id: string; slug: string; name: string }>();
 
     if (ownerQuery.data) {
       tenantSlug = ownerQuery.data.slug;
       tenantId = ownerQuery.data.id;
+      tenantName = ownerQuery.data.name;
     } else {
       // Try as employee — find tenant_id from user_roles
       const roleQuery = await supabase
@@ -338,13 +341,14 @@ export const createTenantService = ({
       if (roleQuery.data?.tenant_id) {
         const tenantByIdQuery = await supabase
           .from("tenants")
-          .select("id, slug")
+          .select("id, slug, name")
           .eq("id", roleQuery.data.tenant_id)
-          .maybeSingle<{ id: string; slug: string }>();
+          .maybeSingle<{ id: string; slug: string; name: string }>();
 
         if (tenantByIdQuery.data) {
           tenantSlug = tenantByIdQuery.data.slug;
           tenantId = tenantByIdQuery.data.id;
+          tenantName = tenantByIdQuery.data.name;
         }
       }
     }
@@ -361,7 +365,8 @@ export const createTenantService = ({
 
     const tenant = {
       tenantUuid: tenantId,
-      tenantSlug: tenantSlug,
+      tenantSlug,
+      name: tenantName ?? "N/A",
       userId
     };
     eventBus.emit("TENANT.RESOLVED", tenant);

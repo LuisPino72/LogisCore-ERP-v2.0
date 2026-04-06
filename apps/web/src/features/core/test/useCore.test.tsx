@@ -7,7 +7,7 @@ import type { CoreService } from "../services/core.service";
 const createServiceMock = (active = true): CoreService => ({
   startSync: vi.fn(() => ok("idle")),
   resolveTenantContext: vi.fn(async () =>
-    ok({ tenantUuid: "t-1", tenantSlug: "tenant-demo", userId: "u-1" })
+    ok({ tenantUuid: "t-1", tenantSlug: "tenant-demo", tenantName: "Tenant Demo", userId: "u-1" })
   ),
   checkSubscription: vi.fn(async () => ok(active)),
   bootstrapSession: vi.fn(async () =>
@@ -15,6 +15,7 @@ const createServiceMock = (active = true): CoreService => ({
       tenantContext: {
         tenantUuid: "t-1",
         tenantSlug: "tenant-demo",
+        tenantName: "Tenant Demo",
         userId: "u-1"
       },
       subscriptionActive: active

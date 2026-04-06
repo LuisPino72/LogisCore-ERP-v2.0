@@ -36,7 +36,7 @@ const createSupabaseMock = (activeSubscription = true): any => ({
       eq: () => ({
         maybeSingle: async <T>() => {
           if (table === "tenants") {
-            return { data: { id: "tenant-uuid-1", slug: "tenant-demo" } as T, error: null };
+            return { data: { id: "tenant-uuid-1", slug: "tenant-demo", name: "Tenant Demo" } as T, error: null };
           }
           if (table === "subscriptions") {
             return { data: { status: activeSubscription ? "active" : "expired" } as T, error: null };

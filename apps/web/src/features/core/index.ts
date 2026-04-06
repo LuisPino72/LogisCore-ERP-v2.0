@@ -5,3 +5,4 @@ export * from "./hooks/useCore";
 export * from "./components/CoreBootstrapGate";
 export * from "./components/CoreSyncStatus";
 export * from "./components/BlockedAccessScreen";
+export * from "./components/SubscriptionBlockedScreen";

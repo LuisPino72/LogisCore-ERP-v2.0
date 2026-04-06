@@ -10,6 +10,7 @@ import { AdminLayout, Dashboard, TenantsList, SecurityPanel, BusinessTypesPanel,
 import { LoadingSpinner } from "@/common";
 import { type AdminModule, type Tenant } from "@/features/admin/types/admin.types";
 import { type ActorContext, type ActorPermissions } from "@/lib/permissions/permissions.types";
+import { eventBus } from "@/lib/core/runtime";
 
 export function SubscriptionExpirationBanner() {
   return (
@@ -112,7 +113,7 @@ export function TenantBootstrapGate({
   }
 
   if (state.isBlocked) {
-    return <BlockedAccessScreen tenantSlug={state.tenant?.tenantSlug ?? null} />;
+    return <BlockedAccessScreen tenantName={state.tenant?.name ?? "N/A"} eventBus={eventBus} onLogout={signOut} />;
   }
 
   if (state.userRole?.role === "admin" && !impersonatedTenantSlug) {

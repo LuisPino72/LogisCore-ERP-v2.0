@@ -6,6 +6,7 @@ import type { AppError, SyncStatus } from "@logiscore/core";
 export interface TenantContext {
   tenantUuid: string;
   tenantSlug: string;
+  tenantName: string;
   userId: string;
 }
 
@@ -24,6 +25,7 @@ export interface CoreUiState {
   isBootstrapping: boolean;
   isBlocked: boolean;
   tenantSlug: string | null;
+  tenantName: string | null;
   syncStatus: SyncStatus;
   lastError: AppError | null;
 }

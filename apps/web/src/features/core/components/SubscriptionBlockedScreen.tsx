@@ -1,13 +1,13 @@
 // Core - Pantalla de bloqueo cuando la suscripción está inactiva
 import type { EventBus, Result, AppError } from "@logiscore/core";
 
-interface BlockedAccessScreenProps {
+interface SubscriptionBlockedScreenProps {
   tenantName: string;
   eventBus: EventBus;
   onLogout: () => Promise<Result<void, AppError>>;
 }
 
-export function BlockedAccessScreen({ tenantName, eventBus, onLogout }: BlockedAccessScreenProps) {
+export function SubscriptionBlockedScreen({ tenantName, eventBus, onLogout }: SubscriptionBlockedScreenProps) {
   const handleLogout = async () => {
     eventBus.emit("AUTH.SIGNED_OUT", {});
     await onLogout();
@@ -40,9 +40,7 @@ export function BlockedAccessScreen({ tenantName, eventBus, onLogout }: BlockedA
 
         {/* Texto descriptivo */}
         <p className="mb-6 text-center text-sm leading-relaxed text-content-secondary">
-          La suscripción para el negocio{" "}
-          <strong className="font-semibold text-content-primary">{tenantName}</strong>{" "}
-          ha vencido o no se encuentra activa.
+          La suscripción para el negocio <strong className="font-semibold text-content-primary">{tenantName}</strong> ha vencido o no se encuentra activa.
         </p>
 
         {/* Separador */}

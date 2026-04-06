@@ -117,9 +117,9 @@ export const createCoreService = ({
 
     const tenantQuery = await supabaseClient
       .from("tenants")
-      .select("id, slug")
+      .select("id, slug, name")
       .eq("owner_user_id", userId)
-      .maybeSingle<{ id: string; slug: string }>();
+      .maybeSingle<{ id: string; slug: string; name: string }>();
 
     if (tenantQuery.error || !tenantQuery.data) {
       return err(
@@ -137,6 +137,7 @@ export const createCoreService = ({
     const tenantContext: TenantContext = {
       tenantUuid: tenantQuery.data.id,
       tenantSlug: tenantQuery.data.slug,
+      tenantName: tenantQuery.data.name,
       userId
     };
     eventBus.emit("TENANT.RESOLVED", tenantContext);
