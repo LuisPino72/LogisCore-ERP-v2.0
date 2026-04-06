@@ -20,6 +20,16 @@ export interface CategoryRecord {
   deletedAt?: string;
 }
 
+export interface CatalogRecord {
+  localId?: string;
+  id?: string;
+  tenantId: string;
+  name?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
 export interface ProductPresentationRecord {
   id: string;
   tenantId: string;
@@ -715,6 +725,30 @@ export class DexieCoreDbAdapter implements CoreDb {
   async getBootstrapState(id: string): Promise<CoreBootstrapState | null> {
     const state = await this.db.bootstrap_state.get(id);
     return state ?? null;
+  }
+}
+
+export class DexieCatalogsDbAdapter {
+  constructor(private readonly db: LogisCoreDexie) {}
+
+  async bulkPut(
+    table: "categories" | "products" | "product_presentations" | "warehouses",
+    records: CatalogRecord[]
+  ): Promise<void> {
+    switch (table) {
+      case "categories":
+        await this.db.categories.bulkPut(records as CategoryRecord[]);
+        break;
+      case "products":
+        await this.db.products.bulkPut(records as ProductRecord[]);
+        break;
+      case "product_presentations":
+        await this.db.product_presentations.bulkPut(records as ProductPresentationRecord[]);
+        break;
+      case "warehouses":
+        await this.db.warehouses.bulkPut(records as WarehouseRecord[]);
+        break;
+    }
   }
 }
 

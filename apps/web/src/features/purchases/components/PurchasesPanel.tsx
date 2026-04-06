@@ -10,8 +10,6 @@ import type { Warehouse } from "@/features/inventory/types/inventory.types";
 import { eventBus } from "@/lib/core/runtime";
 import { usePurchases } from "../hooks/usePurchases";
 import { purchasesService } from "../services/purchases.service.instance";
-import { useInventory } from "@/features/inventory/hooks/useInventory";
-import { inventoryService } from "@/features/inventory/services/inventory.service.instance";
 import { SuppliersPanel } from "./SuppliersPanel";
 import { Badge } from "@/common/components/Badge";
 import type { PurchaseItem, PurchasesActorContext, PurchasesTenantContext, ReceivePurchaseInput } from "../types/purchases.types";

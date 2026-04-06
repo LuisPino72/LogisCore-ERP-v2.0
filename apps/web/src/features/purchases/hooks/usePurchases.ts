@@ -12,8 +12,7 @@ import type {
   PurchasesTenantContext,
   ReceivePurchaseInput,
   PurchasesUiState,
-  UpdateSupplierInput,
-  Supplier
+  UpdateSupplierInput
 } from "../types/purchases.types";
 
 const initialState: PurchasesUiState = {
@@ -231,7 +230,7 @@ export const usePurchases = ({
       await refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh, service, tenant]
   );
 
   const editPurchase = useCallback(

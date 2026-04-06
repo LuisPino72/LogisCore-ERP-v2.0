@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { eventBus } from "@/lib/core/runtime";
 import { usePurchases } from "../hooks/usePurchases";
 import { purchasesService } from "../services/purchases.service.instance";
-import { Modal } from "@/common/components/Modal";
 import { Badge } from "@/common/components/Badge";
 import type { PurchasesActorContext, Supplier, CreateSupplierInput, UpdateSupplierInput } from "../types/purchases.types";
 
@@ -25,7 +24,6 @@ const initialForm: CreateSupplierInput = {
 };
 
 export function SuppliersPanel({ tenantSlug, actor }: SuppliersPanelProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [form, setForm] = useState<CreateSupplierInput>(initialForm);
   const [activeTab, setActiveTab] = useState<"list" | "form">("list");

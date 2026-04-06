@@ -26,9 +26,27 @@ export interface SupabaseLike {
     select: (columns: string) => {
       eq: (column: string, value: string) => {
         maybeSingle: <T>() => Promise<SupabaseRowResponse<T>>;
+        order: (column: string, options?: { ascending?: boolean }) => {
+          eq: (column: string, value: string) => {
+            order: (column: string, options?: { ascending?: boolean }) => Promise<SupabaseRowResponse<unknown[]>>;
+          };
+        };
       };
     };
   };
+}
+
+interface CatalogRecord {
+  localId?: string;
+  id?: string;
+  tenantId: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+interface CatalogsDb {
+  bulkPut(table: "categories" | "products" | "product_presentations" | "warehouses", records: CatalogRecord[]): Promise<void>;
 }
 
 export interface CoreService {
@@ -44,13 +62,15 @@ export interface CoreService {
   resolveTenantContext(userId: string): Promise<Result<TenantContext, AppError>>;
   startSync(): Result<SyncStatus, AppError>;
   checkSubscription(tenantSlug: string): Promise<Result<boolean, AppError>>;
+  pullCatalogs(tenantSlug: string): Promise<Result<void, AppError>>;
 }
 
 interface CoreServiceDependencies {
   db: CoreDb;
   syncEngine: SyncEngine;
-  supabase: SupabaseLike;
+  supabase: SupabaseLike | null;
   eventBus: EventBus;
+  catalogsDb?: CatalogsDb;
   clock?: () => Date;
   uuid?: () => string;
 }
@@ -60,13 +80,27 @@ export const createCoreService = ({
   syncEngine,
   supabase,
   eventBus,
+  catalogsDb,
   clock = () => new Date(),
   uuid = () => crypto.randomUUID()
 }: CoreServiceDependencies): CoreService => {
+  const supabaseClient = supabase ?? null;
+
   const resolveTenantContext: CoreService["resolveTenantContext"] = async (
     userId
   ) => {
-    const tenantQuery = await supabase
+    if (!supabaseClient) {
+      return err(
+        createAppError({
+          code: "TENANT_RESOLVE_FAILED",
+          message: "No hay conexión a Supabase.",
+          retryable: false,
+          context: { userId }
+        })
+      );
+    }
+
+    const tenantQuery = await supabaseClient
       .from("tenants")
       .select("id, slug")
       .eq("owner_user_id", userId)
@@ -97,7 +131,18 @@ export const createCoreService = ({
   const checkSubscription: CoreService["checkSubscription"] = async (
     tenantSlug
   ) => {
-    const subscriptionQuery = await supabase.rpc<{
+    if (!supabaseClient) {
+      return err(
+        createAppError({
+          code: "SUBSCRIPTION_CHECK_FAILED",
+          message: "No hay conexión a Supabase.",
+          retryable: true,
+          context: { tenantSlug }
+        })
+      );
+    }
+
+    const subscriptionQuery = await supabaseClient.rpc<{
       isActive: boolean;
       status?: string;
     }>("check_subscriptions", {
@@ -105,7 +150,7 @@ export const createCoreService = ({
     });
 
     if (subscriptionQuery.error) {
-      const tenantLookup = await supabase
+      const tenantLookup = await supabaseClient
         .from("tenants")
         .select("id")
         .eq("slug", tenantSlug)
@@ -122,7 +167,7 @@ export const createCoreService = ({
         );
       }
 
-      const fallbackSubscription = await supabase
+      const fallbackSubscription = await supabaseClient
         .from("subscriptions")
         .select("status")
         .eq("tenant_id", tenantLookup.data.id)
@@ -170,12 +215,73 @@ export const createCoreService = ({
     return ok(status);
   };
 
+  const pullCatalogs: CoreService["pullCatalogs"] = async (tenantSlug) => {
+    if (!catalogsDb || !supabaseClient) {
+      return ok<void>(undefined);
+    }
+
+    const tables = ["categories", "products", "product_presentations", "warehouses"] as const;
+
+    for (const table of tables) {
+      try {
+        const response = await supabaseClient
+          .from(table)
+          .select("*")
+          .eq("tenant_slug", tenantSlug)
+          .order("created_at", { ascending: true });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data = (response as any).data as Record<string, unknown>[] | null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const error = (response as any).error as { message: string } | null;
+
+        if (error || !data) {
+          continue;
+        }
+
+        const records: CatalogRecord[] = data.map((row) => {
+          const record: CatalogRecord = {
+            tenantId: tenantSlug,
+            createdAt: (row.created_at as string) ?? new Date().toISOString(),
+            updatedAt: (row.updated_at as string) ?? new Date().toISOString()
+          };
+          if (table === "product_presentations") {
+            record.id = row.id as string;
+          } else {
+            record.localId = row.local_id as string;
+          }
+          if (row.deleted_at) record.deletedAt = row.deleted_at as string;
+          return record;
+        });
+
+        if (records.length > 0) {
+          await catalogsDb.bulkPut(table, records);
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    eventBus.emit("CORE.CATALOGS_PULLED", { tenantSlug });
+    return ok<void>(undefined);
+  };
+
   const bootstrapSession: CoreService["bootstrapSession"] = async () => {
     eventBus.emit("CORE.BOOTSTRAP_STARTED", {
       startedAt: clock().toISOString()
     });
 
-    const sessionResponse = await supabase.auth.getSession();
+    if (!supabaseClient) {
+      const authError = createAppError({
+        code: "AUTH_SESSION_MISSING",
+        message: "No hay conexión a Supabase.",
+        retryable: false
+      });
+      eventBus.emit("CORE.BOOTSTRAP_FAILED", { error: authError });
+      return err(authError);
+    }
+
+    const sessionResponse = await supabaseClient.auth.getSession();
     if (sessionResponse.error || !sessionResponse.data.session?.user.id) {
       const authError = createAppError({
         code: "AUTH_SESSION_MISSING",
@@ -201,6 +307,12 @@ export const createCoreService = ({
     if (!subscriptionResult.ok) {
       eventBus.emit("CORE.BOOTSTRAP_FAILED", { error: subscriptionResult.error });
       return err(subscriptionResult.error);
+    }
+
+    const pullResult = await pullCatalogs(tenantResult.data.tenantSlug);
+    if (!pullResult.ok) {
+      eventBus.emit("CORE.BOOTSTRAP_FAILED", { error: pullResult.error });
+      return err(pullResult.error);
     }
 
     const queueResult = await syncEngine.enqueue({
@@ -245,10 +357,11 @@ export const createCoreService = ({
     });
   };
 
-  return {
-    bootstrapSession,
-    resolveTenantContext,
-    startSync,
-    checkSubscription
-  };
+    return {
+      bootstrapSession,
+      resolveTenantContext,
+      startSync,
+      checkSubscription,
+      pullCatalogs
+    };
 };

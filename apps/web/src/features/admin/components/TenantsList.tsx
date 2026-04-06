@@ -61,7 +61,6 @@ export function TenantsList({
     onLoadBusinessTypes();
     onLoadSecurityUsers();
     onLoadPlans();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

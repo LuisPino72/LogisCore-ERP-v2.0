@@ -7,7 +7,7 @@ import {
   type Result,
   type SyncEngine
 } from "@logiscore/core";
-import type { StockMovementRecord, SupplierRecord } from "@/lib/db/dexie";
+import type { StockMovementRecord } from "@/lib/db/dexie";
 import type {
   CreatePurchaseInput,
   CreateSupplierInput,
