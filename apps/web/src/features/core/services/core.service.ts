@@ -40,13 +40,28 @@ interface CatalogRecord {
   localId?: string;
   id?: string;
   tenantId: string;
+  name?: string;
+  sku?: string;
+  visible?: boolean;
+  isWeighted?: boolean;
+  unitOfMeasure?: string;
+  categoryId?: string;
+  defaultPresentationId?: string;
+  productLocalId?: string;
+  factor?: number;
+  price?: number;
+  barcode?: string;
+  isDefault?: boolean;
+  size?: string;
+  color?: string;
+  skuSuffix?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
 }
 
 interface CatalogsDb {
-  bulkPut(table: "categories" | "products" | "product_presentations" | "warehouses", records: CatalogRecord[]): Promise<void>;
+  bulkPut(table: "categories" | "products" | "product_presentations" | "product_size_colors" | "warehouses", records: CatalogRecord[]): Promise<void>;
 }
 
 export interface CoreService {
@@ -220,7 +235,7 @@ export const createCoreService = ({
       return ok<void>(undefined);
     }
 
-    const tables = ["categories", "products", "product_presentations", "warehouses"] as const;
+    const tables = ["categories", "products", "product_presentations", "product_size_colors", "warehouses"] as const;
 
     for (const table of tables) {
       try {
@@ -245,11 +260,36 @@ export const createCoreService = ({
             createdAt: (row.created_at as string) ?? new Date().toISOString(),
             updatedAt: (row.updated_at as string) ?? new Date().toISOString()
           };
+
           if (table === "product_presentations") {
             record.id = row.id as string;
+            record.productLocalId = row.product_local_id as string;
+            record.name = row.name as string;
+            if (row.factor !== undefined) record.factor = Number(row.factor);
+            if (row.price !== undefined) record.price = Number(row.price);
+            if (row.barcode) record.barcode = row.barcode as string;
+            if (row.is_default !== undefined) record.isDefault = row.is_default as boolean;
+          } else if (table === "product_size_colors") {
+            record.localId = row.local_id as string;
+            record.productLocalId = row.product_local_id as string;
+            if (row.size) record.size = row.size as string;
+            if (row.color) record.color = row.color as string;
+            if (row.sku_suffix) record.skuSuffix = row.sku_suffix as string;
+            if (row.barcode) record.barcode = row.barcode as string;
+          } else if (table === "products") {
+            record.localId = row.local_id as string;
+            record.name = row.name as string;
+            record.sku = row.sku as string;
+            record.visible = row.visible as boolean;
+            record.isWeighted = (row.is_weighted as boolean) ?? false;
+            record.unitOfMeasure = (row.unit_of_measure as string) ?? 'unidad';
+            if (row.category_id) record.categoryId = row.category_id as string;
+            if (row.default_presentation_id) record.defaultPresentationId = row.default_presentation_id as string;
           } else {
             record.localId = row.local_id as string;
+            record.name = row.name as string;
           }
+
           if (row.deleted_at) record.deletedAt = row.deleted_at as string;
           return record;
         });
@@ -262,6 +302,7 @@ export const createCoreService = ({
       }
     }
 
+    eventBus.emit("CATALOG.GLOBAL_PRODUCTS_HYDRATED", { tenantSlug });
     eventBus.emit("CORE.CATALOGS_PULLED", { tenantSlug });
     return ok<void>(undefined);
   };

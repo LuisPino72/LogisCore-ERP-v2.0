@@ -74,12 +74,14 @@ export class DexieInventoryDbAdapter implements InventoryDb {
       )
       .toArray();
 
-    return movements.reduce((acc, item) => {
+    const balance = movements.reduce((acc, item) => {
       const signed = incomingMovementTypes.has(item.movementType)
         ? item.quantity
         : -item.quantity;
       return acc + signed;
     }, 0);
+
+    return Number(balance.toFixed(4));
   }
 
   async createInventoryCount(count: InventoryCountRecord): Promise<void> {

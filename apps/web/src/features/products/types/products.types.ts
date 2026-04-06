@@ -71,6 +71,8 @@ export interface Product {
   height?: number | null;
   isSerialized?: boolean | null;
   isTaxable?: boolean | null;
+  isWeighted?: boolean | null;
+  unitOfMeasure?: string | null;
   defaultPresentationId?: string | null;
   preferredSupplierLocalId?: string | null;
   deletedAt?: string | null;
@@ -130,6 +132,8 @@ export interface CreateProductInput {
   height?: number;
   isSerialized?: boolean;
   isTaxable?: boolean;
+  isWeighted?: boolean;
+  unitOfMeasure?: string;
   visible: boolean;
   defaultPresentationId?: string;
   sourceModule: "purchases";
@@ -148,6 +152,8 @@ export interface UpdateProductInput {
   height?: number;
   isSerialized?: boolean;
   isTaxable?: boolean;
+  isWeighted?: boolean;
+  unitOfMeasure?: string;
   visible: boolean;
   defaultPresentationId?: string;
 }
@@ -177,6 +183,70 @@ export interface UpdateProductPresentationInput {
 }
 
 /**
+ * Input para crear producto con variantes en una sola operación transaccional
+ * presentations: Lista de presentaciones a crear junto con el producto
+ * sizeColors: Lista de variantes talla/color a crear junto con el producto
+ */
+export interface CreateProductWithVariantsInput {
+  name: string;
+  description?: string;
+  categoryId?: string;
+  sku: string;
+  weight?: number;
+  length?: number;
+  width?: number;
+  height?: number;
+  isSerialized?: boolean;
+  isTaxable?: boolean;
+  isWeighted?: boolean;
+  unitOfMeasure?: string;
+  visible: boolean;
+  presentations?: Array<{
+    name: string;
+    factor: number;
+    price?: number;
+    barcode?: string;
+    isDefault?: boolean;
+  }>;
+  sizeColors?: Array<{
+    size?: string;
+    color?: string;
+    skuSuffix?: string;
+    barcode?: string;
+  }>;
+  sourceModule: "purchases";
+}
+
+/** Resultado de creación transaccional con variantes */
+export interface CreateProductWithVariantsResult {
+  product: Product;
+  presentations: ProductPresentation[];
+  sizeColors: ProductSizeColor[];
+}
+
+/**
+ * Variante de producto (talla/color)
+ * localId: ID generado en cliente
+ * productLocalId: FK al producto padre
+ * size: Talla (ej. 'S', 'M', 'L', 'XL')
+ * color: Color (ej. 'Rojo', 'Azul')
+ * skuSuffix: Sufijo para SKU (ej. '-S-ROJ')
+ * barcode: Código de barras de la variante
+ */
+export interface ProductSizeColor {
+  localId: string;
+  tenantId: string;
+  productLocalId: string;
+  size?: string;
+  color?: string;
+  skuSuffix?: string;
+  barcode?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+/**
  * Estado de la UI para el módulo de productos
  */
 export interface ProductsUiState {
@@ -184,5 +254,6 @@ export interface ProductsUiState {
   categories: Category[];
   products: Product[];
   presentations: ProductPresentation[];
+  sizeColors: ProductSizeColor[];
   lastError: AppError | null;
 }

@@ -335,6 +335,20 @@ export const createInventoryService = ({
         })
       );
     }
+
+    if (input.isWeightedProduct) {
+      const qty = Number(input.quantity.toFixed(4));
+      if (qty <= 0) {
+        return err(
+          createAppError({
+            code: "WEIGHTED_MOVEMENT_QUANTITY_INVALID",
+            message: "La cantidad para productos por peso debe ser mayor a 0 (max 4 decimales).",
+            retryable: false,
+            context: { quantity: input.quantity }
+          })
+        );
+      }
+    }
     const warehouseAccess = assertWarehouseAccess(actor, input.warehouseLocalId);
     if (!warehouseAccess.ok) {
       return err(warehouseAccess.error);
@@ -358,7 +372,7 @@ export const createInventoryService = ({
     const signedQty = incomingMovementTypes.has(input.movementType)
       ? input.quantity
       : -input.quantity;
-    const resultingBalance = currentBalance + signedQty;
+    const resultingBalance = Number((currentBalance + signedQty).toFixed(4));
     if (resultingBalance < 0) {
       return err(
         createAppError({

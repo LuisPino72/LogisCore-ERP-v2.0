@@ -149,6 +149,7 @@ export interface CreateProductSizeColorInput {
  * Input para registrar movimiento de stock
  * unitCost: Costo unitario (para actualizar promedio)
  * costLayerId: Para rastrear capas de costo FIFO
+ * isWeightedProduct: Si el producto se vende por peso (validación decimal)
  */
 export interface RecordStockMovementInput {
   productLocalId: string;
@@ -161,6 +162,7 @@ export interface RecordStockMovementInput {
   referenceDocumentType?: string;
   costLayerId?: string;
   notes?: string;
+  isWeightedProduct?: boolean;
 }
 
 /** Input para crear conteo de inventario */

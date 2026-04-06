@@ -7,7 +7,8 @@ import {
   db,
   type CategoryRecord,
   type ProductPresentationRecord,
-  type ProductRecord
+  type ProductRecord,
+  type ProductSizeColorRecord
 } from "@/lib/db/dexie";
 import type { ProductsDb } from "./products.service";
 
@@ -23,6 +24,10 @@ export class DexieProductsDbAdapter implements ProductsDb {
 
   async createPresentation(presentation: ProductPresentationRecord): Promise<void> {
     await db.product_presentations.put(presentation);
+  }
+
+  async createProductSizeColor(item: ProductSizeColorRecord): Promise<void> {
+    await db.product_size_colors.put(item);
   }
 
   async updateCategory(category: CategoryRecord): Promise<void> {
@@ -55,6 +60,14 @@ export class DexieProductsDbAdapter implements ProductsDb {
 
   async listPresentations(tenantId: string): Promise<ProductPresentationRecord[]> {
     return db.product_presentations
+      .where("tenantId")
+      .equals(tenantId)
+      .and((item) => !item.deletedAt)
+      .sortBy("createdAt");
+  }
+
+  async listProductSizeColors(tenantId: string): Promise<ProductSizeColorRecord[]> {
+    return db.product_size_colors
       .where("tenantId")
       .equals(tenantId)
       .and((item) => !item.deletedAt)

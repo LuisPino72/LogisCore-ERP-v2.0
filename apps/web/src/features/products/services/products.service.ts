@@ -10,11 +10,14 @@ import type {
   CreateCategoryInput,
   CreateProductInput,
   CreateProductPresentationInput,
+  CreateProductWithVariantsInput,
+  CreateProductWithVariantsResult,
   UpdateCategoryInput,
   UpdateProductInput,
   UpdateProductPresentationInput,
   Product,
   ProductPresentation,
+  ProductSizeColor,
   ProductsTenantContext
 } from "../types/products.types";
 
@@ -44,12 +47,14 @@ export interface ProductsDb {
   createCategory(category: Category): Promise<void>;
   createProduct(product: Product): Promise<void>;
   createPresentation(presentation: ProductPresentation): Promise<void>;
+  createProductSizeColor(item: ProductSizeColor): Promise<void>;
   updateCategory(category: Category): Promise<void>;
   updateProduct(product: Product): Promise<void>;
   updatePresentation(presentation: ProductPresentation): Promise<void>;
   listCategories(tenantId: string): Promise<Category[]>;
   listProducts(tenantId: string): Promise<Product[]>;
   listPresentations(tenantId: string): Promise<ProductPresentation[]>;
+  listProductSizeColors(tenantId: string): Promise<ProductSizeColor[]>;
   softDeleteCategory(
     localId: string,
     tenantId: string,
@@ -84,6 +89,11 @@ export interface ProductsService {
     actor: ProductsActorContext,
     input: CreateProductInput
   ): Promise<Result<Product, AppError>>;
+  createProductWithVariants(
+    tenant: ProductsTenantContext,
+    actor: ProductsActorContext,
+    input: CreateProductWithVariantsInput
+  ): Promise<Result<CreateProductWithVariantsResult, AppError>>;
   createPresentation(
     tenant: ProductsTenantContext,
     actor: ProductsActorContext,
@@ -294,6 +304,9 @@ export const createProductsService = ({
         width: input.width ?? null,
         height: input.height ?? null,
         isSerialized: input.isSerialized ?? null,
+        isTaxable: input.isTaxable ?? null,
+        isWeighted: input.isWeighted ?? false,
+        unitOfMeasure: input.unitOfMeasure ?? 'unidad',
         visible: input.visible,
         defaultPresentationId: input.defaultPresentationId ?? null,
         createdAt: now,
@@ -315,6 +328,9 @@ export const createProductsService = ({
           width: product.width,
           height: product.height,
           is_serialized: product.isSerialized,
+          is_taxable: product.isTaxable,
+          is_weighted: product.isWeighted ?? false,
+          unit_of_measure: product.unitOfMeasure ?? 'unidad',
           category_id: product.categoryId,
           visible: product.visible,
           default_presentation_id: product.defaultPresentationId,
@@ -471,6 +487,9 @@ export const createProductsService = ({
         width: input.width ?? existing.width,
         height: input.height ?? existing.height,
         isSerialized: input.isSerialized ?? existing.isSerialized,
+        isTaxable: input.isTaxable ?? existing.isTaxable,
+        isWeighted: input.isWeighted ?? existing.isWeighted ?? false,
+        unitOfMeasure: input.unitOfMeasure ?? existing.unitOfMeasure ?? 'unidad',
         visible: input.visible,
         updatedAt: now,
         ...(input.defaultPresentationId !== undefined && { defaultPresentationId: input.defaultPresentationId })
@@ -491,6 +510,9 @@ export const createProductsService = ({
           width: updated.width,
           height: updated.height,
           is_serialized: updated.isSerialized,
+          is_taxable: updated.isTaxable,
+          is_weighted: updated.isWeighted ?? false,
+          unit_of_measure: updated.unitOfMeasure ?? 'unidad',
           category_id: updated.categoryId,
           visible: updated.visible,
           default_presentation_id: updated.defaultPresentationId,
@@ -823,9 +845,274 @@ export const createProductsService = ({
       return ok(updated);
     };
 
+    const createProductWithVariants: ProductsService["createProductWithVariants"] = async (
+      tenant,
+      actor,
+      input
+    ) => {
+      const permissionResult = assertCatalogPermissions(actor);
+      if (!permissionResult.ok) {
+        return err(permissionResult.error);
+      }
+
+      if (!input.name.trim()) {
+        return err(
+          createAppError({
+            code: "PRODUCT_NAME_REQUIRED",
+            message: "El nombre del producto es obligatorio.",
+            retryable: false
+          })
+        );
+      }
+
+      if (input.sourceModule !== "purchases") {
+        return err(
+          createAppError({
+            code: "PRODUCT_CREATION_FORBIDDEN_MODULE",
+            message:
+              "Los productos solo se crean desde el modulo Compras (regla 7.5).",
+            retryable: false
+          })
+        );
+      }
+
+      if (input.categoryId) {
+        const category = await db.getCategoryById(input.categoryId, tenant.tenantSlug);
+        if (!category) {
+          return err(
+            createAppError({
+              code: "PRODUCT_CATEGORY_NOT_FOUND",
+              message: "La categoria del producto no existe para el tenant actual.",
+              retryable: false,
+              context: { categoryId: input.categoryId }
+            })
+          );
+        }
+      }
+
+      const presentations = input.presentations ?? [];
+      if (presentations.length > 0) {
+        const defaultCount = presentations.filter(p => p?.isDefault).length;
+        if (defaultCount > 1) {
+          return err(
+            createAppError({
+              code: "VARIANT_MULTIPLE_DEFAULT_PRESENTATIONS",
+              message: "Solo puede haber una presentacion por defecto.",
+              retryable: false
+            })
+          );
+        }
+        for (let i = 0; i < presentations.length; i++) {
+          const p = presentations[i];
+          if (!p || !p.name.trim()) {
+            return err(
+              createAppError({
+                code: "PRESENTATION_NAME_REQUIRED",
+                message: `El nombre de la presentacion ${i + 1} es obligatorio.`,
+                retryable: false
+              })
+            );
+          }
+          if (p.factor <= 0) {
+            return err(
+              createAppError({
+                code: "PRESENTATION_FACTOR_INVALID",
+                message: `El factor de la presentacion ${i + 1} debe ser mayor a 0.`,
+                retryable: false
+              })
+            );
+          }
+        }
+      }
+
+      const sizeColors = input.sizeColors ?? [];
+      for (let i = 0; i < sizeColors.length; i++) {
+        const sc = sizeColors[i];
+        if (!sc || (!sc.size?.trim() && !sc.color?.trim())) {
+          return err(
+            createAppError({
+              code: "SIZE_COLOR_AT_LEAST_ONE_REQUIRED",
+              message: `La variante ${i + 1} debe tener al menos talla o color.`,
+              retryable: false
+            })
+          );
+        }
+      }
+
+      const now = clock().toISOString();
+      const productLocalId = uuid();
+
+      const product: Product = {
+        localId: productLocalId,
+        tenantId: tenant.tenantSlug,
+        name: input.name.trim(),
+        description: input.description ?? null,
+        categoryId: input.categoryId ?? null,
+        sku: input.sku,
+        weight: input.weight ?? null,
+        length: input.length ?? null,
+        width: input.width ?? null,
+        height: input.height ?? null,
+        isSerialized: input.isSerialized ?? null,
+        isTaxable: input.isTaxable ?? null,
+        isWeighted: input.isWeighted ?? false,
+        unitOfMeasure: input.unitOfMeasure ?? 'unidad',
+        visible: input.visible,
+        defaultPresentationId: null,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      const createdPresentations: ProductPresentation[] = [];
+      const createdSizeColors: ProductSizeColor[] = [];
+
+      const syncPayloads: Array<{ table: string; operation: string; payload: Record<string, unknown> }> = [];
+
+      syncPayloads.push({
+        table: "products",
+        operation: "create",
+        payload: {
+          local_id: product.localId,
+          tenant_slug: tenant.tenantSlug,
+          name: product.name,
+          description: product.description,
+          sku: product.sku,
+          weight: product.weight,
+          length: product.length,
+          width: product.width,
+          height: product.height,
+          is_serialized: product.isSerialized,
+          is_taxable: product.isTaxable,
+          is_weighted: product.isWeighted ?? false,
+          unit_of_measure: product.unitOfMeasure ?? 'unidad',
+          category_id: product.categoryId,
+          visible: product.visible,
+          default_presentation_id: product.defaultPresentationId,
+          created_at: product.createdAt,
+          updated_at: product.updatedAt
+        }
+      });
+
+      let defaultPresentationId: string | null = null;
+
+      for (const pInput of presentations) {
+        const presId = uuid();
+        const isDefault = pInput.isDefault ?? false;
+        if (isDefault) {
+          defaultPresentationId = presId;
+        }
+
+        const presentation: ProductPresentation = {
+          id: presId,
+          tenantId: tenant.tenantSlug,
+          productLocalId: productLocalId,
+          name: pInput.name.trim(),
+          factor: pInput.factor,
+          price: pInput.price ?? 0,
+          createdAt: now,
+          updatedAt: now,
+          ...(pInput.barcode && { barcode: pInput.barcode }),
+          ...(pInput.isDefault !== undefined && { isDefault })
+        };
+        createdPresentations.push(presentation);
+
+        syncPayloads.push({
+          table: "product_presentations",
+          operation: "create",
+          payload: {
+            id: presentation.id,
+            tenant_slug: tenant.tenantSlug,
+            product_local_id: presentation.productLocalId,
+            name: presentation.name,
+            factor: presentation.factor,
+            price: presentation.price,
+            barcode: presentation.barcode,
+            is_default: presentation.isDefault,
+            created_at: presentation.createdAt,
+            updated_at: presentation.updatedAt
+          }
+        });
+      }
+
+      for (const scInput of sizeColors) {
+        const scLocalId = uuid();
+        const sizeColor: ProductSizeColor = {
+          localId: scLocalId,
+          tenantId: tenant.tenantSlug,
+          productLocalId: productLocalId,
+          createdAt: now,
+          updatedAt: now,
+          ...(scInput.size?.trim() && { size: scInput.size.trim() }),
+          ...(scInput.color?.trim() && { color: scInput.color.trim() }),
+          ...(scInput.skuSuffix?.trim() && { skuSuffix: scInput.skuSuffix.trim() }),
+          ...(scInput.barcode?.trim() && { barcode: scInput.barcode.trim() })
+        };
+        createdSizeColors.push(sizeColor);
+
+        syncPayloads.push({
+          table: "product_size_colors",
+          operation: "create",
+          payload: {
+            local_id: sizeColor.localId,
+            tenant_slug: tenant.tenantSlug,
+            product_local_id: sizeColor.productLocalId,
+            size: sizeColor.size,
+            color: sizeColor.color,
+            sku_suffix: sizeColor.skuSuffix,
+            barcode: sizeColor.barcode,
+            created_at: sizeColor.createdAt,
+            updated_at: sizeColor.updatedAt
+          }
+        });
+      }
+
+      if (defaultPresentationId && syncPayloads.length > 0) {
+        product.defaultPresentationId = defaultPresentationId;
+        syncPayloads[0]!.payload.default_presentation_id = defaultPresentationId;
+      }
+
+      for (const syncItem of syncPayloads) {
+        const syncResult = await syncEngine.enqueue({
+          id: uuid(),
+          table: syncItem.table,
+          operation: syncItem.operation as "create" | "update" | "delete",
+          payload: syncItem.payload,
+          localId: syncItem.table === "products" ? productLocalId : (syncItem.payload.local_id ?? syncItem.payload.id) as string,
+          tenantId: tenant.tenantSlug,
+          createdAt: now,
+          attempts: 0
+        });
+        if (!syncResult.ok) {
+          return err(syncResult.error);
+        }
+      }
+
+      await db.createProduct(product);
+      for (const pres of createdPresentations) {
+        await db.createPresentation(pres);
+      }
+      for (const sc of createdSizeColors) {
+        await db.createProductSizeColor(sc);
+      }
+
+      eventBus.emit("CATALOG.PRODUCT_CREATED", {
+        tenantId: tenant.tenantSlug,
+        localId: productLocalId,
+        visible: product.visible,
+        variantsCount: createdPresentations.length + createdSizeColors.length
+      });
+
+      return ok({
+        product,
+        presentations: createdPresentations,
+        sizeColors: createdSizeColors
+      });
+    };
+
     return {
       createCategory,
       createProduct,
+      createProductWithVariants,
       createPresentation,
       updateCategory,
       updateProduct,

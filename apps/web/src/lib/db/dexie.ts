@@ -57,6 +57,9 @@ export interface ProductRecord {
   width?: number | null;
   height?: number | null;
   isSerialized?: boolean | null;
+  isTaxable?: boolean | null;
+  isWeighted?: boolean | null;
+  unitOfMeasure?: string | null;
   defaultPresentationId?: string | null;
   preferredSupplierLocalId?: string | null;
   createdAt: string;
@@ -712,6 +715,41 @@ export class LogisCoreDexie extends Dexie {
       security_audit_log:
         "&localId, tenantId, userId, eventType, createdAt"
     });
+    this.version(12).stores({
+      bootstrap_state: "&id, tenantId, userId, bootstrappedAt",
+      sync_queue: "&id, tenantId, table, operation, createdAt, attempts, status",
+      sync_errors: "&id, queueItemId, tenantId, failedAt",
+      suppliers: "&localId, tenantId, name, createdAt",
+      categories: "&localId, tenantId, name, createdAt",
+      products:
+        "&localId, tenantId, categoryId, visible, defaultPresentationId, createdAt",
+      product_presentations: "&id, tenantId, productLocalId, name, createdAt",
+      warehouses: "&localId, tenantId, name, code, createdAt",
+      product_size_colors: "&localId, tenantId, productLocalId, size, color, createdAt",
+      stock_movements:
+        "&localId, tenantId, productLocalId, warehouseLocalId, movementType, createdAt",
+      inventory_counts:
+        "&localId, tenantId, warehouseLocalId, productLocalId, status, createdAt",
+      sales: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      suspended_sales: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      box_closings: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      purchases: "&localId, tenantId, warehouseLocalId, status, createdAt",
+      receivings: "&localId, tenantId, purchaseLocalId, warehouseLocalId, createdAt",
+      inventory_lots:
+        "&localId, tenantId, productLocalId, warehouseLocalId, sourceType, sourceLocalId, createdAt",
+      recipes: "&localId, tenantId, productLocalId, createdAt",
+      production_orders: "&localId, tenantId, recipeLocalId, warehouseLocalId, status, createdAt",
+      production_logs:
+        "&localId, tenantId, productionOrderLocalId, recipeLocalId, warehouseLocalId, createdAt",
+      invoices:
+        "&localId, tenantId, saleLocalId, customerId, status, createdAt",
+      tax_rules:
+        "&localId, tenantId, type, isActive, createdAt",
+      exchange_rates:
+        "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt",
+      security_audit_log:
+        "&localId, tenantId, userId, eventType, createdAt"
+    });
   }
 }
 
@@ -732,7 +770,7 @@ export class DexieCatalogsDbAdapter {
   constructor(private readonly db: LogisCoreDexie) {}
 
   async bulkPut(
-    table: "categories" | "products" | "product_presentations" | "warehouses",
+    table: "categories" | "products" | "product_presentations" | "product_size_colors" | "warehouses",
     records: CatalogRecord[]
   ): Promise<void> {
     switch (table) {
@@ -744,6 +782,9 @@ export class DexieCatalogsDbAdapter {
         break;
       case "product_presentations":
         await this.db.product_presentations.bulkPut(records as ProductPresentationRecord[]);
+        break;
+      case "product_size_colors":
+        await this.db.product_size_colors.bulkPut(records as ProductSizeColorRecord[]);
         break;
       case "warehouses":
         await this.db.warehouses.bulkPut(records as WarehouseRecord[]);
