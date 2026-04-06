@@ -8,35 +8,37 @@ interface StatCardProps {
     value: number;
     isUp: boolean;
   };
-  color?: "blue" | "green" | "red" | "purple" | "orange";
+  color?: "blue" | "green" | "red" | "purple" | "orange" | "gold";
+  tooltip?: string;
 }
 
-export function StatCard({ title, value, icon, trend, color = "blue" }: StatCardProps) {
+export function StatCard({ title, value, icon, trend, color = "gold", tooltip }: StatCardProps) {
   const colorClasses = {
-    blue: "from-brand-500/10 to-brand-600/5 text-brand-600 border-brand-200/50",
-    green: "from-brand-500/10 to-brand-600/5 text-brand-600 border-brand-200/50",
-    red: "from-state-error/10 to-state-error/5 text-state-error border-state-error/20",
-    purple: "from-violet-500/10 to-violet-600/5 text-violet-600 border-violet-200/50",
-    orange: "from-state-warning/10 to-state-warning/5 text-state-warning border-state-warning/20",
+    gold: "from-brand-50 to-brand-100 text-brand-700 border-brand-200",
+    blue: "from-blue-50 to-blue-100 text-blue-700 border-blue-200",
+    green: "from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200",
+    red: "from-red-50 to-red-100 text-red-700 border-red-200",
+    purple: "from-violet-50 to-violet-100 text-violet-700 border-violet-200",
+    orange: "from-amber-50 to-amber-100 text-amber-700 border-amber-200",
   };
 
   return (
     <div className={`
-      relative overflow-hidden rounded-2xl border bg-white p-5 
-      shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1
-      dark:bg-surface-900/50 dark:border-surface-800
-    `}>
+      relative overflow-hidden rounded-xl border bg-white p-5 
+      shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1
+      ${color === "gold" ? "hover:border-brand-300" : ""}
+    `} title={tooltip}>
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-content-secondary capitalize">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
             {title}
           </p>
-          <h3 className="mt-2 text-2xl font-bold text-content-primary">
+          <h3 className="text-3xl font-bold text-content-primary tracking-tight">
             {value}
           </h3>
           
           {trend && (
-            <div className={`mt-2 flex items-center gap-1 text-xs font-medium ${
+            <div className={`flex items-center gap-1 text-xs font-semibold ${
               trend.isUp ? "text-state-success" : "text-state-error"
             }`}>
               <span>{trend.isUp ? "↑" : "↓"}</span>
@@ -47,15 +49,16 @@ export function StatCard({ title, value, icon, trend, color = "blue" }: StatCard
         </div>
         
         <div className={`
-          flex h-12 w-12 items-center justify-center rounded-xl border bg-linear-to-br
+          flex h-14 w-14 items-center justify-center rounded-lg border bg-linear-to-br font-xl
           ${colorClasses[color]}
         `}>
           {icon}
         </div>
       </div>
       
-      {/* Background patterns */}
-      <div className="absolute -right-6 -bottom-6 h-24 w-24 rounded-full opacity-5 bg-current" />
+      {color === "gold" && (
+        <div className="absolute -right-8 -bottom-8 h-28 w-28 rounded-full bg-brand-400/10 blur-2xl" />
+      )}
     </div>
   );
 }

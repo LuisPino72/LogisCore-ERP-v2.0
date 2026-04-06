@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import type { PurchasesService } from "../services/purchases.service";
 import { purchasesService } from "../services/purchases.service.instance";
 import type {
@@ -37,14 +37,23 @@ export const usePurchases = ({
   actor
 }: UsePurchasesOptions) => {
   const [state, setState] = useState<PurchasesUiState>(initialState);
+  const serviceRef = useRef(service);
+  const tenantRef = useRef(tenant);
+  const actorRef = useRef(actor);
+
+  useEffect(() => {
+    serviceRef.current = service;
+    tenantRef.current = tenant;
+    actorRef.current = actor;
+  }, [service, tenant, actor]);
 
   const refresh = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
     const [suppliersResult, purchasesResult, receivingsResult, lotsResult] = await Promise.all([
-      service.listSuppliers(tenant),
-      service.listPurchases(tenant),
-      service.listReceivings(tenant),
-      service.listInventoryLots(tenant)
+      serviceRef.current.listSuppliers(tenantRef.current),
+      serviceRef.current.listPurchases(tenantRef.current),
+      serviceRef.current.listReceivings(tenantRef.current),
+      serviceRef.current.listInventoryLots(tenantRef.current)
     ]);
 
     const firstError = [suppliersResult, purchasesResult, receivingsResult, lotsResult].find(r => !r.ok);
@@ -66,12 +75,12 @@ export const usePurchases = ({
       inventoryLots: lotsResult.ok ? lotsResult.data : [],
       lastError: null
     }));
-  }, [service, tenant]);
+  }, []);
 
   const createSupplier = useCallback(
     async (input: CreateSupplierInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.createSupplier(tenant, actor, input);
+      const result = await serviceRef.current.createSupplier(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -81,16 +90,16 @@ export const usePurchases = ({
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const updateSupplier = useCallback(
     async (input: UpdateSupplierInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.updateSupplier(tenant, actor, input);
+      const result = await serviceRef.current.updateSupplier(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -100,16 +109,16 @@ export const usePurchases = ({
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const requestCreateCategory = useCallback(
     async (input: PurchasesCatalogCreateCategoryCommand) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.requestCreateCategory(input);
+      const result = await serviceRef.current.requestCreateCategory(input);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -120,13 +129,13 @@ export const usePurchases = ({
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
     },
-    [service]
+    []
   );
 
   const requestCreateProduct = useCallback(
     async (input: PurchasesCatalogCreateProductCommand) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.requestCreateProduct(input);
+      const result = await serviceRef.current.requestCreateProduct(input);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -137,13 +146,13 @@ export const usePurchases = ({
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
     },
-    [service]
+    []
   );
 
   const requestCreatePresentation = useCallback(
     async (input: PurchasesCatalogCreatePresentationCommand) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.requestCreatePresentation(input);
+      const result = await serviceRef.current.requestCreatePresentation(input);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -154,13 +163,13 @@ export const usePurchases = ({
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
     },
-    [service]
+    []
   );
 
   const createPurchase = useCallback(
     async (input: CreatePurchaseInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.createPurchase(tenant, actor, input);
+      const result = await serviceRef.current.createPurchase(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -170,16 +179,16 @@ export const usePurchases = ({
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const receivePurchase = useCallback(
     async (input: ReceivePurchaseInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.receivePurchase(tenant, actor, input);
+      const result = await serviceRef.current.receivePurchase(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -189,16 +198,16 @@ export const usePurchases = ({
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const confirmPurchase = useCallback(
     async (purchaseLocalId: string) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.confirmPurchase(tenant, actor, purchaseLocalId);
+      const result = await serviceRef.current.confirmPurchase(tenantRef.current, actorRef.current, purchaseLocalId);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -208,16 +217,16 @@ export const usePurchases = ({
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const cancelPurchase = useCallback(
     async (purchaseLocalId: string) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.cancelPurchase(tenant, actor, purchaseLocalId);
+      const result = await serviceRef.current.cancelPurchase(tenantRef.current, actorRef.current, purchaseLocalId);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -227,16 +236,16 @@ export const usePurchases = ({
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [refresh, service, tenant]
+    [refresh]
   );
 
   const editPurchase = useCallback(
     async (input: EditPurchaseInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.editPurchase(tenant, actor, input);
+      const result = await serviceRef.current.editPurchase(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -246,16 +255,16 @@ export const usePurchases = ({
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const setProductPreferredSupplier = useCallback(
     async (productLocalId: string, supplierLocalId: string | null) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.setProductPreferredSupplier(tenant, productLocalId, supplierLocalId);
+      const result = await serviceRef.current.setProductPreferredSupplier(tenantRef.current, productLocalId, supplierLocalId);
       if (!result.ok) {
         setState((previous) => ({
           ...previous,
@@ -265,10 +274,10 @@ export const usePurchases = ({
         return false;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return true;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   return {

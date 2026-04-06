@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { 
   AreaChart, 
   Area, 
@@ -15,6 +16,20 @@ interface SalesTrendChartProps {
 }
 
 export function SalesTrendChart({ data, currencySymbol }: SalesTrendChartProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !data?.length) {
+    return (
+      <div className="h-[300px] w-full bg-white p-6 rounded-2xl border shadow-sm flex items-center justify-center">
+        <p className="text-content-tertiary">{data?.length ? "Cargando gráfico..." : "No hay datos de ventas"}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full min-h-[300px] w-full bg-white dark:bg-slate-900/50 p-6 rounded-2xl border dark:border-slate-800 shadow-sm">
       <div className="mb-6 flex items-center justify-between">
@@ -55,7 +70,7 @@ export function SalesTrendChart({ data, currencySymbol }: SalesTrendChartProps) 
                 boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
                 padding: "12px"
               }}
-              formatter={(value: number) => [`${currencySymbol} ${value.toFixed(2)}`, "Ingreso"]}
+              formatter={(value) => [`${currencySymbol} ${Number(value).toFixed(2)}`, "Ingreso"]}
               labelStyle={{ fontSize: "14px", fontWeight: "bold", marginBottom: "4px" }}
             />
             <Area 

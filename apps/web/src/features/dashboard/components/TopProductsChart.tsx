@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { 
   BarChart, 
   Bar, 
@@ -14,7 +15,20 @@ interface TopProductsChartProps {
 }
 
 export function TopProductsChart({ data }: TopProductsChartProps) {
+  const [mounted, setMounted] = useState(false);
   const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !data?.length) {
+    return (
+      <div className="h-[300px] w-full bg-white p-6 rounded-2xl border shadow-sm flex items-center justify-center">
+        <p className="text-content-tertiary">{data?.length ? "Cargando gráfico..." : "No hay productos vendidos"}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full min-h-[300px] w-full bg-white dark:bg-slate-900/50 p-6 rounded-2xl border dark:border-slate-800 shadow-sm">

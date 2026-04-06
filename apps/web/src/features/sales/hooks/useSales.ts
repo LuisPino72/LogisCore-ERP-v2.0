@@ -3,7 +3,7 @@
  * Coordina el estado de UI para ventas POS, suspended sales y caja
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import type { SalesService } from "../services/sales.service";
 import type {
   CloseBoxInput,
@@ -39,6 +39,15 @@ export const useSales = ({
   actor
 }: UseSalesOptions) => {
   const [state, setState] = useState<SalesUiState>(initialState);
+  const serviceRef = useRef(service);
+  const tenantRef = useRef(tenant);
+  const actorRef = useRef(actor);
+
+  useEffect(() => {
+    serviceRef.current = service;
+    tenantRef.current = tenant;
+    actorRef.current = actor;
+  }, [service, tenant, actor]);
 
   /**
    * Refresca ventas, ventas suspendidas y cierres de caja
@@ -46,9 +55,9 @@ export const useSales = ({
   const refresh = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
     const [salesResult, suspendedResult, closingsResult] = await Promise.all([
-      service.listSales(tenant),
-      service.listSuspendedSales(tenant),
-      service.listBoxClosings(tenant)
+      serviceRef.current.listSales(tenantRef.current),
+      serviceRef.current.listSuspendedSales(tenantRef.current),
+      serviceRef.current.listBoxClosings(tenantRef.current)
     ]);
 
     if (!salesResult.ok) {
@@ -83,21 +92,21 @@ export const useSales = ({
       boxClosings: closingsResult.data,
       lastError: null
     });
-  }, [service, tenant]);
+  }, []);
 
   /**
    * Crea una venta suspendida (ticket)
    */
   const createSuspendedSale = useCallback(
     async (input: CreateSuspendedSaleInput) => {
-      const result = await service.createSuspendedSale(tenant, actor, input);
+      const result = await serviceRef.current.createSuspendedSale(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   /**
@@ -105,14 +114,14 @@ export const useSales = ({
    */
   const createPosSale = useCallback(
     async (input: CreatePosSaleInput) => {
-      const result = await service.createPosSale(tenant, actor, input);
+      const result = await serviceRef.current.createPosSale(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   /**
@@ -121,9 +130,9 @@ export const useSales = ({
    */
   const restoreSuspendedSale = useCallback(
     async (suspendedLocalId: string): Promise<RestoreSuspendedSaleResult | null> => {
-      const result = await service.restoreSuspendedSale(
-        tenant,
-        actor,
+      const result = await serviceRef.current.restoreSuspendedSale(
+        tenantRef.current,
+        actorRef.current,
         suspendedLocalId
       );
       if (!result.ok) {
@@ -133,7 +142,7 @@ export const useSales = ({
       setState((previous) => ({ ...previous, lastError: null }));
       return result.data;
     },
-    [actor, service, tenant]
+    []
   );
 
   /**
@@ -141,14 +150,14 @@ export const useSales = ({
    */
   const closeBox = useCallback(
     async (input: CloseBoxInput) => {
-      const result = await service.closeBox(tenant, actor, input);
+      const result = await serviceRef.current.closeBox(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   /**
@@ -156,14 +165,14 @@ export const useSales = ({
    */
   const openBox = useCallback(
     async (input: OpenBoxInput) => {
-      const result = await service.openBox(tenant, actor, input);
+      const result = await serviceRef.current.openBox(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   return {

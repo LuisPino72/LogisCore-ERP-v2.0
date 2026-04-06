@@ -112,7 +112,6 @@ export const createAuthService = ({
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       if (!supabaseUrl || !anonKey) {
-        console.warn("Supabase not configured, skipping audit log");
         return ok(undefined);
       }
 
@@ -123,27 +122,15 @@ export const createAuthService = ({
           "Authorization": `Bearer ${anonKey}`
         },
         body: JSON.stringify({ action, userId, email })
-      });
+      }).catch(() => null);
 
-      if (!response.ok) {
-        return err(
-          createAppError({
-            code: "AUTH_AUDIT_LOG_FAILED",
-            message: "Error al registrar evento de auditoría",
-            retryable: true
-          })
-        );
+      if (!response || !response.ok) {
+        return ok(undefined);
       }
 
       return ok(undefined);
-    } catch (e) {
-      return err(
-        createAppError({
-          code: "AUTH_AUDIT_LOG_ERROR",
-          message: e instanceof Error ? e.message : "Error desconocido al registrar auditoría",
-          retryable: true
-        })
-      );
+    } catch {
+      return ok(undefined);
     }
   },
 

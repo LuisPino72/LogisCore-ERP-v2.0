@@ -8,7 +8,7 @@
  * Utiliza el patrón Result<T, AppError> para manejo de errores.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { inventoryService } from "../services/inventory.service.instance";
 import type { InventoryService } from "../services/inventory.service";
 import type {
@@ -54,15 +54,24 @@ export const useInventory = ({
   actor
 }: UseInventoryOptions) => {
   const [state, setState] = useState<InventoryUiState>(initialState);
+  const serviceRef = useRef(service);
+  const tenantRef = useRef(tenant);
+  const actorRef = useRef(actor);
+
+  useEffect(() => {
+    serviceRef.current = service;
+    tenantRef.current = tenant;
+    actorRef.current = actor;
+  }, [service, tenant, actor]);
 
   const refresh = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
     const [warehousesResult, movementsResult, countsResult, sizeColorsResult] =
       await Promise.all([
-        service.listWarehouses(tenant),
-        service.listStockMovements(tenant),
-        service.listInventoryCounts(tenant),
-        service.listProductSizeColors(tenant)
+        serviceRef.current.listWarehouses(tenantRef.current),
+        serviceRef.current.listStockMovements(tenantRef.current),
+        serviceRef.current.listInventoryCounts(tenantRef.current),
+        serviceRef.current.listProductSizeColors(tenantRef.current)
       ]);
 
     if (!warehousesResult.ok) {
@@ -110,9 +119,10 @@ export const useInventory = ({
       {}
     );
 
+    const currentActor = actorRef.current;
     const allowedWarehouses =
-      actor.role === "employee"
-        ? new Set(actor.permissions.allowedWarehouseLocalIds ?? [])
+      currentActor.role === "employee"
+        ? new Set(currentActor.permissions.allowedWarehouseLocalIds ?? [])
         : null;
     const filterByWarehouse = <T extends { warehouseLocalId: string }>(items: T[]) =>
       allowedWarehouses
@@ -131,75 +141,75 @@ export const useInventory = ({
       reorderSuggestions: [],
       lastError: null
     });
-  }, [actor.permissions.allowedWarehouseLocalIds, actor.role, service, tenant]);
+  }, []);
 
   const createWarehouse = useCallback(
     async (input: CreateWarehouseInput) => {
-      const result = await service.createWarehouse(tenant, actor, input);
+      const result = await serviceRef.current.createWarehouse(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const createProductSizeColor = useCallback(
     async (input: CreateProductSizeColorInput) => {
-      const result = await service.createProductSizeColor(tenant, actor, input);
+      const result = await serviceRef.current.createProductSizeColor(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const recordStockMovement = useCallback(
     async (input: RecordStockMovementInput) => {
-      const result = await service.recordStockMovement(tenant, actor, input);
+      const result = await serviceRef.current.recordStockMovement(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const createInventoryCount = useCallback(
     async (input: CreateInventoryCountInput) => {
-      const result = await service.createInventoryCount(tenant, actor, input);
+      const result = await serviceRef.current.createInventoryCount(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const postInventoryCount = useCallback(
     async (inventoryCountLocalId: string) => {
-      const result = await service.postInventoryCount(
-        tenant,
-        actor,
+      const result = await serviceRef.current.postInventoryCount(
+        tenantRef.current,
+        actorRef.current,
         inventoryCountLocalId
       );
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const evaluateReorder = useCallback(
     async (options?: { minStock?: number; targetStock?: number }) => {
-      const result = await service.getReorderSuggestions(tenant, actor, options);
+      const result = await serviceRef.current.getReorderSuggestions(tenantRef.current, actorRef.current, options);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
@@ -210,7 +220,7 @@ export const useInventory = ({
         lastError: null
       }));
     },
-    [actor, service, tenant]
+    []
   );
 
   return {

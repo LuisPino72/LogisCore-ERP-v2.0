@@ -3,7 +3,7 @@
  * Coordina el estado de UI para gestión de productos, categorías y presentaciones
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import type { ProductsService } from "../services/products.service";
 import type {
   CreateCategoryInput,
@@ -20,6 +20,7 @@ const initialState: ProductsUiState = {
   categories: [],
   products: [],
   presentations: [],
+  sizeColors: [],
   lastError: null
 };
 
@@ -41,6 +42,15 @@ export const useProducts = ({
   actor
 }: UseProductsOptions) => {
   const [state, setState] = useState<ProductsUiState>(initialState);
+  const serviceRef = useRef(service);
+  const tenantRef = useRef(tenant);
+  const actorRef = useRef(actor);
+
+  useEffect(() => {
+    serviceRef.current = service;
+    tenantRef.current = tenant;
+    actorRef.current = actor;
+  }, [service, tenant, actor]);
 
   /**
    * Refresca todos los datos: categorías, productos y presentaciones
@@ -48,9 +58,9 @@ export const useProducts = ({
   const refresh = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
     const [categoriesResult, productsResult, presentationsResult] = await Promise.all([
-      service.listCategories(tenant),
-      service.listProducts(tenant),
-      service.listPresentations(tenant)
+      serviceRef.current.listCategories(tenantRef.current),
+      serviceRef.current.listProducts(tenantRef.current),
+      serviceRef.current.listPresentations(tenantRef.current)
     ]);
 
     if (!categoriesResult.ok) {
@@ -85,23 +95,24 @@ export const useProducts = ({
       categories: categoriesResult.data,
       products: productsResult.data,
       presentations: presentationsResult.data,
+      sizeColors: [],
       lastError: null
     });
-  }, [service, tenant]);
+  }, []);
 
   /**
    * Crea una nueva categoría
    */
   const createCategory = useCallback(
     async (input: CreateCategoryInput) => {
-      const result = await service.createCategory(tenant, actor, input);
+      const result = await serviceRef.current.createCategory(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   /**
@@ -109,14 +120,14 @@ export const useProducts = ({
    */
   const createProduct = useCallback(
     async (input: CreateProductInput) => {
-      const result = await service.createProduct(tenant, actor, input);
+      const result = await serviceRef.current.createProduct(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   /**
@@ -124,14 +135,14 @@ export const useProducts = ({
    */
   const createPresentation = useCallback(
     async (input: CreateProductPresentationInput) => {
-      const result = await service.createPresentation(tenant, actor, input);
+      const result = await serviceRef.current.createPresentation(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, lastError: result.error }));
         return;
       }
-      await refresh();
+      refresh();
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   return {

@@ -7,7 +7,7 @@
  * Utiliza el patrón Result<T, AppError> para manejo de errores.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { invoicingService } from "../services/invoicing.service.instance";
 import type { InvoicingService } from "../services/invoicing.service";
 import type {
@@ -39,13 +39,22 @@ export const useInvoicing = ({
   actor
 }: UseInvoicingOptions) => {
   const [state, setState] = useState<InvoicingUiState>(initialState);
+  const serviceRef = useRef(service);
+  const tenantRef = useRef(tenant);
+  const actorRef = useRef(actor);
+
+  useEffect(() => {
+    serviceRef.current = service;
+    tenantRef.current = tenant;
+    actorRef.current = actor;
+  }, [service, tenant, actor]);
 
   const refresh = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
     const [invoicesResult, taxRulesResult, exchangeRatesResult] = await Promise.all([
-      service.listInvoices(tenant),
-      service.listTaxRules(tenant),
-      service.listExchangeRates(tenant)
+      serviceRef.current.listInvoices(tenantRef.current),
+      serviceRef.current.listTaxRules(tenantRef.current),
+      serviceRef.current.listExchangeRates(tenantRef.current)
     ]);
 
     if (!invoicesResult.ok) {
@@ -69,36 +78,36 @@ export const useInvoicing = ({
       exchangeRates: exchangeRatesResult.data,
       lastError: null
     }));
-  }, [service, tenant]);
+  }, []);
 
   const createInvoiceFromSale = useCallback(
     async (input: CreateInvoiceFromSaleInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.createInvoiceFromSale(tenant, actor, input);
+      const result = await serviceRef.current.createInvoiceFromSale(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, isSubmitting: false, lastError: result.error }));
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const voidInvoice = useCallback(
     async (input: VoidInvoiceInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.voidInvoice(tenant, actor, input);
+      const result = await serviceRef.current.voidInvoice(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, isSubmitting: false, lastError: result.error }));
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   return {

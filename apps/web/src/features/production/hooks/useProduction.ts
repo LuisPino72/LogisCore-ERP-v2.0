@@ -7,7 +7,7 @@
  * Utiliza el patrón Result<T, AppError> para manejo de errores.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { productionService } from "../services/production.service.instance";
 import type { ProductionService } from "../services/production.service";
 import type {
@@ -41,13 +41,22 @@ export const useProduction = ({
   actor
 }: UseProductionOptions) => {
   const [state, setState] = useState<ProductionUiState>(initialState);
+  const serviceRef = useRef(service);
+  const tenantRef = useRef(tenant);
+  const actorRef = useRef(actor);
+
+  useEffect(() => {
+    serviceRef.current = service;
+    tenantRef.current = tenant;
+    actorRef.current = actor;
+  }, [service, tenant, actor]);
 
   const refresh = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
     const [recipesResult, ordersResult, logsResult] = await Promise.all([
-      service.listRecipes(tenant),
-      service.listProductionOrders(tenant),
-      service.listProductionLogs(tenant)
+      serviceRef.current.listRecipes(tenantRef.current),
+      serviceRef.current.listProductionOrders(tenantRef.current),
+      serviceRef.current.listProductionLogs(tenantRef.current)
     ]);
 
     if (!recipesResult.ok) {
@@ -71,66 +80,66 @@ export const useProduction = ({
       logs: logsResult.data,
       lastError: null
     }));
-  }, [service, tenant]);
+  }, []);
 
   const createRecipe = useCallback(
     async (input: CreateRecipeInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.createRecipe(tenant, actor, input);
+      const result = await serviceRef.current.createRecipe(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, isSubmitting: false, lastError: result.error }));
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const createProductionOrder = useCallback(
     async (input: CreateProductionOrderInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.createProductionOrder(tenant, actor, input);
+      const result = await serviceRef.current.createProductionOrder(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, isSubmitting: false, lastError: result.error }));
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const startProductionOrder = useCallback(
     async (input: StartProductionOrderInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.startProductionOrder(tenant, actor, input);
+      const result = await serviceRef.current.startProductionOrder(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, isSubmitting: false, lastError: result.error }));
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   const completeProductionOrder = useCallback(
     async (input: CompleteProductionOrderInput) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.completeProductionOrder(tenant, actor, input);
+      const result = await serviceRef.current.completeProductionOrder(tenantRef.current, actorRef.current, input);
       if (!result.ok) {
         setState((previous) => ({ ...previous, isSubmitting: false, lastError: result.error }));
         return null;
       }
       setState((previous) => ({ ...previous, isSubmitting: false, lastError: null }));
-      await refresh();
+      refresh();
       return result.data;
     },
-    [actor, refresh, service, tenant]
+    [refresh]
   );
 
   return {

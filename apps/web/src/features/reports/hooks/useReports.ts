@@ -7,7 +7,7 @@
  * Utiliza el patrón Result<T, AppError> para manejo de errores.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { reportsService } from "../services/reports.service.instance";
 import type { ReportsService } from "../services/reports.service";
 import type {
@@ -40,59 +40,68 @@ export const useReports = ({
   actor
 }: UseReportsOptions) => {
   const [state, setState] = useState<ReportsUiState>(initialState);
+  const serviceRef = useRef(service);
+  const tenantRef = useRef(tenant);
+  const actorRef = useRef(actor);
+
+  useEffect(() => {
+    serviceRef.current = service;
+    tenantRef.current = tenant;
+    actorRef.current = actor;
+  }, [service, tenant, actor]);
 
   const loadSalesByDay = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
-    const result = await service.getSalesByDay(tenant);
+    const result = await serviceRef.current.getSalesByDay(tenantRef.current);
     if (!result.ok) {
       setState((previous) => ({ ...previous, isLoading: false, lastError: result.error }));
       return;
     }
     setState((previous) => ({ ...previous, isLoading: false, salesByDay: result.data }));
-  }, [service, tenant]);
+  }, []);
 
   const loadSalesByProduct = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
-    const result = await service.getSalesByProduct(tenant);
+    const result = await serviceRef.current.getSalesByProduct(tenantRef.current);
     if (!result.ok) {
       setState((previous) => ({ ...previous, isLoading: false, lastError: result.error }));
       return;
     }
     setState((previous) => ({ ...previous, isLoading: false, salesByProduct: result.data }));
-  }, [service, tenant]);
+  }, []);
 
   const loadKardex = useCallback(
     async (warehouseLocalId?: string) => {
       setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
-      const result = await service.getKardex(tenant, warehouseLocalId);
+      const result = await serviceRef.current.getKardex(tenantRef.current, warehouseLocalId);
       if (!result.ok) {
         setState((previous) => ({ ...previous, isLoading: false, lastError: result.error }));
         return;
       }
       setState((previous) => ({ ...previous, isLoading: false, kardex: result.data }));
     },
-    [service, tenant]
+    []
   );
 
   const loadGrossProfit = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
-    const result = await service.getGrossProfit(tenant);
+    const result = await serviceRef.current.getGrossProfit(tenantRef.current);
     if (!result.ok) {
       setState((previous) => ({ ...previous, isLoading: false, lastError: result.error }));
       return;
     }
     setState((previous) => ({ ...previous, isLoading: false, grossProfit: result.data }));
-  }, [service, tenant]);
+  }, []);
 
   const loadBoxClosings = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
-    const result = await service.getBoxClosings(tenant);
+    const result = await serviceRef.current.getBoxClosings(tenantRef.current);
     if (!result.ok) {
       setState((previous) => ({ ...previous, isLoading: false, lastError: result.error }));
       return;
     }
     setState((previous) => ({ ...previous, isLoading: false, boxClosings: result.data }));
-  }, [service, tenant]);
+  }, []);
 
   const logSecurityEvent = useCallback(
     async (event: {
@@ -103,7 +112,7 @@ export const useReports = ({
       details?: Record<string, unknown>;
     }) => {
       setState((previous) => ({ ...previous, isSubmitting: true, lastError: null }));
-      const result = await service.logSecurityEvent(tenant, actor, event);
+      const result = await serviceRef.current.logSecurityEvent(tenantRef.current, actorRef.current, event);
       if (!result.ok) {
         setState((previous) => ({ ...previous, isSubmitting: false, lastError: result.error }));
         return false;
@@ -111,20 +120,20 @@ export const useReports = ({
       setState((previous) => ({ ...previous, isSubmitting: false }));
       return true;
     },
-    [actor, service, tenant]
+    []
   );
 
   const loadAuditLogs = useCallback(
     async (eventType?: string) => {
       setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
-      const result = await service.getAuditLogs(tenant, actor, eventType);
+      const result = await serviceRef.current.getAuditLogs(tenantRef.current, actorRef.current, eventType);
       if (!result.ok) {
         setState((previous) => ({ ...previous, isLoading: false, lastError: result.error }));
         return;
       }
       setState((previous) => ({ ...previous, isLoading: false, auditLogs: result.data }));
     },
-    [actor, service, tenant]
+    []
   );
 
   return {

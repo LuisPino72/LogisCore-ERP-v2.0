@@ -47,10 +47,10 @@ export function DashboardPanel({ tenant, actor, currencySymbol = "$" }: Dashboar
   const { stats, salesTrend, topProducts, recentActivities } = state.data;
 
   return (
-    <div className="p-6 space-y-8 animate-in fade-in duration-500">
+    <div className="p-6 space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-content-primary">
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold text-content-primary tracking-tight">
           Panel de Control
         </h1>
         <p className="text-content-secondary">
@@ -63,26 +63,30 @@ export function DashboardPanel({ tenant, actor, currencySymbol = "$" }: Dashboar
         <StatCard 
           title="Ventas de hoy" 
           value={`${currencySymbol} ${stats.todaySales.toLocaleString()}`} 
-          icon={<span>💰</span>}
-          color="green"
+          icon={<span className="text-2xl">💰</span>}
+          color="gold"
+          tooltip="Ventas totales del día actual"
         />
         <StatCard 
-          title="Pedidos realizados" 
+          title="Pedidos" 
           value={stats.todayOrders} 
-          icon={<span>🧾</span>}
+          icon={<span className="text-2xl">🧾</span>}
           color="blue"
+          tooltip="Número de pedidos completados hoy"
         />
         <StatCard 
           title="Stock Crítico" 
           value={stats.lowStockCount} 
-          icon={<span>⚠️</span>}
+          icon={<span className="text-2xl">⚠️</span>}
           color="red"
+          tooltip="Productos con inventario bajo el mínimo"
         />
         <StatCard 
           title="Ticket Promedio" 
           value={`${currencySymbol} ${stats.averageTicketValue.toFixed(2)}`} 
-          icon={<span>📈</span>}
+          icon={<span className="text-2xl">📈</span>}
           color="purple"
+          tooltip="Valor promedio por transacción"
         />
       </div>
 

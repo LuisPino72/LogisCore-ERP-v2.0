@@ -4,7 +4,7 @@
  * Escucha eventos del bus para actualización automática.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "@/features/inventory/types/inventory.types";
 import { eventBus } from "@/lib/core/runtime";
@@ -12,6 +12,7 @@ import { usePurchases } from "../hooks/usePurchases";
 import { purchasesService } from "../services/purchases.service.instance";
 import { SuppliersPanel } from "./SuppliersPanel";
 import { Badge } from "@/common/components/Badge";
+import { useKeyboardShortcuts, formatShortcut } from "@/common";
 import type { PurchaseItem, PurchasesActorContext, PurchasesTenantContext, ReceivePurchaseInput } from "../types/purchases.types";
 
 interface PurchasesPanelProps {
@@ -59,6 +60,25 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
     tenant,
     actor
   });
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const focusFirstInput = useCallback(() => {
+    const warehouseSelect = document.querySelector('[data-warehouse-select]') as HTMLSelectElement;
+    if (warehouseSelect) warehouseSelect.focus();
+  }, []);
+
+  const handleStartNewPurchase = useCallback(() => {
+    scrollToTop();
+    setTimeout(focusFirstInput, 100);
+  }, [scrollToTop, focusFirstInput]);
+
+  useKeyboardShortcuts([
+    { key: "n", ctrl: true, handler: handleStartNewPurchase, description: "Nueva orden de compra" },
+    { key: "b", ctrl: true, handler: scrollToTop, description: "Ir al inicio del formulario" },
+  ]);
 
   useEffect(() => {
     void refreshPurchases();
@@ -217,28 +237,36 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2 border-b border-surface-200 pb-2">
-        <button
-          onClick={() => setActiveSection("purchases")}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeSection === "purchases"
-              ? "bg-brand-500 text-white"
-              : "text-content-secondary hover:bg-surface-100"
-          }`}
-        >
-          Compras
-        </button>
-        <button
-          onClick={() => setActiveSection("suppliers")}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeSection === "suppliers"
-              ? "bg-brand-500 text-white"
-              : "text-content-secondary hover:bg-surface-100"
-          }`}
-        >
-          Proveedores
-        </button>
+    <div className="space-y-6">
+      {/* Header con atajos */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1 bg-surface-100 p-1 rounded-lg">
+          <button
+            onClick={() => setActiveSection("purchases")}
+            className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${
+              activeSection === "purchases"
+                ? "bg-white shadow-sm text-content-primary"
+                : "text-content-tertiary hover:text-content-secondary"
+            }`}
+          >
+            Compras
+          </button>
+          <button
+            onClick={() => setActiveSection("suppliers")}
+            className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${
+              activeSection === "suppliers"
+                ? "bg-white shadow-sm text-content-primary"
+                : "text-content-tertiary hover:text-content-secondary"
+            }`}
+          >
+            Proveedores
+          </button>
+        </div>
+        
+        <div className="flex items-center gap-2 text-xs text-content-tertiary">
+          <span className="kbd">Ctrl</span>+<span className="kbd">N</span>
+          <span className="hidden sm:inline">Nueva orden</span>
+        </div>
       </div>
 
       {activeSection === "suppliers" ? (
@@ -251,11 +279,12 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-content-secondary mb-1">Bodega *</label>
+                <label className="label">Bodega *</label>
                 <select
+                  data-warehouse-select
                   value={warehouseLocalId}
                   onChange={(e) => setWarehouseLocalId(e.target.value)}
-                  className="w-full px-3 py-2 border border-surface-300 rounded-lg text-sm"
+                  className="input"
                 >
                   <option value="">Seleccionar bodega</option>
                   {warehouses?.map((wh) => (
