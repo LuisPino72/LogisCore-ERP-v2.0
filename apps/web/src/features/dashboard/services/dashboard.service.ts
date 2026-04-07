@@ -13,7 +13,7 @@ import type {
 import type { SalesService } from "@/features/sales/services/sales.service";
 import type { SalesTenantContext, Sale } from "@/features/sales/types/sales.types";
 import type { InventoryService } from "@/features/inventory/services/inventory.service";
-import type { InventoryTenantContext, InventoryActorContext, StockMovement, ReorderSuggestion } from "@/features/inventory/types/inventory.types";
+import type { InventoryTenantContext, InventoryActorContext, ReorderSuggestion } from "@/features/inventory/types/inventory.types";
 import type { ProductsService } from "@/features/products/services/products.service";
 import type { ProductsTenantContext, Product } from "@/features/products/types/products.types";
 

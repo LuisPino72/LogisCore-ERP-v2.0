@@ -26,26 +26,6 @@ Deno.serve(async (req: Request) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Extraer token JWT para obtener el tenant_id
-    const authHeader = req.headers.get("Authorization");
-    let tenantId: string | null = null;
-    
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user } } = await supabase.auth.getUser(token);
-      
-      if (user) {
-        // Obtener tenant_id desde user_roles
-        const { data: userRole } = await supabase
-          .from("user_roles")
-          .select("tenant_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        
-        tenantId = userRole?.tenant_id || null;
-      }
-    }
-
     // Insertar con el esquema correcto de audit_log_entries
     const { error } = await supabase.from("audit_log_entries").insert({
       action: action,

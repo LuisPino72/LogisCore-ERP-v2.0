@@ -12,7 +12,7 @@ import { usePurchases } from "../hooks/usePurchases";
 import { purchasesService } from "../services/purchases.service.instance";
 import { SuppliersPanel } from "./SuppliersPanel";
 import { Badge } from "@/common/components/Badge";
-import { useKeyboardShortcuts, formatShortcut } from "@/common";
+import { useKeyboardShortcuts } from "@/common";
 import type { PurchaseItem, PurchasesActorContext, PurchasesTenantContext, ReceivePurchaseInput } from "../types/purchases.types";
 
 interface PurchasesPanelProps {
