@@ -7,4 +7,11 @@ export * from "./types/sales.types";
 export * from "./services/sales.service";
 export * from "./hooks/useSales";
 export * from "./components/SalesPanel";
+export * from "./components/SalesKPIs";
+export * from "./components/TerminalView";
+export * from "./components/SalesDataTable";
+export * from "./components/SuspendedList";
+export * from "./components/BoxClosingsList";
+export * from "./components/OpenBoxModal";
+export * from "./utils/sales.utils";
 

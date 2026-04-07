@@ -11,12 +11,13 @@ const variantClasses: Record<BadgeVariant, string> = {
 export interface BadgeProps {
   children: React.ReactNode;
   variant?: BadgeVariant;
+  className?: string;
 }
 
-export function Badge({ children, variant = "default" }: BadgeProps) {
+export function Badge({ children, variant = "default", className = "" }: BadgeProps) {
   const variantClass = variantClasses[variant] ?? variantClasses.default;
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variantClass}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variantClass} ${className}`}>
       {children}
     </span>
   );
