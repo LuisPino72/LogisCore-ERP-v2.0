@@ -1,17 +1,31 @@
 /**
- * Componente principal del panel de compras.
- * Permite crear órdenes de compra, recibir compras y gestionar lotes de inventario.
- * Escucha eventos del bus para actualización automática.
+ * Centro de Gestión de Compras - LogisCore ERP v2.0
+ * 
+ * Diseño de "Panel Maestro" con navegación de 2 niveles:
+ * - Nivel 1: Gestión de Órdenes | Catálogo y Proveedores
+ * - Nivel 2 (Órdenes): Órdenes de Compra | Recepciones
+ * - Nivel 2 (Catálogo): Productos | Categorías | Presentaciones | Proveedores
+ * 
+ * Características:
+ * - KPI Header: Total Comprado (Mes), Órdenes Pendientes, Proveedores Activos
+ * - Badges de estado para órdenes (draft/confirmed/received/cancelled)
+ * - Regla de recepción: Solo si estado ∈ {draft, confirmed, partial_received}
+ * - Decimales: toFixed(4) para productos pesables
  */
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import type { Product } from "@/features/products/types/products.types";
+import { Plus, Search, Check, X, Edit2, FileText, Users } from "lucide-react";
+import type { Product, Category, ProductPresentation } from "@/features/products/types/products.types";
 import type { Warehouse } from "@/features/inventory/types/inventory.types";
 import { eventBus } from "@/lib/core/runtime";
 import { usePurchases } from "../hooks/usePurchases";
 import { purchasesService } from "../services/purchases.service.instance";
 import { SuppliersPanel } from "./SuppliersPanel";
+import { PurchasesCatalogPanel } from "./PurchasesCatalogPanel";
 import { Badge } from "@/common/components/Badge";
+import { Modal } from "@/common/components/Modal";
+import { LoadingSpinner } from "@/common/components/EmptyState";
+import { Tabs, type TabItem } from "@/common/components/Tabs";
 import { useKeyboardShortcuts } from "@/common";
 import type { PurchaseItem, PurchasesActorContext, PurchasesTenantContext, ReceivePurchaseInput } from "../types/purchases.types";
 
@@ -19,6 +33,8 @@ interface PurchasesPanelProps {
   tenantSlug: string;
   actor: PurchasesActorContext;
   products: Product[];
+  categories?: Category[];
+  presentations?: ProductPresentation[];
   warehouses?: Warehouse[];
   onSetPreferredSupplier?: (productLocalId: string, supplierLocalId: string | null) => void;
 }
@@ -31,16 +47,36 @@ const statusLabels: Record<string, string> = {
   cancelled: "Anulada"
 };
 
-const statusVariants: Record<string, "default" | "warning" | "success" | "error"> = {
+const statusVariants: Record<string, "default" | "warning" | "success" | "error" | "info"> = {
   draft: "default",
-  confirmed: "warning",
+  confirmed: "info",
   partial_received: "warning",
   received: "success",
   cancelled: "error"
 };
 
-export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetPreferredSupplier }: PurchasesPanelProps) {
-  const [activeSection, setActiveSection] = useState<"purchases" | "suppliers">("purchases");
+function formatQty(qty: number, isWeighted?: boolean | null): string {
+  return (isWeighted ?? false) ? qty.toFixed(4) : qty.toFixed(2);
+}
+
+export function PurchasesPanel({ 
+  tenantSlug, 
+  actor, 
+  products, 
+  categories = [], 
+  presentations = [],
+  warehouses, 
+  onSetPreferredSupplier: _onSetPreferredSupplier 
+}: PurchasesPanelProps) {
+  void _onSetPreferredSupplier;
+  
+  // Nivel 1: main tabs
+  const [activeMainTab, setActiveMainTab] = useState<"orders" | "catalog">("orders");
+  // Nivel 2: sub tabs
+  const [ordersSubTab, setOrdersSubTab] = useState<"orders-list" | "receivings">("orders-list");
+  const [catalogSubTab, setCatalogSubTab] = useState<"products" | "categories" | "presentations" | "suppliers">("products");
+  
+  // Form states
   const [warehouseLocalId, setWarehouseLocalId] = useState("");
   const [supplierLocalId, setSupplierLocalId] = useState("");
   const [supplierName, setSupplierName] = useState("");
@@ -48,14 +84,17 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
   const [qty, setQty] = useState("1");
   const [unitCost, setUnitCost] = useState("0");
   const [items, setItems] = useState<PurchaseItem[]>([]);
-  const [receivingPurchaseId, setReceivingPurchaseId] = useState<string | null>(null);
-  const [receiveForm, setReceiveForm] = useState<{ productLocalId: string; qty: number }[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Modal states
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
   const [editItems, setEditItems] = useState<PurchaseItem[]>([]);
+  const [receivingPurchaseId, setReceivingPurchaseId] = useState<string | null>(null);
+  const [receiveForm, setReceiveForm] = useState<{ productLocalId: string; qty: number }[]>([]);
 
   const tenant: PurchasesTenantContext = { tenantSlug };
   
-  const { state: purchasesState, refresh: refreshPurchases, createPurchase, receivePurchase, confirmPurchase, cancelPurchase, editPurchase, setProductPreferredSupplier } = usePurchases({
+  const { state: purchasesState, refresh: refreshPurchases, createPurchase, receivePurchase, confirmPurchase, cancelPurchase, editPurchase } = usePurchases({
     service: purchasesService,
     tenant,
     actor
@@ -77,7 +116,7 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
 
   useKeyboardShortcuts([
     { key: "n", ctrl: true, handler: handleStartNewPurchase, description: "Nueva orden de compra" },
-    { key: "b", ctrl: true, handler: scrollToTop, description: "Ir al inicio del formulario" },
+    { key: "b", ctrl: true, handler: scrollToTop, description: "Ir al inicio" },
   ]);
 
   useEffect(() => {
@@ -85,21 +124,11 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
   }, [refreshPurchases]);
 
   useEffect(() => {
-    const offCreated = eventBus.on("PURCHASES.CREATED", () => {
-      void refreshPurchases();
-    });
-    const offReceived = eventBus.on("PURCHASES.RECEIVED", () => {
-      void refreshPurchases();
-    });
-    const offConfirmed = eventBus.on("PURCHASES.CONFIRMED", () => {
-      void refreshPurchases();
-    });
-    const offCancelled = eventBus.on("PURCHASES.CANCELLED", () => {
-      void refreshPurchases();
-    });
-    const offUpdated = eventBus.on("PURCHASES.UPDATED", () => {
-      void refreshPurchases();
-    });
+    const offCreated = eventBus.on("PURCHASES.CREATED", () => void refreshPurchases());
+    const offReceived = eventBus.on("PURCHASES.RECEIVED", () => void refreshPurchases());
+    const offConfirmed = eventBus.on("PURCHASES.CONFIRMED", () => void refreshPurchases());
+    const offCancelled = eventBus.on("PURCHASES.CANCELLED", () => void refreshPurchases());
+    const offUpdated = eventBus.on("PURCHASES.UPDATED", () => void refreshPurchases());
     return () => {
       offCreated();
       offReceived();
@@ -109,20 +138,56 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
     };
   }, [refreshPurchases]);
 
-  const total = useMemo(
-    () => items.reduce((acc, item) => acc + item.qty * item.unitCost, 0),
-    [items]
-  );
+  const total = useMemo(() => items.reduce((acc, item) => acc + item.qty * item.unitCost, 0), [items]);
+
+  // KPI Calculations
+  const kpiData = useMemo(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    // Total Comprado (Mes): Solo órdenes received filtradas por mes de receivedAt
+    const totalCompradoMes = purchasesState.purchases
+      .filter(p => {
+        if (p.status !== "received" || !p.receivedAt) return false;
+        const receivedDate = new Date(p.receivedAt);
+        return receivedDate >= startOfMonth && receivedDate <= now;
+      })
+      .reduce((sum, p) => sum + p.total, 0);
+
+    // Órdenes Pendientes
+    const ordenesPendientes = purchasesState.purchases
+      .filter(p => ["draft", "confirmed", "partial_received"].includes(p.status))
+      .length;
+
+    // Proveedores Activos
+    const proveedoresActivos = purchasesState.suppliers
+      .filter(s => s.isActive)
+      .length;
+
+    return {
+      totalCompradoMes,
+      ordenesPendientes,
+      proveedoresActivos
+    };
+  }, [purchasesState.purchases, purchasesState.suppliers]);
+
+  const filteredPurchases = useMemo(() => {
+    if (!searchQuery) return purchasesState.purchases;
+    const q = searchQuery.toLowerCase();
+    return purchasesState.purchases.filter(p => 
+      p.localId.toLowerCase().includes(q) ||
+      p.supplierName?.toLowerCase().includes(q) ||
+      p.warehouseLocalId.toLowerCase().includes(q)
+    );
+  }, [purchasesState.purchases, searchQuery]);
 
   const handleAddItem = () => {
     if (!productLocalId) return;
+    const product = products.find(p => p.localId === productLocalId);
+    const isWeighted = product?.isWeighted ?? false;
     setItems((previous) => [
-      ...previous,
-      {
-        productLocalId,
-        qty: Number(qty),
-        unitCost: Number(unitCost)
-      }
+      ...previous, 
+      { productLocalId, qty: Number(isWeighted ? Number(qty).toFixed(4) : qty), unitCost: Number(unitCost) }
     ]);
   };
 
@@ -146,10 +211,16 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
       setItems([]);
       setSupplierLocalId("");
       setSupplierName("");
+      setWarehouseLocalId("");
     }
   };
 
-  const handleStartReceiving = (purchase: { localId: string; items: PurchaseItem[] }) => {
+  const canReceive = (status: string): boolean => {
+    return ["draft", "confirmed", "partial_received"].includes(status);
+  };
+
+  const handleStartReceiving = (purchase: { localId: string; status: string; items: PurchaseItem[] }) => {
+    if (!canReceive(purchase.status)) return;
     setReceivingPurchaseId(purchase.localId);
     setReceiveForm(purchase.items.map(item => ({
       productLocalId: item.productLocalId,
@@ -164,12 +235,10 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
 
   const handleConfirmReceive = async () => {
     if (!receivingPurchaseId) return;
-    
     const input: ReceivePurchaseInput = {
       purchaseLocalId: receivingPurchaseId,
       receivedItems: receiveForm
     };
-    
     const result = await receivePurchase(input);
     if (result) {
       setReceivingPurchaseId(null);
@@ -208,11 +277,7 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
     if (!productLocalId) return;
     setEditItems((prev) => [
       ...prev,
-      {
-        productLocalId,
-        qty: Number(qty),
-        unitCost: Number(unitCost)
-      }
+      { productLocalId, qty: Number(qty), unitCost: Number(unitCost) }
     ]);
   };
 
@@ -236,30 +301,338 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
     });
   };
 
-  return (
+  // KPI Header Component
+  const kpiHeader = (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="card p-4 flex items-center gap-4">
+        <div className="p-3 bg-brand-100 rounded-xl">
+          <span className="block w-6 h-6 text-center">💰</span>
+        </div>
+        <div>
+          <p className="text-xs text-content-tertiary uppercase tracking-wide">Total Comprado (Mes)</p>
+          <p className="text-xl font-bold text-content-primary">${kpiData.totalCompradoMes.toFixed(2)}</p>
+        </div>
+      </div>
+      <div className="card p-4 flex items-center gap-4">
+        <div className="p-3 bg-state-warning/10 rounded-xl">
+          <span className="block w-6 h-6 text-center">📋</span>
+        </div>
+        <div>
+          <p className="text-xs text-content-tertiary uppercase tracking-wide">Órdenes Pendientes</p>
+          <p className="text-xl font-bold text-content-primary">{kpiData.ordenesPendientes}</p>
+        </div>
+      </div>
+      <div className="card p-4 flex items-center gap-4">
+        <div className="p-3 bg-state-info/10 rounded-xl">
+          <span className="block w-6 h-6 text-center">🏢</span>
+        </div>
+        <div>
+          <p className="text-xs text-content-tertiary uppercase tracking-wide">Proveedores Activos</p>
+          <p className="text-xl font-bold text-content-primary">{kpiData.proveedoresActivos}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Orders List Tab Content
+  const OrdersListTabContent = () => (
     <div className="space-y-6">
-      {/* Header con atajos */}
-      <div className="flex items-center justify-between">
+      {/* New Purchase Form */}
+      <div className="card">
+        <div className="card-body">
+          <h3 className="card-title mb-4">Nueva Orden de Compra</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="label">Bodega *</label>
+              <select
+                data-warehouse-select
+                value={warehouseLocalId}
+                onChange={(e) => setWarehouseLocalId(e.target.value)}
+                className="input"
+              >
+                <option value="">Seleccionar bodega</option>
+                {warehouses?.map((wh) => (
+                  <option key={wh.localId} value={wh.localId}>{wh.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-content-secondary mb-1">Proveedor</label>
+              <select
+                value={supplierLocalId}
+                onChange={(e) => { setSupplierLocalId(e.target.value); setSupplierName(""); }}
+                className="input"
+              >
+                <option value="">Seleccionar proveedor</option>
+                {purchasesState.suppliers.filter(s => s.isActive).map((sup) => (
+                  <option key={sup.localId} value={sup.localId}>{sup.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-content-secondary mb-1">O nombre manual</label>
+              <input
+                value={supplierName}
+                onChange={(e) => { setSupplierName(e.target.value); if (e.target.value) setSupplierLocalId(""); }}
+                placeholder="Nombre del proveedor"
+                className="input"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-content-secondary mb-1">Producto</label>
+              <select value={productLocalId} onChange={(e) => setProductLocalId(e.target.value)} className="input">
+                <option value="">Seleccionar producto</option>
+                {products.map((product) => (
+                  <option key={product.localId} value={product.localId}>{product.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-content-secondary mb-1">Cantidad</label>
+              <input
+                type="number"
+                min="0.0001"
+                step="0.0001"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                className="input"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-content-secondary mb-1">Costo Unit.</label>
+              <input
+                type="number"
+                min="0"
+                step="0.0001"
+                value={unitCost}
+                onChange={(e) => setUnitCost(e.target.value)}
+                className="input"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={handleAddItem}
+                disabled={!productLocalId}
+                className="btn btn-secondary w-full"
+              >
+                <Plus className="w-4 h-4" /> Agregar
+              </button>
+            </div>
+          </div>
+
+          {items.length > 0 && (
+            <div className="mb-4">
+              <div className="text-sm font-medium text-content-secondary mb-2">Items en la orden:</div>
+              <div className="space-y-1">
+                {items.map((item, index) => {
+                  const product = products.find(p => p.localId === item.productLocalId);
+                  return (
+                    <div key={index} className="flex items-center justify-between bg-surface-50 px-3 py-2 rounded border border-surface-200">
+                      <span className="text-sm text-content-primary">{product?.name || item.productLocalId}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-content-secondary font-mono">
+                          {formatQty(item.qty, product?.isWeighted)} x ${item.unitCost.toFixed(2)}
+                        </span>
+                        <button onClick={() => handleRemoveItem(index)} className="text-state-error hover:text-state-error text-xs">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-2 text-right font-medium text-content-primary">
+                Total: ${total.toFixed(2)}
+              </div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            disabled={purchasesState.isSubmitting || !warehouseLocalId || items.length === 0}
+            onClick={handleCreatePurchase}
+            className="btn btn-primary w-full"
+          >
+            {purchasesState.isSubmitting ? <LoadingSpinner size="sm" /> : <><Check className="w-4 h-4" /> Crear Orden de Compra</>}
+          </button>
+        </div>
+      </div>
+
+      {/* Purchases List */}
+      <div className="card">
+        <div className="card-body">
+          <h3 className="card-title mb-4">Órdenes de Compra</h3>
+          
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar órdenes..."
+              className="input pl-10"
+            />
+          </div>
+
+          {filteredPurchases.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <h3 className="text-lg font-semibold text-content-primary mb-1">No hay órdenes de compra</h3>
+              <p className="text-sm text-content-secondary mb-4 max-w-sm">Crea tu primera orden de compra</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredPurchases.map((purchase) => {
+                const supplier = purchasesState.suppliers.find(s => s.localId === purchase.supplierLocalId);
+                const warehouse = warehouses?.find(w => w.localId === purchase.warehouseLocalId);
+                
+                return (
+                  <div key={purchase.localId} className="flex items-center justify-between bg-surface-50 rounded-lg border border-surface-200 p-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-xs text-content-tertiary">{purchase.localId.slice(0, 8)}</span>
+                        <Badge variant={statusVariants[purchase.status] ?? "default"}>
+                          {statusLabels[purchase.status] ?? purchase.status}
+                        </Badge>
+                      </div>
+                      <div className="text-sm font-medium text-content-primary">
+                        {supplier?.name || purchase.supplierName || "Sin proveedor"}
+                      </div>
+                      <div className="text-xs text-content-secondary">
+                        Bodega: {warehouse?.name || purchase.warehouseLocalId} · Items: {purchase.items.length} · Total: ${purchase.total.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {purchase.status === "draft" && (
+                        <>
+                          <button onClick={() => handleConfirmPurchase(purchase.localId)} className="btn btn-sm btn-secondary">
+                            Confirmar
+                          </button>
+                          <button onClick={() => handleStartEdit(purchase)} className="btn btn-sm btn-ghost">
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => handleCancelPurchase(purchase.localId)} className="btn btn-sm btn-ghost text-state-error">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </>
+                      )}
+                      {canReceive(purchase.status) && (
+                        <button onClick={() => handleStartReceiving(purchase)} className="btn btn-sm btn-primary">
+                          Recepcionar
+                        </button>
+                      )}
+                      {purchase.status === "partial_received" && (
+                        <>
+                          <button onClick={() => handleStartReceiving(purchase)} className="btn btn-sm btn-secondary">
+                            Completar
+                          </button>
+                          <button onClick={() => handleCancelPurchase(purchase.localId)} className="btn btn-sm btn-ghost text-state-error">
+                            Anular
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Receivings Tab Content
+  const ReceivingsTabContent = () => (
+    <div className="card">
+      <div className="card-body">
+        <h3 className="card-title mb-4">Recepciones</h3>
+        
+        {purchasesState.receivings.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <h3 className="text-lg font-semibold text-content-primary mb-1">No hay recepciones</h3>
+            <p className="text-sm text-content-secondary mb-4 max-w-sm">Las recepciones aparecerán aquí cuando recibas órdenes de compra</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {purchasesState.receivings.map((receiving) => (
+              <div key={receiving.localId} className="flex items-center justify-between bg-surface-50 rounded-lg border border-surface-200 p-3">
+                <div>
+                  <span className="font-mono text-xs text-content-tertiary">{receiving.localId.slice(0, 8)}</span>
+                  <span className="ml-2 text-sm text-content-secondary">
+                    → {receiving.purchaseLocalId.slice(0, 8)}
+                  </span>
+                </div>
+                <span className="text-sm font-medium text-content-primary">
+                  ${receiving.totalCost.toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Orders Sub Tabs
+  const ordersSubTabs: TabItem[] = [
+    { id: "orders-list", label: "Órdenes de Compra", content: <OrdersListTabContent /> },
+    { id: "receivings", label: "Recepciones", content: <ReceivingsTabContent /> }
+  ];
+
+  // Catalog Tab Content (imports PurchasesCatalogPanel and SuppliersPanel)
+  const CatalogTabContent = () => {
+    const catalogSubTabs: TabItem[] = [
+      { id: "products", label: "Productos", content: <PurchasesCatalogPanel tenantSlug={tenantSlug} actor={actor} categories={categories} products={products} presentations={presentations} /> },
+      { id: "categories", label: "Categorías", content: <PurchasesCatalogPanel tenantSlug={tenantSlug} actor={actor} categories={categories} products={products} presentations={presentations} /> },
+      { id: "presentations", label: "Presentaciones", content: <PurchasesCatalogPanel tenantSlug={tenantSlug} actor={actor} categories={categories} products={products} presentations={presentations} /> },
+      { id: "suppliers", label: "Proveedores", content: <SuppliersPanel tenantSlug={tenantSlug} actor={actor} /> }
+    ];
+
+    const activeCatalogTab = catalogSubTabs.find(t => t.id === catalogSubTab) ?? catalogSubTabs[0];
+    const activeCatalogContent = activeCatalogTab?.content;
+
+    return (
+      <div className="space-y-4">
+        <Tabs 
+          items={catalogSubTabs} 
+          defaultTab={catalogSubTab} 
+          onChange={(id) => setCatalogSubTab(id as typeof catalogSubTab)} 
+          variant="underline" 
+        />
+        {activeCatalogContent}
+      </div>
+    );
+  };
+
+  return (
+    <section className="p-6">
+      {kpiHeader}
+
+      {/* Main Tabs - Level 1 */}
+      <div className="flex items-center justify-between mb-6">
         <div className="flex gap-1 bg-surface-100 p-1 rounded-lg">
           <button
-            onClick={() => setActiveSection("purchases")}
+            onClick={() => setActiveMainTab("orders")}
             className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${
-              activeSection === "purchases"
-                ? "bg-white shadow-sm text-content-primary"
-                : "text-content-tertiary hover:text-content-secondary"
+              activeMainTab === "orders" ? "bg-white shadow-sm text-content-primary" : "text-content-tertiary hover:text-content-secondary"
             }`}
           >
-            Compras
+            <FileText className="w-4 h-4 inline mr-2" />
+            Gestión de Órdenes
           </button>
           <button
-            onClick={() => setActiveSection("suppliers")}
+            onClick={() => setActiveMainTab("catalog")}
             className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${
-              activeSection === "suppliers"
-                ? "bg-white shadow-sm text-content-primary"
-                : "text-content-tertiary hover:text-content-secondary"
+              activeMainTab === "catalog" ? "bg-white shadow-sm text-content-primary" : "text-content-tertiary hover:text-content-secondary"
             }`}
           >
-            Proveedores
+            <Users className="w-4 h-4 inline mr-2" />
+            Catálogo y Proveedores
           </button>
         </div>
         
@@ -269,500 +642,128 @@ export function PurchasesPanel({ tenantSlug, actor, products, warehouses, onSetP
         </div>
       </div>
 
-      {activeSection === "suppliers" ? (
-        <SuppliersPanel tenantSlug={tenantSlug} actor={actor} />
+      {/* Content based on main tab */}
+      {activeMainTab === "orders" ? (
+        <Tabs 
+          items={ordersSubTabs} 
+          defaultTab={ordersSubTab} 
+          onChange={(id) => setOrdersSubTab(id as typeof ordersSubTab)} 
+          variant="underline" 
+        />
       ) : (
-        <div className="space-y-6">
-          {/* Formulario de compra */}
-          <section className="bg-surface-50 rounded-xl border border-surface-200 p-4">
-            <h3 className="text-lg font-semibold text-content-primary mb-4">Nueva Orden de Compra</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="label">Bodega *</label>
-                <select
-                  data-warehouse-select
-                  value={warehouseLocalId}
-                  onChange={(e) => setWarehouseLocalId(e.target.value)}
-                  className="input"
-                >
-                  <option value="">Seleccionar bodega</option>
-                  {warehouses?.map((wh) => (
-                    <option key={wh.localId} value={wh.localId}>
-                      {wh.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-content-secondary mb-1">Proveedor</label>
-                <select
-                  value={supplierLocalId}
-                  onChange={(e) => {
-                    setSupplierLocalId(e.target.value);
-                    setSupplierName("");
-                  }}
-                  className="w-full px-3 py-2 border border-surface-300 rounded-lg text-sm"
-                >
-                  <option value="">Seleccionar proveedor</option>
-                  {purchasesState.suppliers.filter(s => s.isActive).map((sup) => (
-                    <option key={sup.localId} value={sup.localId}>
-                      {sup.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-content-secondary mb-1">O nombre manual</label>
-                <input
-                  value={supplierName}
-                  onChange={(e) => {
-                    setSupplierName(e.target.value);
-                    if (e.target.value) setSupplierLocalId("");
-                  }}
-                  placeholder="Nombre del proveedor"
-                  className="w-full px-3 py-2 border border-surface-300 rounded-lg text-sm"
-                />
-              </div>
-            </div>
+        <CatalogTabContent />
+      )}
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-content-secondary mb-1">Producto</label>
-                <select
-                  value={productLocalId}
-                  onChange={(e) => setProductLocalId(e.target.value)}
-                  className="w-full px-3 py-2 border border-surface-300 rounded-lg text-sm"
-                >
-                  <option value="">Seleccionar producto</option>
-                  {products.map((product) => (
-                    <option key={product.localId} value={product.localId}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-content-secondary mb-1">Cantidad</label>
+      {/* Edit Purchase Modal */}
+      <Modal
+        isOpen={!!editingPurchaseId}
+        onClose={handleCancelEdit}
+        title="Editar Orden de Compra"
+        size="lg"
+        footer={
+          <>
+            <button onClick={handleCancelEdit} className="btn btn-secondary">Cancelar</button>
+            <button onClick={handleSaveEdit} disabled={purchasesState.isSubmitting || editItems.length === 0} className="btn btn-primary">
+              {purchasesState.isSubmitting ? <LoadingSpinner size="sm" /> : <><Check className="w-4 h-4" /> Guardar</>}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
+          {editItems.map((item, index) => {
+            const product = products.find(p => p.localId === item.productLocalId);
+            return (
+              <div key={index} className="flex items-center gap-2 bg-surface-50 rounded-lg p-2">
+                <span className="flex-1 text-sm text-content-primary truncate">
+                  {product?.name || item.productLocalId.slice(0, 8)}
+                </span>
                 <input
                   type="number"
                   min="0.0001"
                   step="0.0001"
-                  value={qty}
-                  onChange={(e) => setQty(e.target.value)}
-                  className="w-full px-3 py-2 border border-surface-300 rounded-lg text-sm"
+                  value={item.qty}
+                  onChange={(e) => handleEditUpdateQty(index, Number(e.target.value))}
+                  className="input w-20"
                 />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-content-secondary mb-1">Costo Unit.</label>
                 <input
                   type="number"
                   min="0"
                   step="0.0001"
-                  value={unitCost}
-                  onChange={(e) => setUnitCost(e.target.value)}
-                  className="w-full px-3 py-2 border border-surface-300 rounded-lg text-sm"
+                  value={item.unitCost}
+                  onChange={(e) => handleEditUpdateUnitCost(index, Number(e.target.value))}
+                  className="input w-24"
                 />
-              </div>
-              
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  disabled={!productLocalId}
-                  className="w-full px-3 py-2 bg-surface-200 text-content-primary rounded-lg hover:bg-surface-300 disabled:opacity-50 text-sm font-medium transition-colors"
-                >
-                  Agregar
+                <button onClick={() => handleEditRemoveItem(index)} className="text-state-error">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </div>
-
-            {items.length > 0 && (
-              <div className="mb-4">
-                <div className="text-sm font-medium text-content-secondary mb-2">Items en la orden:</div>
-                <div className="space-y-1">
-                  {items.map((item, index) => {
-                    const product = products.find(p => p.localId === item.productLocalId);
-                    return (
-                      <div key={index} className="flex items-center justify-between bg-surface-50 px-3 py-2 rounded border border-surface-200">
-                        <span className="text-sm text-content-primary">{product?.name || item.productLocalId}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-content-secondary">
-                            {item.qty} x ${item.unitCost.toFixed(2)}
-                          </span>
-                          <button
-                            onClick={() => handleRemoveItem(index)}
-                            className="text-state-error hover:text-state-error text-xs"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-2 text-right font-medium text-content-primary">
-                  Total: ${total.toFixed(2)}
-                </div>
-              </div>
-            )}
-
-            <button
-              type="button"
-              disabled={purchasesState.isSubmitting || !warehouseLocalId || items.length === 0}
-              onClick={handleCreatePurchase}
-              className="w-full px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-            >
-              {purchasesState.isSubmitting ? "Creando..." : "Crear Orden de Compra"}
-            </button>
-          </section>
-
-          {/* Proveedor preferido por producto */}
-          <section className="bg-surface-50 rounded-xl border border-surface-200 p-4">
-            <h3 className="text-lg font-semibold text-content-primary mb-4">Proveedor Preferido por Producto</h3>
-            
-            {products.length === 0 ? (
-              <p className="text-content-tertiary text-center py-4">No hay productos</p>
-            ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {products.filter(p => !p.deletedAt).map((product) => {
-                  const currentSupplier = purchasesState.suppliers.find(s => s.localId === product.preferredSupplierLocalId);
-                  return (
-                    <div key={product.localId} className="flex items-center justify-between bg-surface-50 rounded-lg border border-surface-200 p-2">
-                      <span className="text-sm text-content-primary flex-1 truncate">{product.name}</span>
-                      <select
-                        value={product.preferredSupplierLocalId || ""}
-                        onChange={async (e) => {
-                          const val = e.target.value || null;
-                          const success = await setProductPreferredSupplier(product.localId, val);
-                          if (success && onSetPreferredSupplier) {
-                            onSetPreferredSupplier(product.localId, val);
-                          }
-                        }}
-                        className="ml-2 px-2 py-1 border border-surface-300 rounded text-sm max-w-48"
-                      >
-                        <option value="">Sin proveedor</option>
-                        {purchasesState.suppliers.filter(s => s.isActive).map((sup) => (
-                          <option key={sup.localId} value={sup.localId}>
-                            {sup.name}
-                          </option>
-                        ))}
-                      </select>
-                      {currentSupplier && (
-                        <span className="ml-2 text-xs text-content-tertiary">→ {currentSupplier.name}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* Lista de compras */}
-          <section className="bg-surface-50 rounded-xl border border-surface-200 p-4">
-            <h3 className="text-lg font-semibold text-content-primary mb-4">Órdenes de Compra</h3>
-            
-            {purchasesState.purchases.length === 0 ? (
-              <p className="text-content-tertiary text-center py-4">No hay órdenes de compra</p>
-            ) : (
-              <div className="space-y-2">
-                {purchasesState.purchases.map((purchase) => {
-                  const supplier = purchasesState.suppliers.find(s => s.localId === purchase.supplierLocalId);
-                  const warehouse = warehouses?.find(w => w.localId === purchase.warehouseLocalId);
-                  
-                  return (
-                    <div key={purchase.localId} className="bg-surface-50 rounded-lg border border-surface-200 p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <span className="font-mono text-xs text-content-tertiary">{purchase.localId.slice(0, 8)}</span>
-                          <span className="ml-2 text-sm font-medium text-content-primary">
-                            {supplier?.name || purchase.supplierName || "Sin proveedor"}
-                          </span>
-                        </div>
-                        <Badge variant={statusVariants[purchase.status] ?? "default"}>
-                          {statusLabels[purchase.status] ?? purchase.status}
-                        </Badge>
-                      </div>
-                      
-                      <div className="text-xs text-content-secondary mb-2">
-                        Bodega: {warehouse?.name || purchase.warehouseLocalId} | 
-                        Items: {purchase.items.length} | 
-                        Total: ${purchase.total.toFixed(2)}
-                      </div>
-                      
-                      <div className="flex gap-2 flex-wrap">
-                        {purchase.status === "draft" && (
-                          <>
-                            <button
-                              onClick={() => handleConfirmPurchase(purchase.localId)}
-                              className="px-3 py-1.5 bg-amber-500 text-white text-xs rounded hover:bg-amber-600 transition-colors"
-                            >
-                              Confirmar
-                            </button>
-                            <button
-                              onClick={() => handleStartEdit(purchase)}
-                              className="px-3 py-1.5 bg-surface-200 text-content-primary text-xs rounded hover:bg-surface-300 transition-colors"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => handleCancelPurchase(purchase.localId)}
-                              className="px-3 py-1.5 bg-state-error text-white text-xs rounded hover:bg-state-error/80 transition-colors"
-                            >
-                              Anular
-                            </button>
-                          </>
-                        )}
-                        
-                        {(purchase.status === "draft" || purchase.status === "confirmed") && (
-                          <button
-                            onClick={() => handleStartReceiving(purchase)}
-                            className="px-3 py-1.5 bg-brand-500 text-white text-xs rounded hover:bg-brand-600 transition-colors"
-                          >
-                            Recepcionar
-                          </button>
-                        )}
-                        
-                        {purchase.status === "partial_received" && (
-                          <>
-                            <button
-                              onClick={() => handleStartReceiving(purchase)}
-                              className="px-3 py-1.5 bg-amber-500 text-white text-xs rounded hover:bg-amber-600 transition-colors"
-                            >
-                              Completar Recepción
-                            </button>
-                            <button
-                              onClick={() => handleCancelPurchase(purchase.localId)}
-                              className="px-3 py-1.5 bg-state-error text-white text-xs rounded hover:bg-state-error/80 transition-colors"
-                            >
-                              Anular
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* Recepciones */}
-          <section className="bg-surface-50 rounded-xl border border-surface-200 p-4">
-            <h3 className="text-lg font-semibold text-content-primary mb-4">Recepciones</h3>
-            
-            {purchasesState.receivings.length === 0 ? (
-              <p className="text-content-tertiary text-center py-4">No hay recepciones</p>
-            ) : (
-              <div className="space-y-2">
-                {purchasesState.receivings.map((receiving) => (
-                  <div key={receiving.localId} className="bg-surface-50 rounded-lg border border-surface-200 p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-mono text-xs text-content-tertiary">{receiving.localId.slice(0, 8)}</span>
-                        <span className="ml-2 text-sm text-content-secondary">
-                          → {receiving.purchaseLocalId.slice(0, 8)}
-                        </span>
-                      </div>
-                      <span className="text-sm font-medium text-content-primary">
-                        ${receiving.totalCost.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Lotes de inventario */}
-          <section className="bg-surface-50 rounded-xl border border-surface-200 p-4">
-            <h3 className="text-lg font-semibold text-content-primary mb-4">Lotes de Inventario</h3>
-            
-            {purchasesState.inventoryLots.length === 0 ? (
-              <p className="text-content-tertiary text-center py-4">No hay lotes</p>
-            ) : (
-              <div className="space-y-2">
-                {purchasesState.inventoryLots.slice(0, 10).map((lot) => {
-                  const product = products.find(p => p.localId === lot.productLocalId);
-                  return (
-                    <div key={lot.localId} className="bg-surface-50 rounded-lg border border-surface-200 p-3 flex items-center justify-between">
-                      <div>
-                        <span className="font-mono text-xs text-content-tertiary">{lot.localId.slice(0, 8)}</span>
-                        <span className="ml-2 text-sm text-content-primary">
-                          {product?.name || lot.productLocalId}
-                        </span>
-                      </div>
-                      <span className="text-sm text-content-secondary">
-                        Cant: {lot.quantity}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* Modal de edición de compra draft */}
-          {editingPurchaseId && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center">
-              <div className="absolute inset-0 bg-black/50" onClick={handleCancelEdit} />
-              <div className="relative bg-surface-50 rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
-                <h3 className="text-lg font-semibold text-content-primary mb-4">Editar Orden de Compra</h3>
-                
-                <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
-                  {editItems.map((item, index) => {
-                    const product = products.find(p => p.localId === item.productLocalId);
-                    return (
-                      <div key={index} className="flex items-center gap-2 bg-surface-100 rounded-lg p-2">
-                        <span className="flex-1 text-sm text-content-primary truncate">
-                          {product?.name || item.productLocalId.slice(0, 8)}
-                        </span>
-                        <input
-                          type="number"
-                          min="0.0001"
-                          step="0.0001"
-                          value={item.qty}
-                          onChange={(e) => handleEditUpdateQty(index, Number(e.target.value))}
-                          className="w-20 px-2 py-1 border border-surface-300 rounded text-sm"
-                          placeholder="Cant"
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.0001"
-                          value={item.unitCost}
-                          onChange={(e) => handleEditUpdateUnitCost(index, Number(e.target.value))}
-                          className="w-24 px-2 py-1 border border-surface-300 rounded text-sm"
-                          placeholder="Costo"
-                        />
-                        <button
-                          onClick={() => handleEditRemoveItem(index)}
-                          className="text-state-error hover:text-state-error/80 text-sm"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="grid grid-cols-4 gap-2 mb-4">
-                  <div className="col-span-2">
-                    <select
-                      value={productLocalId}
-                      onChange={(e) => setProductLocalId(e.target.value)}
-                      className="w-full px-2 py-1.5 border border-surface-300 rounded text-sm"
-                    >
-                      <option value="">Producto</option>
-                      {products.map((p) => (
-                        <option key={p.localId} value={p.localId}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <input
-                    type="number"
-                    min="0.0001"
-                    step="0.0001"
-                    value={qty}
-                    onChange={(e) => setQty(e.target.value)}
-                    className="px-2 py-1.5 border border-surface-300 rounded text-sm"
-                    placeholder="Cant"
-                  />
-                  <button
-                    onClick={handleEditAddItem}
-                    disabled={!productLocalId}
-                    className="px-3 py-1.5 bg-surface-200 text-content-primary rounded text-sm hover:bg-surface-300 disabled:opacity-50"
-                  >
-                    +
-                  </button>
-                </div>
-
-                <div className="text-right text-sm font-medium text-content-primary mb-4">
-                  Total: ${editItems.reduce((acc, i) => acc + i.qty * i.unitCost, 0).toFixed(2)}
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <button
-                    onClick={handleCancelEdit}
-                    className="px-4 py-2 text-sm font-medium text-content-secondary bg-surface-100 rounded-lg hover:bg-surface-200"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleSaveEdit}
-                    disabled={purchasesState.isSubmitting || editItems.length === 0}
-                    className="px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 disabled:opacity-50"
-                  >
-                    Guardar Cambios
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Modal de recepción */}
-          {receivingPurchaseId && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center">
-              <div className="absolute inset-0 bg-black/50" onClick={handleCancelReceiving} />
-              <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
-                <h3 className="text-lg font-semibold text-content-primary mb-4">Recepcionar Compra</h3>
-                
-                <div className="space-y-3 mb-4">
-                  {receiveForm.map((item, index) => {
-                    const product = products.find(p => p.localId === item.productLocalId);
-                    const originalItem = purchasesState.purchases
-                      .find(p => p.localId === receivingPurchaseId)?.items.find(i => i.productLocalId === item.productLocalId);
-                    
-                    return (
-                      <div key={index} className="flex items-center gap-3">
-                        <span className="flex-1 text-sm text-content-primary">
-                          {product?.name || item.productLocalId}
-                        </span>
-                        <span className="text-xs text-content-tertiary">
-                          (ordenado: {originalItem?.qty || 0})
-                        </span>
-                        <input
-                          type="number"
-                          min="0"
-                          max={originalItem?.qty || 0}
-                          value={item.qty}
-                          onChange={(e) => {
-                            const newForm = [...receiveForm];
-                            const formItem = newForm[index];
-                            if (formItem) formItem.qty = Number(e.target.value);
-                            setReceiveForm(newForm);
-                          }}
-                          className="w-20 px-2 py-1 border border-surface-300 rounded text-sm"
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <button
-                    onClick={handleCancelReceiving}
-                    className="px-4 py-2 text-sm font-medium text-content-secondary bg-surface-100 rounded-lg hover:bg-surface-200"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleConfirmReceive}
-                    disabled={purchasesState.isSubmitting}
-                    className="px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 disabled:opacity-50"
-                  >
-                    Confirmar Recepción
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+            );
+          })}
         </div>
-      )}
-    </div>
+
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          <div className="col-span-2">
+            <select value={productLocalId} onChange={(e) => setProductLocalId(e.target.value)} className="input">
+              <option value="">Agregar producto</option>
+              {products.map((p) => (<option key={p.localId} value={p.localId}>{p.name}</option>))}
+            </select>
+          </div>
+          <input type="number" min="0.0001" step="0.0001" value={qty} onChange={(e) => setQty(e.target.value)} className="input" placeholder="Cant" />
+          <button onClick={handleEditAddItem} disabled={!productLocalId} className="btn btn-secondary">
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="text-right text-sm font-medium text-content-primary">
+          Total: ${editItems.reduce((acc, i) => acc + i.qty * i.unitCost, 0).toFixed(2)}
+        </div>
+      </Modal>
+
+      {/* Receiving Modal */}
+      <Modal
+        isOpen={!!receivingPurchaseId}
+        onClose={handleCancelReceiving}
+        title="Recepcionar Compra"
+        size="lg"
+        footer={
+          <>
+            <button onClick={handleCancelReceiving} className="btn btn-secondary">Cancelar</button>
+            <button onClick={handleConfirmReceive} disabled={purchasesState.isSubmitting} className="btn btn-primary">
+              {purchasesState.isSubmitting ? <LoadingSpinner size="sm" /> : <><Check className="w-4 h-4" /> Confirmar</>}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          {receiveForm.map((item, index) => {
+            const product = products.find(p => p.localId === item.productLocalId);
+            const originalItem = purchasesState.purchases.find(p => p.localId === receivingPurchaseId)?.items.find(i => i.productLocalId === item.productLocalId);
+            
+            return (
+              <div key={index} className="flex items-center gap-3">
+                <span className="flex-1 text-sm text-content-primary">
+                  {product?.name || item.productLocalId}
+                </span>
+                <span className="text-xs text-content-tertiary">
+                  (ordenado: {originalItem?.qty || 0})
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  max={originalItem?.qty || 0}
+                  value={item.qty}
+                  onChange={(e) => {
+                    const newForm = [...receiveForm];
+                    newForm[index] = { ...newForm[index]!, qty: Number(e.target.value) };
+                    setReceiveForm(newForm);
+                  }}
+                  className="input w-20"
+                />
+              </div>
+            );
+          })}
+        </div>
+      </Modal>
+    </section>
   );
 }

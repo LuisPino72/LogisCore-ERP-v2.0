@@ -31,6 +31,7 @@ const initialState: InventoryUiState = {
   sizeColors: [],
   balances: {},
   reorderSuggestions: [],
+  lots: [],
   lastError: null
 };
 
@@ -66,12 +67,13 @@ export const useInventory = ({
 
   const refresh = useCallback(async () => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
-    const [warehousesResult, movementsResult, countsResult, sizeColorsResult] =
+    const [warehousesResult, movementsResult, countsResult, sizeColorsResult, lotsResult] =
       await Promise.all([
         serviceRef.current.listWarehouses(tenantRef.current),
         serviceRef.current.listStockMovements(tenantRef.current),
         serviceRef.current.listInventoryCounts(tenantRef.current),
-        serviceRef.current.listProductSizeColors(tenantRef.current)
+        serviceRef.current.listProductSizeColors(tenantRef.current),
+        serviceRef.current.listInventoryLots(tenantRef.current)
       ]);
 
     if (!warehousesResult.ok) {
@@ -103,6 +105,14 @@ export const useInventory = ({
         ...previous,
         isLoading: false,
         lastError: sizeColorsResult.error
+      }));
+      return;
+    }
+    if (!lotsResult.ok) {
+      setState((previous) => ({
+        ...previous,
+        isLoading: false,
+        lastError: lotsResult.error
       }));
       return;
     }
@@ -138,6 +148,7 @@ export const useInventory = ({
       counts: filterByWarehouse(countsResult.data),
       sizeColors: sizeColorsResult.data,
       balances,
+      lots: lotsResult.data,
       reorderSuggestions: [],
       lastError: null
     });

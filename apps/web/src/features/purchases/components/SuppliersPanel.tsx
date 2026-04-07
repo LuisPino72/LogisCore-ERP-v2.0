@@ -1,12 +1,20 @@
 /**
  * Componente de gestión de proveedores.
  * CRUD de proveedores vinculado al módulo de compras.
+ * 
+ * Features:
+ * - Dashboard con tabla de proveedores
+ * - Creación/Edición vía Modal
+ * - Búsqueda por nombre
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { Plus, Search, Check, Building2 } from "lucide-react";
 import { eventBus } from "@/lib/core/runtime";
 import { usePurchases } from "../hooks/usePurchases";
 import { purchasesService } from "../services/purchases.service.instance";
+import { Modal } from "@/common/components/Modal";
+import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
 import { Badge } from "@/common/components/Badge";
 import type { PurchasesActorContext, Supplier, CreateSupplierInput, UpdateSupplierInput } from "../types/purchases.types";
 
@@ -15,7 +23,15 @@ interface SuppliersPanelProps {
   actor: PurchasesActorContext;
 }
 
-const initialForm: CreateSupplierInput = {
+interface SupplierFormData {
+  name: string;
+  rif: string;
+  phone: string;
+  contactPerson: string;
+  notes: string;
+}
+
+const initialForm: SupplierFormData = {
   name: "",
   rif: "",
   phone: "",
@@ -24,9 +40,13 @@ const initialForm: CreateSupplierInput = {
 };
 
 export function SuppliersPanel({ tenantSlug, actor }: SuppliersPanelProps) {
+  const [searchQuery, setSearchQuery] = useState("");
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-  const [form, setForm] = useState<CreateSupplierInput>(initialForm);
-  const [activeTab, setActiveTab] = useState<"list" | "form">("list");
+  const [form, setForm] = useState<SupplierFormData>(initialForm);
+  const [showModal, setShowModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   const { state, refresh, createSupplier, updateSupplier } = usePurchases({
     service: purchasesService,
@@ -39,21 +59,38 @@ export function SuppliersPanel({ tenantSlug, actor }: SuppliersPanelProps) {
   }, [refresh]);
 
   useEffect(() => {
-    const offCreated = eventBus.on("PURCHASES.SUPPLIER_CREATED", () => void refresh());
-    const offUpdated = eventBus.on("PURCHASES.SUPPLIER_UPDATED", () => void refresh());
+    const offCreated = eventBus.on("PURCHASES.SUPPLIER_CREATED", () => {
+      void refresh();
+      setLastError(null);
+    });
+    const offUpdated = eventBus.on("PURCHASES.SUPPLIER_UPDATED", () => {
+      void refresh();
+      setLastError(null);
+    });
+    const offFailed = eventBus.on("PURCHASES.SUPPLIER_FAILED", ({ error }: { error: string }) => {
+      setLastError(error);
+    });
     return () => {
       offCreated();
       offUpdated();
+      offFailed();
     };
   }, [refresh]);
 
-  const handleOpenCreate = () => {
+  const filteredSuppliers = useMemo(() => {
+    return state.suppliers.filter(s => 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [state.suppliers, searchQuery]);
+
+  const handleOpenCreate = useCallback(() => {
     setForm(initialForm);
     setEditingSupplier(null);
-    setActiveTab("form");
-  };
+    setFormError(null);
+    setShowModal(true);
+  }, []);
 
-  const handleOpenEdit = (supplier: Supplier) => {
+  const handleOpenEdit = useCallback((supplier: Supplier) => {
     setForm({
       name: supplier.name,
       rif: supplier.rif ?? "",
@@ -62,102 +99,119 @@ export function SuppliersPanel({ tenantSlug, actor }: SuppliersPanelProps) {
       notes: supplier.notes ?? ""
     });
     setEditingSupplier(supplier);
-    setActiveTab("form");
-  };
+    setFormError(null);
+    setShowModal(true);
+  }, []);
 
-  const handleSubmit = async () => {
-    if (!form.name.trim()) return;
-
-    let result;
-    if (editingSupplier) {
-      const input: UpdateSupplierInput = {
-        localId: editingSupplier.localId,
-        ...form
-      };
-      result = await updateSupplier(input);
-    } else {
-      result = await createSupplier(form);
+  const handleSubmit = useCallback(async () => {
+    if (!form.name.trim()) {
+      setFormError("El nombre es requerido");
+      return;
     }
+    
+    setIsSubmitting(true);
+    setFormError(null);
+    setLastError(null);
+    
+    const input: CreateSupplierInput | UpdateSupplierInput = editingSupplier
+      ? { localId: editingSupplier.localId, ...form }
+      : form;
+    
+    const result = editingSupplier
+      ? await updateSupplier(input as UpdateSupplierInput)
+      : await createSupplier(input as CreateSupplierInput);
 
     if (result) {
-      setActiveTab("list");
+      setShowModal(false);
       setForm(initialForm);
       setEditingSupplier(null);
+    } else if (state.lastError) {
+      setFormError(state.lastError.message);
     }
-  };
+    
+    setIsSubmitting(false);
+  }, [form, editingSupplier, updateSupplier, createSupplier, state.lastError]);
 
-  const handleCancel = () => {
-    setActiveTab("list");
+  const handleClose = useCallback(() => {
+    setShowModal(false);
     setForm(initialForm);
     setEditingSupplier(null);
-  };
+    setFormError(null);
+  }, []);
 
   return (
-    <div className="bg-surface-50 rounded-xl border border-surface-200 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-content-primary">Proveedores</h2>
-        <button
-          onClick={handleOpenCreate}
-          className="inline-flex items-center px-3 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors text-sm font-medium"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nuevo Proveedor
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="card-title">Gestión de Proveedores</h2>
+          <p className="text-sm text-content-secondary mt-1">
+            Administra tus proveedores y sus datos de contacto
+          </p>
+        </div>
+        
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar proveedores..."
+            className="input pl-10 w-full sm:w-64"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <button onClick={handleOpenCreate} className="btn btn-primary">
+          <Plus className="w-4 h-4" /> Nuevo Proveedor
         </button>
       </div>
 
-      {state.lastError && (
-        <div className="mb-4 p-3 bg-state-error/10 border border-state-error/30 rounded-lg">
-          <p className="text-state-error text-sm">{state.lastError.message}</p>
-        </div>
-      )}
+      {lastError && <div className="alert alert-error">{lastError}</div>}
 
-      {activeTab === "list" ? (
-        <div className="space-y-2">
-          {state.suppliers.length === 0 ? (
-            <div className="text-center py-8 text-content-tertiary">
-              <svg className="w-12 h-12 mx-auto mb-3 text-content-tertiary opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              <p>No hay proveedores registrados</p>
-              <p className="text-sm mt-1">Crea tu primer proveedor para comenzar</p>
-            </div>
+      {/* Suppliers Table */}
+      <div className="card">
+        <div className="card-body">
+          {state.isLoading ? (
+            <LoadingSpinner message="Cargando proveedores..." />
+          ) : filteredSuppliers.length === 0 ? (
+            <EmptyState
+              icon={<Building2 className="w-12 h-12" />}
+              title="No hay proveedores"
+              description="Crea tu primer proveedor para comenzar"
+              action={
+                <button onClick={handleOpenCreate} className="btn btn-primary">
+                  <Plus className="w-4 h-4" /> Nuevo Proveedor
+                </button>
+              }
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-surface-200">
-                    <th className="text-left py-2 px-3 font-medium text-content-secondary">Nombre</th>
-                    <th className="text-left py-2 px-3 font-medium text-content-secondary">RIF</th>
-                    <th className="text-left py-2 px-3 font-medium text-content-secondary">Teléfono</th>
-                    <th className="text-left py-2 px-3 font-medium text-content-secondary">Contacto</th>
-                    <th className="text-left py-2 px-3 font-medium text-content-secondary">Estado</th>
-                    <th className="text-right py-2 px-3 font-medium text-content-secondary">Acciones</th>
+                <thead className="bg-surface-100 border-b border-surface-200">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-content-secondary">Nombre</th>
+                    <th className="px-3 py-2 text-left font-medium text-content-secondary">RIF</th>
+                    <th className="px-3 py-2 text-left font-medium text-content-secondary">Teléfono</th>
+                    <th className="px-3 py-2 text-left font-medium text-content-secondary">Contacto</th>
+                    <th className="px-3 py-2 text-left font-medium text-content-secondary">Estado</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {state.suppliers.map((supplier) => (
-                    <tr key={supplier.localId} className="border-b border-surface-100 hover:bg-surface-50">
-                      <td className="py-2 px-3 text-content-primary font-medium">{supplier.name}</td>
-                      <td className="py-2 px-3 text-content-secondary font-mono text-xs">{supplier.rif || "-"}</td>
-                      <td className="py-2 px-3 text-content-secondary">{supplier.phone || "-"}</td>
-                      <td className="py-2 px-3 text-content-secondary">{supplier.contactPerson || "-"}</td>
-                      <td className="py-2 px-3">
+                <tbody className="divide-y divide-surface-100">
+                  {filteredSuppliers.map((supplier) => (
+                    <tr 
+                      key={supplier.localId} 
+                      className="hover:bg-surface-50 cursor-pointer"
+                      onClick={() => handleOpenEdit(supplier)}
+                    >
+                      <td className="px-3 py-2 text-content-primary font-medium">{supplier.name}</td>
+                      <td className="px-3 py-2 text-content-secondary font-mono text-xs">{supplier.rif || "-"}</td>
+                      <td className="px-3 py-2 text-content-secondary">{supplier.phone || "-"}</td>
+                      <td className="px-3 py-2 text-content-secondary">{supplier.contactPerson || "-"}</td>
+                      <td className="px-3 py-2">
                         <Badge variant={supplier.isActive ? "success" : "default"}>
                           {supplier.isActive ? "Activo" : "Inactivo"}
                         </Badge>
-                      </td>
-                      <td className="py-2 px-3 text-right">
-                        <button
-                          onClick={() => handleOpenEdit(supplier)}
-                          className="inline-flex items-center px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50 rounded transition-colors"
-                        >
-                          <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                          Editar
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -166,96 +220,91 @@ export function SuppliersPanel({ tenantSlug, actor }: SuppliersPanelProps) {
             </div>
           )}
         </div>
-      ) : (
-        <div className="bg-surface-50 rounded-lg border border-surface-200 p-4">
-          <h3 className="text-lg font-medium text-content-primary mb-4">
-            {editingSupplier ? "Editar Proveedor" : "Nuevo Proveedor"}
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">
-                Nombre *
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm"
-                placeholder="Nombre del proveedor"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">
-                RIF
-              </label>
-              <input
-                type="text"
-                value={form.rif}
-                onChange={(e) => setForm((f) => ({ ...f, rif: e.target.value }))}
-                className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm font-mono"
-                placeholder="J-123456789"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">
-                Teléfono
-              </label>
-              <input
-                type="text"
-                value={form.phone}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm"
-                placeholder="04141234567"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">
-                Persona de Contacto
-              </label>
-              <input
-                type="text"
-                value={form.contactPerson}
-                onChange={(e) => setForm((f) => ({ ...f, contactPerson: e.target.value }))}
-                className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm"
-                placeholder="Nombre del contacto"
-              />
-            </div>
-            
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-content-secondary mb-1">
-                Notas
-              </label>
-              <textarea
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                rows={2}
-                className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm resize-none"
-                placeholder="Notas adicionales sobre el proveedor"
-              />
-            </div>
-          </div>
+      </div>
 
-          <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-surface-200">
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-content-secondary bg-surface-100 hover:bg-surface-200 rounded-lg transition-colors"
-            >
+      <Modal
+        isOpen={showModal}
+        onClose={handleClose}
+        title={editingSupplier ? "Editar Proveedor" : "Nuevo Proveedor"}
+        size="lg"
+        footer={
+          <>
+            <button onClick={handleClose} className="btn btn-secondary">
               Cancelar
             </button>
-            <button
-              onClick={handleSubmit}
-              disabled={state.isSubmitting || !form.name.trim()}
-              className="px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-            >
-              {state.isSubmitting ? "Guardando..." : editingSupplier ? "Actualizar" : "Crear Proveedor"}
+            <button onClick={handleSubmit} disabled={isSubmitting} className="btn btn-primary">
+              {isSubmitting ? <LoadingSpinner size="sm" /> : <><Check className="w-4 h-4" /> {editingSupplier ? "Guardar" : "Crear"}</>}
             </button>
-          </div>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          <fieldset>
+            <legend className="label mb-3">Información Básica</legend>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-content-secondary mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Nombre del proveedor"
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-content-secondary mb-1">RIF</label>
+                <input
+                  type="text"
+                  value={form.rif}
+                  onChange={(e) => setForm({ ...form, rif: e.target.value.toUpperCase() })}
+                  placeholder="J-12345678-9"
+                  className="input font-mono"
+                />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="label mb-3">Contacto</legend>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-content-secondary mb-1">Teléfono</label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="0412-1234567"
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-content-secondary mb-1">Persona de contacto</label>
+                <input
+                  type="text"
+                  value={form.contactPerson}
+                  onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
+                  placeholder="Nombre del contacto"
+                  className="input"
+                />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="label mb-3">Notas</legend>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              placeholder="Notas adicionales sobre el proveedor..."
+              className="input min-h-[80px] resize-none"
+              rows={3}
+            />
+          </fieldset>
+
+          {formError && <div className="alert alert-error">{formError}</div>}
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

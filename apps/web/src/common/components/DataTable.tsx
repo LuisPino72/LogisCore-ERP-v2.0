@@ -12,7 +12,7 @@ export interface DataTableProps<T> {
   loading?: boolean;
 }
 
-export const DataTable = memo(function DataTable<T extends Record<string, unknown>>({
+export const DataTable = memo(function DataTable<T>({
   columns,
   data,
   sort,

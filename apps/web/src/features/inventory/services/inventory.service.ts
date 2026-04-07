@@ -18,7 +18,9 @@ import type {
   CreateWarehouseInput,
   InventoryActorContext,
   InventoryCount,
+  InventoryLot,
   InventoryTenantContext,
+  LotLayer,
   ProductSizeColor,
   ReorderSuggestion,
   RecordStockMovementInput,
@@ -54,6 +56,9 @@ export interface InventoryDb {
     updatedCount: InventoryCount,
     movement?: StockMovement
   ): Promise<void>;
+  listInventoryLots(tenantId: string): Promise<InventoryLot[]>;
+  createInventoryLot(lot: InventoryLot): Promise<void>;
+  updateInventoryLot(lot: InventoryLot): Promise<void>;
 }
 
 /**
@@ -104,6 +109,14 @@ export interface InventoryService {
   listInventoryCounts(
     tenant: InventoryTenantContext
   ): Promise<Result<InventoryCount[], AppError>>;
+  listInventoryLots(
+    tenant: InventoryTenantContext
+  ): Promise<Result<InventoryLot[], AppError>>;
+  getLotTraceability(
+    tenant: InventoryTenantContext,
+    productLocalId: string,
+    warehouseLocalId: string
+  ): Promise<Result<LotLayer[], AppError>>;
   getReorderSuggestions(
     tenant: InventoryTenantContext,
     actor: InventoryActorContext,
@@ -686,6 +699,46 @@ export const createInventoryService = ({
     tenant
   ) => ok(await db.listInventoryCounts(tenant.tenantSlug));
 
+  const listInventoryLots: InventoryService["listInventoryLots"] = async (tenant) => {
+    const lots = await db.listInventoryLots(tenant.tenantSlug);
+    return ok(lots);
+  };
+
+  const getLotTraceability: InventoryService["getLotTraceability"] = async (
+    tenant,
+    productLocalId,
+    warehouseLocalId
+  ) => {
+    const lots = await db.listInventoryLots(tenant.tenantSlug);
+    const filtered = lots.filter(
+      (lot) =>
+        lot.productLocalId === productLocalId &&
+        lot.warehouseLocalId === warehouseLocalId &&
+        lot.status === "active"
+    );
+
+    const sorted = filtered.sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    const now = Date.now();
+    const layers: LotLayer[] = sorted.map((lot) => ({
+      localId: lot.localId,
+      productLocalId: lot.productLocalId,
+      warehouseLocalId: lot.warehouseLocalId,
+      quantity: lot.quantity,
+      remainingQuantity: lot.quantity,
+      unitCost: lot.unitCost,
+      totalValue: Number((lot.quantity * lot.unitCost).toFixed(4)),
+      sourceType: lot.sourceType,
+      sourceLocalId: lot.sourceLocalId,
+      createdAt: lot.createdAt,
+      age: Math.floor((now - new Date(lot.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+    }));
+
+    return ok(layers);
+  };
+
   const getReorderSuggestions: InventoryService["getReorderSuggestions"] = async (
     tenant,
     actor,
@@ -767,6 +820,8 @@ export const createInventoryService = ({
     createInventoryCount,
     postInventoryCount,
     listInventoryCounts,
+    listInventoryLots,
+    getLotTraceability,
     getReorderSuggestions
   };
 };

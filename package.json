@@ -32,5 +32,8 @@
     "typescript-eslint": "^8.26.1",
     "vite": "^6.2.0",
     "vitest": "^3.0.8"
+  },
+  "dependencies": {
+    "lucide-react": "^1.7.0"
   }
 }

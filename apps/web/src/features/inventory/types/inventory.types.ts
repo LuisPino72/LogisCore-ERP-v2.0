@@ -177,6 +177,7 @@ export interface CreateInventoryCountInput {
  * Estado de UI del módulo de inventario
  * balances: Stock actual por producto-bodega (key: "productId:warehouseId")
  * reorderSuggestions: Sugerencias de reorden automático
+ * lots: Capas de costo FIFO
  */
 export interface InventoryUiState {
   isLoading: boolean;
@@ -186,6 +187,7 @@ export interface InventoryUiState {
   sizeColors: ProductSizeColor[];
   balances: Record<string, number>;
   reorderSuggestions: ReorderSuggestion[];
+  lots: InventoryLot[];
   lastError: AppError | null;
 }
 
@@ -200,4 +202,42 @@ export interface ReorderSuggestion {
   minStock: number;
   targetStock: number;
   suggestedOrderQty: number;
+}
+
+/**
+ * Lote de inventario (capa de costo FIFO)
+ * sourceType: Tipo de documento origen (purchase_receiving, etc.)
+ * status: active = disponible, consumed = totalmente consumido
+ */
+export interface InventoryLot {
+  localId: string;
+  tenantId: string;
+  productLocalId: string;
+  warehouseLocalId: string;
+  sourceType: "purchase_receiving";
+  sourceLocalId: string;
+  quantity: number;
+  unitCost: number;
+  status: "active" | "consumed";
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+/**
+ * Capa de costo para trazabilidad FIFO
+ * Representa un lote individual con su cantidad y costo
+ */
+export interface LotLayer {
+  localId: string;
+  productLocalId: string;
+  warehouseLocalId: string;
+  quantity: number;
+  remainingQuantity: number;
+  unitCost: number;
+  totalValue: number;
+  sourceType: string;
+  sourceLocalId: string;
+  createdAt: string;
+  age: number;
 }

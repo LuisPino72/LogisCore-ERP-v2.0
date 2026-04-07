@@ -6,6 +6,7 @@
 import {
   db,
   type InventoryCountRecord,
+  type InventoryLotRecord,
   type ProductSizeColorRecord,
   type StockMovementRecord,
   type WarehouseRecord
@@ -128,6 +129,22 @@ export class DexieInventoryDbAdapter implements InventoryDb {
         }
       }
     );
+  }
+
+  async listInventoryLots(tenantId: string): Promise<InventoryLotRecord[]> {
+    return db.inventory_lots
+      .where("tenantId")
+      .equals(tenantId)
+      .and((item) => !item.deletedAt)
+      .sortBy("createdAt");
+  }
+
+  async createInventoryLot(lot: InventoryLotRecord): Promise<void> {
+    await db.inventory_lots.put(lot);
+  }
+
+  async updateInventoryLot(lot: InventoryLotRecord): Promise<void> {
+    await db.inventory_lots.put(lot);
   }
 }
 
