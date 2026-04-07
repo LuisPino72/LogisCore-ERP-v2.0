@@ -2,10 +2,13 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { coreService } from "@/features/core/services/core.service.instance";
 import { authService } from "@/features/auth/services/auth.service.instance";
 import { tenantService } from "@/features/tenant/services/tenant.service.instance";
+import { exchangeRatesService } from "@/features/exchange-rates/services/exchange-rates.service.instance";
 import { TenantBootstrapGate } from "@/features/tenant/components/TenantBootstrapGate";
 import { AppLayout, type ModuleId } from "@/common/components/AppLayout";
 import { ResetPasswordPage } from "@/features/auth/components/ResetPasswordPage";
 import { ActorContext } from "@/lib/permissions/permissions.types";
+import { DashboardPanel } from "@/features/dashboard";
+import { eventBus } from "@/lib/core/runtime";
 
 const InventoryPanel = lazy(() => import("@/features/inventory/components/InventoryPanel").then(m => ({ default: m.InventoryPanel })));
 const ProductsCatalog = lazy(() => import("@/features/products/components/ProductsCatalog").then(m => ({ default: m.ProductsCatalog })));
@@ -24,18 +27,50 @@ function LoadingFallback() {
   );
 }
 
-import { DashboardPanel } from "@/features/dashboard";
-
-function DashboardHome({ tenantSlug, actor }: { tenantSlug: string, actor: ActorContext }) {
+function DashboardHome({ 
+  tenantSlug, 
+  actor, 
+  onNavigate, 
+  onUpdateExchangeRate,
+  onFetchExchangeRates
+}: { 
+  tenantSlug: string, 
+  actor: ActorContext,
+  onNavigate: (module: ModuleId) => void,
+  onUpdateExchangeRate: (rate: number) => Promise<void>,
+  onFetchExchangeRates: () => Promise<void>
+}) {
   const tenantContext = { tenantSlug };
-  return <DashboardPanel tenant={tenantContext as never} actor={actor} />;
+  return (
+    <DashboardPanel 
+      tenant={tenantContext as never} 
+      actor={actor} 
+      onNavigate={onNavigate}
+      onUpdateExchangeRate={onUpdateExchangeRate}
+      onFetchExchangeRates={onFetchExchangeRates}
+    />
+  );
 }
 
-function ModuleRenderer({ moduleId, tenantSlug, actor }: { moduleId: ModuleId, tenantSlug: string, actor: ActorContext }) {
+function ModuleRenderer({ 
+  moduleId, 
+  tenantSlug, 
+  actor,
+  onNavigate,
+  onUpdateExchangeRate,
+  onFetchExchangeRates
+}: { 
+  moduleId: ModuleId, 
+  tenantSlug: string, 
+  actor: ActorContext,
+  onNavigate: (module: ModuleId) => void,
+  onUpdateExchangeRate: (rate: number) => Promise<void>,
+  onFetchExchangeRates: () => Promise<void>
+}) {
   const renderModule = (id: ModuleId) => {
     switch (id) {
       case "dashboard":
-        return <DashboardHome tenantSlug={tenantSlug} actor={actor} />;
+        return <DashboardHome tenantSlug={tenantSlug} actor={actor} onNavigate={onNavigate} onUpdateExchangeRate={onUpdateExchangeRate} onFetchExchangeRates={onFetchExchangeRates} />;
       case "inventory":
         return <InventoryPanel tenantSlug={tenantSlug} actor={actor as never} products={[]} />;
       case "products":
@@ -56,7 +91,7 @@ function ModuleRenderer({ moduleId, tenantSlug, actor }: { moduleId: ModuleId, t
       case "reports":
         return <ReportsPanel tenantSlug={tenantSlug} actor={actor as never} />;
       default:
-        return <DashboardHome tenantSlug={tenantSlug} actor={actor} />;
+        return <DashboardHome tenantSlug={tenantSlug} actor={actor} onNavigate={onNavigate} onUpdateExchangeRate={onUpdateExchangeRate} onFetchExchangeRates={onFetchExchangeRates} />;
     }
   };
 
@@ -70,6 +105,16 @@ function ModuleRenderer({ moduleId, tenantSlug, actor }: { moduleId: ModuleId, t
 export function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>("dashboard");
   const [isPasswordReset, setIsPasswordReset] = useState(false);
+
+  const handleUpdateExchangeRate = async (rate: number) => {
+    await exchangeRatesService.setManualRate("system", rate, "USD", "VES");
+    eventBus.emit("DASHBOARD.REFRESH", undefined);
+  };
+
+  const handleFetchExchangeRates = async () => {
+    await exchangeRatesService.fetchAndSaveRates();
+    eventBus.emit("DASHBOARD.REFRESH", undefined);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -105,7 +150,14 @@ export function App() {
       coreService={coreService}
       renderApp={(tenantSlug, actor, signOut) => (
         <AppLayout activeModule={activeModule} onModuleChange={setActiveModule} onLogout={signOut}>
-          <ModuleRenderer moduleId={activeModule} tenantSlug={tenantSlug} actor={actor} />
+          <ModuleRenderer 
+            moduleId={activeModule} 
+            tenantSlug={tenantSlug} 
+            actor={actor}
+            onNavigate={setActiveModule}
+            onUpdateExchangeRate={handleUpdateExchangeRate}
+            onFetchExchangeRates={handleFetchExchangeRates}
+          />
         </AppLayout>
       )}
     />

@@ -9,6 +9,13 @@ export interface ExchangeRatesService {
   ): Promise<Result<ExchangeRateRecord | null, AppError>>;
   calculatePriceInBs(priceUsd: number, rate: number): number;
   fetchAndSaveRates(): Promise<Result<{ fetched: number }, AppError>>;
+  setManualRate(
+    tenantId: string,
+    rate: number,
+    fromCurrency: string,
+    toCurrency: string
+  ): Promise<Result<void, AppError>>;
+  clearManualRates(): Promise<Result<void, AppError>>;
 }
 
 export interface ExchangeRatesDb {
@@ -73,28 +80,46 @@ export const createExchangeRatesService = ({
       const dolares = await response.json();
       let fetched = 0;
 
-      for (const d of dolares) {
-        const rate = d.venta || d.compra;
-        if (rate <= 0) continue;
-
-        const now = new Date().toISOString();
-        const localId = crypto.randomUUID();
-
-        await db.createExchangeRate({
-          localId,
-          tenantId: "system",
-          fromCurrency: "USD",
-          toCurrency: "VES",
-          rate: roundMoney(rate),
-          source: d.fuente,
-          validFrom: now,
-          validTo: "",
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: ""
-        });
-        fetched++;
+      // Filtrar solo tasa oficial
+      const oficial = dolares.find((d: { fuente: string }) => d.fuente === "oficial");
+      
+      if (!oficial) {
+        return ok({ fetched: 0 });
       }
+
+      const rate = oficial.venta || oficial.compra || oficial.promedio;
+      if (!rate || rate <= 0) {
+        return ok({ fetched: 0 });
+      }
+
+      // BORRAR tasas anteriores en Dexie antes de guardar nueva
+      const existingRates = await db.listExchangeRates("system");
+      for (const existing of existingRates) {
+        if (!existing.deletedAt) {
+          await db.createExchangeRate({
+            ...existing,
+            deletedAt: new Date().toISOString()
+          });
+        }
+      }
+
+      const now = new Date().toISOString();
+      const localId = crypto.randomUUID();
+
+      await db.createExchangeRate({
+        localId,
+        tenantId: "system",
+        fromCurrency: "USD",
+        toCurrency: "VES",
+        rate: roundMoney(rate),
+        source: "oficial",
+        validFrom: now,
+        validTo: "",
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: ""
+      });
+      fetched = 1;
 
       return ok({ fetched });
     } catch (error) {
@@ -108,9 +133,71 @@ export const createExchangeRatesService = ({
     }
   };
 
+  const setManualRate: ExchangeRatesService["setManualRate"] = async (
+    tenantId,
+    rate,
+    fromCurrency = "USD",
+    toCurrency = "VES"
+  ) => {
+    try {
+      const now = new Date().toISOString();
+      const localId = crypto.randomUUID();
+
+      await db.createExchangeRate({
+        localId,
+        tenantId,
+        fromCurrency,
+        toCurrency,
+        rate: roundMoney(rate),
+        source: "manual",
+        validFrom: now,
+        validTo: "",
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: ""
+      });
+
+      return ok(undefined);
+    } catch (error) {
+      return err(
+        createAppError({
+          code: "EXCHANGE_RATE_SET_MANUAL_FAILED",
+          message: `Error al guardar tasa manual: ${error}`,
+          retryable: false
+        })
+      );
+    }
+  };
+
+  const clearManualRates: ExchangeRatesService["clearManualRates"] = async () => {
+    try {
+      const allRates = await db.listExchangeRates("system");
+      const manualRates = allRates.filter(r => r.source === "manual" && !r.deletedAt);
+      
+      for (const rate of manualRates) {
+        await db.createExchangeRate({
+          ...rate,
+          deletedAt: new Date().toISOString()
+        });
+      }
+
+      return ok(undefined);
+    } catch (error) {
+      return err(
+        createAppError({
+          code: "EXCHANGE_RATE_CLEAR_MANUAL_FAILED",
+          message: `Error al limpiar tasas manuales: ${error}`,
+          retryable: false
+        })
+      );
+    }
+  };
+
   return {
     getActiveRate,
     calculatePriceInBs,
-    fetchAndSaveRates
+    fetchAndSaveRates,
+    setManualRate,
+    clearManualRates
   };
 };

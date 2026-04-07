@@ -113,12 +113,12 @@ describe("exchange-rates.service", () => {
   });
 
   describe("fetchAndSaveRates", () => {
-    it("hace fetch de la API y guarda tasas", async () => {
+    it("hace fetch de la API y guarda solo la tasa oficial", async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => [
-          { fuente: "BCV", nombre: "Dolar BCV", compra: 480, venta: 480 },
-          { fuente: "Monitor", nombre: "Dolar Paralelo", compra: 485, venta: 488 }
+          { fuente: "oficial", nombre: "Dólar", compra: null, promedio: 480, venta: null },
+          { fuente: "paralelo", nombre: "Paralelo", compra: 485, venta: 488 }
         ]
       }) as any;
 
@@ -127,7 +127,7 @@ describe("exchange-rates.service", () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.data?.fetched).toBe(2);
+        expect(result.data?.fetched).toBe(1);
       }
     });
 
@@ -143,12 +143,11 @@ describe("exchange-rates.service", () => {
       expect(result.ok).toBe(false);
     });
 
-    it("ignora tasas con valor 0 o negativo", async () => {
+    it("retorna 0 si no hay tasa oficial", async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => [
-          { fuente: "BCV", nombre: "Dolar BCV", compra: 0, venta: 0 },
-          { fuente: "Monitor", nombre: "Dolar Paralelo", compra: 485, venta: 488 }
+          { fuente: "paralelo", nombre: "Paralelo", compra: 485, venta: 488 }
         ]
       }) as any;
 
@@ -157,7 +156,7 @@ describe("exchange-rates.service", () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.data?.fetched).toBe(1);
+        expect(result.data?.fetched).toBe(0);
       }
     });
   });

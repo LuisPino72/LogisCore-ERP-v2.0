@@ -7,7 +7,7 @@ interface StatCardProps {
   trend?: {
     value: number;
     isUp: boolean;
-  };
+  } | undefined;
   color?: "blue" | "green" | "red" | "purple" | "orange" | "gold";
   tooltip?: string;
 }

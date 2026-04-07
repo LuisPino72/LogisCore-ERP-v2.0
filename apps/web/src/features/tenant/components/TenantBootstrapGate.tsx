@@ -81,6 +81,13 @@ export function TenantBootstrapGate({
     setImpersonatedTenantSlug(tenant.slug);
   };
 
+  // Mostrar estado de verificación mientras carga la sesión
+  const isVerifyingSession = authState.isLoading && !authState.session;
+
+  if (isVerifyingSession) {
+    return <LoadingSpinner variant="fullscreen" message="Verificando sesión..." />;
+  }
+
   if (!authState.session) {
     const loginError = authState.lastError?.code === "AUTH_SESSION_MISSING" ? null : authState.lastError;
     return (

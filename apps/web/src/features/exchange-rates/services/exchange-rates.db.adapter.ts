@@ -15,48 +15,21 @@ export class DexieExchangeRatesDbAdapter implements ExchangeRatesDb {
     fromCurrency: string,
     toCurrency: string
   ): Promise<ExchangeRateRecord | undefined> {
-    // Buscar primero por tenantId del usuario
+    // Buscar la tasa más reciente (no eliminada)
     const rates = await db.exchange_rates
-      .where("tenantId")
-      .equals(tenantId)
-      .and(
-        (item) =>
-          !item.deletedAt &&
-          item.fromCurrency === fromCurrency &&
-          item.toCurrency === toCurrency
-      )
-      .toArray();
-
-    // Si hay rates para el tenant, usarla
-    if (rates.length > 0) {
-      const now = new Date();
-      const valid = rates.find(
-        (r) => !r.validTo || new Date(r.validTo) >= now
+      .toArray()
+      .then((rates) =>
+        rates
+          .filter(
+            (item) =>
+              !item.deletedAt &&
+              item.fromCurrency === fromCurrency &&
+              item.toCurrency === toCurrency
+          )
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       );
-      if (valid) return valid;
-    }
 
-    // Si no hay rate para el tenant, buscar tasa oficial (source: "oficial")
-    const oficialRates = await db.exchange_rates
-      .where("source")
-      .equals("oficial")
-      .and(
-        (item) =>
-          !item.deletedAt &&
-          item.fromCurrency === fromCurrency &&
-          item.toCurrency === toCurrency
-      )
-      .toArray();
-
-    if (oficialRates.length > 0) {
-      const now = new Date();
-      const valid = oficialRates.find(
-        (r) => !r.validTo || new Date(r.validTo) >= now
-      );
-      return valid ?? oficialRates[0];
-    }
-
-    return undefined;
+    return rates[0];
   }
 
   async createExchangeRate(rate: ExchangeRateRecord): Promise<void> {

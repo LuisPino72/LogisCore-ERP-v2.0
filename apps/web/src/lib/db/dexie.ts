@@ -609,7 +609,7 @@ export class LogisCoreDexie extends Dexie {
       tax_rules:
         "&localId, tenantId, type, isActive, createdAt",
       exchange_rates:
-        "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt"
+        "&localId, tenantId, source, fromCurrency, toCurrency, validFrom, createdAt"
     });
     this.version(9).stores({
       bootstrap_state: "&id, tenantId, userId, bootstrappedAt",
@@ -641,7 +641,7 @@ export class LogisCoreDexie extends Dexie {
       tax_rules:
         "&localId, tenantId, type, isActive, createdAt",
       exchange_rates:
-        "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt",
+        "&localId, tenantId, source, fromCurrency, toCurrency, validFrom, createdAt",
       security_audit_log:
         "&localId, tenantId, userId, eventType, createdAt"
     });
@@ -676,7 +676,7 @@ export class LogisCoreDexie extends Dexie {
       tax_rules:
         "&localId, tenantId, type, isActive, createdAt",
       exchange_rates:
-        "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt",
+        "&localId, tenantId, source, fromCurrency, toCurrency, validFrom, createdAt",
       security_audit_log:
         "&localId, tenantId, userId, eventType, createdAt"
     });
@@ -711,7 +711,7 @@ export class LogisCoreDexie extends Dexie {
       tax_rules:
         "&localId, tenantId, type, isActive, createdAt",
       exchange_rates:
-        "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt",
+        "&localId, tenantId, source, fromCurrency, toCurrency, validFrom, createdAt",
       security_audit_log:
         "&localId, tenantId, userId, eventType, createdAt"
     });
@@ -746,7 +746,7 @@ export class LogisCoreDexie extends Dexie {
       tax_rules:
         "&localId, tenantId, type, isActive, createdAt",
       exchange_rates:
-        "&localId, tenantId, fromCurrency, toCurrency, validFrom, createdAt",
+        "&localId, tenantId, source, fromCurrency, toCurrency, validFrom, createdAt",
       security_audit_log:
         "&localId, tenantId, userId, eventType, createdAt"
     });

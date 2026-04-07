@@ -61,7 +61,7 @@ export const Sidebar = memo(function Sidebar({ items, activeItem, onItemClick, c
               }`}
               title={collapsed ? item.label : undefined}
             >
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={iconPaths[item.id] || iconPaths.dashboard} />
               </svg>
               {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
@@ -77,7 +77,7 @@ export const Sidebar = memo(function Sidebar({ items, activeItem, onItemClick, c
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-content-secondary hover:bg-error-50 hover:text-error-600 transition-colors"
             title={collapsed ? "Cerrar sesión" : undefined}
           >
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={iconPaths.logout} />
             </svg>
             {!collapsed && <span className="text-sm font-medium">Cerrar sesión</span>}

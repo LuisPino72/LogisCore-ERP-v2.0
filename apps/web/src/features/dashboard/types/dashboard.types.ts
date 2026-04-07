@@ -1,6 +1,14 @@
 import type { AppError } from "@logiscore/core";
 
 /**
+ * Tendencia de una métrica (comparación vs período anterior)
+ */
+export interface MetricTrend {
+  value: number;
+  isUp: boolean;
+}
+
+/**
  * Estadísticas principales del dashboard
  */
 export interface DashboardStats {
@@ -8,6 +16,9 @@ export interface DashboardStats {
   todayOrders: number;
   lowStockCount: number;
   averageTicketValue: number;
+  salesTrend: MetricTrend | undefined;
+  ordersTrend: MetricTrend | undefined;
+  ticketTrend: MetricTrend | undefined;
 }
 
 /**
@@ -48,7 +59,26 @@ export interface DashboardData {
   salesTrend: SalesTrendPoint[];
   topProducts: TopProductMetric[];
   recentActivities: RecentActivityEntry[];
+  lowStockProducts: LowStockProduct[];
+  exchangeRate: number | null;
+  cashStatus: CashStatus;
 }
+
+/**
+ * Producto con stock bajo (para mini-lista)
+ */
+export interface LowStockProduct {
+  localId: string;
+  name: string;
+  currentStock: number;
+  minStock: number;
+  warehouseName: string;
+}
+
+/**
+ * Estado de la caja
+ */
+export type CashStatus = "open" | "closed" | "unknown";
 
 /**
  * Estado de la UI del dashboard

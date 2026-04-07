@@ -35,8 +35,13 @@ export function useDashboard() {
     }
   }, []);
 
+  const invalidateCache = useCallback(() => {
+    dashboardService.invalidateCache();
+  }, []);
+
   return {
     state,
-    loadData
+    loadData,
+    invalidateCache
   };
 }

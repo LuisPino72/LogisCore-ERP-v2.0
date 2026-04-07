@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
     console.log(`Fetching rates from ve.dolarapi.com, found ${rates.length} rates`);
     console.log(`Rates data:`, JSON.stringify(rates));
 
-    // Filtrar tasas válidas
+    // Filtrar tasas válidas (solo oficial)
     const validRates = rates.filter(r => r.rate > 0 && r.source === "oficial");
 
     if (validRates.length === 0) {
@@ -74,7 +74,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Batch insert
+    // BORRAR tasas oficiales anteriores antes de insertar nueva
+    const { error: deleteError } = await supabase
+      .from("exchange_rates")
+      .delete()
+      .eq("source", "oficial");
+
+    if (deleteError) {
+      console.error("Error deleting old rates:", deleteError.message);
+    } else {
+      console.log("Deleted old official exchange rates");
+    }
+
+    // Insertar nueva tasa
     const insertData = validRates.map(rate => ({
       local_id: crypto.randomUUID(),
       from_currency: "USD",

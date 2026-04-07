@@ -1,16 +1,19 @@
 import { ok, type AppError, type EventBus, type Result } from "@logiscore/core";
-import { format, subDays, startOfDay, isSameDay, parseISO } from "date-fns";
+import { format, subDays, startOfDay, isSameDay, parseISO, subDays as addDays } from "date-fns";
 import type { 
   DashboardData, 
   DashboardStats, 
+  LowStockProduct,
+  MetricTrend,
   RecentActivityEntry, 
   SalesTrendPoint, 
-  TopProductMetric 
+  TopProductMetric,
+  CashStatus
 } from "../types/dashboard.types";
 import type { SalesService } from "@/features/sales/services/sales.service";
 import type { SalesTenantContext, Sale } from "@/features/sales/types/sales.types";
 import type { InventoryService } from "@/features/inventory/services/inventory.service";
-import type { InventoryTenantContext, InventoryActorContext } from "@/features/inventory/types/inventory.types";
+import type { InventoryTenantContext, InventoryActorContext, StockMovement, ReorderSuggestion } from "@/features/inventory/types/inventory.types";
 import type { ProductsService } from "@/features/products/services/products.service";
 import type { ProductsTenantContext, Product } from "@/features/products/types/products.types";
 
@@ -18,6 +21,9 @@ export interface DashboardServiceDependencies {
   sales: SalesService;
   inventory: InventoryService;
   products: ProductsService;
+  exchangeRates?: {
+    getActiveRate: (tenantId: string, fromCurrency: string, toCurrency: string) => Promise<Result<{ rate: number } | null, AppError>>;
+  };
   eventBus: EventBus;
   clock?: () => Date;
 }
@@ -26,72 +32,103 @@ export const createDashboardService = ({
   sales,
   inventory,
   products,
+  exchangeRates,
   eventBus,
   clock = () => new Date()
 }: DashboardServiceDependencies) => {
   
-  // Simple cache for dashboard data
   let lastFetchTime: number | null = null;
   let cachedData: DashboardData | null = null;
-  const CACHE_TTL = 60 * 1000; // 1 minute
-  
+  const CACHE_TTL = 60 * 1000;
+
+  const calculateTrend = (current: number, previous: number): MetricTrend | undefined => {
+    if (previous <= 0) return undefined;
+    const change = ((current - previous) / previous) * 100;
+    return {
+      value: Math.abs(Math.round(change * 10) / 10),
+      isUp: change >= 0
+    };
+  };
+
   const getDashboardData = async (
     tenant: SalesTenantContext & InventoryTenantContext & ProductsTenantContext,
     actor: InventoryActorContext
   ): Promise<Result<DashboardData, AppError>> => {
-    
-    // Check cache
     const now_ts = clock().getTime();
     if (cachedData && lastFetchTime && (now_ts - lastFetchTime < CACHE_TTL)) {
       return ok(cachedData);
     }
 
-    // Fetch base data
-    const [salesResult, movementsResult, reorderResult, productsResult] = await Promise.all([
+    const [salesResult, movementsResult, reorderResult, productsResult, boxResult] = await Promise.all([
       sales.listSales(tenant),
       inventory.listStockMovements(tenant),
       inventory.getReorderSuggestions(tenant, actor),
-      products.listProducts(tenant)
+      products.listProducts(tenant),
+      sales.listBoxClosings(tenant)
     ]);
 
     if (!salesResult.ok) return salesResult;
     if (!movementsResult.ok) return movementsResult;
     if (!reorderResult.ok) return reorderResult;
     if (!productsResult.ok) return productsResult;
+    if (!boxResult.ok) return boxResult;
 
     const allSales: Sale[] = salesResult.data;
     const allProducts: Product[] = productsResult.data;
+    const reorderSuggestions: ReorderSuggestion[] = reorderResult.data;
+    const boxClosings = boxResult.data;
     const productNames = new Map<string, string>(allProducts.map(p => [p.localId, p.name]));
+    const warehouses = new Map<string, string>();
+    
+    const warehousesResult = await inventory.listWarehouses(tenant);
+    if (warehousesResult.ok) {
+      warehousesResult.data.forEach(w => warehouses.set(w.localId, w.name));
+    }
+
     const now = clock();
     const today = startOfDay(now);
+    const yesterday = startOfDay(addDays(now, -1));
 
-    // 1. Calculate Stats
+    // Filter sales by status and date
     const todaySalesList = allSales.filter(s => s.status === "completed" && isSameDay(parseISO(s.createdAt), today));
+    const yesterdaySalesList = allSales.filter(s => s.status === "completed" && isSameDay(parseISO(s.createdAt), yesterday));
+
     const todaySalesAmount = todaySalesList.reduce((acc, s) => acc + s.total, 0);
+    const yesterdaySalesAmount = yesterdaySalesList.reduce((acc, s) => acc + s.total, 0);
     const todayOrdersCount = todaySalesList.length;
+    const yesterdayOrdersCount = yesterdaySalesList.length;
     const avgTicket = todayOrdersCount > 0 ? todaySalesAmount / todayOrdersCount : 0;
-    const lowStockCount = reorderResult.data.length;
+    const yesterdayAvgTicket = yesterdayOrdersCount > 0 ? yesterdaySalesAmount / yesterdayOrdersCount : 0;
+    const lowStockCount = reorderSuggestions.length;
+
+    // Tendencias
+    const salesTrend = calculateTrend(todaySalesAmount, yesterdaySalesAmount);
+    const ordersTrend = calculateTrend(todayOrdersCount, yesterdayOrdersCount);
+    const ticketTrend = calculateTrend(avgTicket, yesterdayAvgTicket);
 
     const stats: DashboardStats = {
       todaySales: todaySalesAmount,
       todayOrders: todayOrdersCount,
       lowStockCount,
-      averageTicketValue: avgTicket
+      averageTicketValue: avgTicket,
+      salesTrend,
+      ordersTrend,
+      ticketTrend
     };
 
-    // 2. Sales Trend (Last 7 days)
-    const salesTrend: SalesTrendPoint[] = [];
+    // Sales Trend (Last 7 days)
+    const salesTrendData: SalesTrendPoint[] = [];
     for (let i = 6; i >= 0; i--) {
       const day = subDays(today, i);
       const daySales = allSales.filter(s => s.status === "completed" && isSameDay(parseISO(s.createdAt), day));
-      salesTrend.push({
+      salesTrendData.push({
         date: format(day, "dd/MM"),
         amount: daySales.reduce((acc, s) => acc + s.total, 0),
         orders: daySales.length
       });
     }
 
-    // 3. Top Products (By Quantity or Amount? Let's do Quantity)
+    // Top Products
     const productMap = new Map<string, { qty: number, total: number }>();
     allSales
       .filter(s => s.status === "completed")
@@ -114,27 +151,53 @@ export const createDashboardService = ({
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 5);
 
-    // 4. Recent Activities
+    // Recent Activities
     const recentActivities: RecentActivityEntry[] = allSales
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 5)
       .map(s => ({
         id: s.localId,
         type: "sale" as const,
-        title: `Venta #${s.saleNumber.slice(-4) || s.localId.slice(0, 4)}`,
-        description: `Completada por ${s.cashierUserId.slice(0, 8)}`,
+        title: `Venta #${s.saleNumber?.slice(-4) || s.localId.slice(0, 4)}`,
+        description: `Completada por ${s.cashierUserId?.slice(0, 8) || "Sistema"}`,
         timestamp: s.createdAt,
         amount: s.total
       }));
 
+    // Low Stock Products (top 3)
+    const lowStockProducts: LowStockProduct[] = reorderSuggestions
+      .slice(0, 3)
+      .map(s => ({
+        localId: s.productLocalId,
+        name: productNames.get(s.productLocalId) || `Producto #${s.productLocalId.slice(0, 4)}`,
+        currentStock: s.currentStock,
+        minStock: s.minStock,
+        warehouseName: warehouses.get(s.warehouseLocalId) || "Bodega Principal"
+      }));
+
+    // Exchange Rate (solo bcv)
+    let exchangeRate: number | null = null;
+    if (exchangeRates) {
+      const rateResult = await exchangeRates.getActiveRate(tenant.tenantSlug, "USD", "VES");
+      if (rateResult.ok && rateResult.data) {
+        exchangeRate = rateResult.data.rate;
+      }
+    }
+
+    // Cash Status
+    const openBox = boxClosings?.find(b => b.status === "open" && !b.deletedAt);
+    const cashStatus: CashStatus = openBox ? "open" : "closed";
+
     const data: DashboardData = {
       stats,
-      salesTrend,
+      salesTrend: salesTrendData,
       topProducts,
-      recentActivities
+      recentActivities,
+      lowStockProducts,
+      exchangeRate,
+      cashStatus
     };
 
-    // Update cache
     cachedData = data;
     lastFetchTime = now_ts;
 
@@ -142,7 +205,12 @@ export const createDashboardService = ({
     return ok(data);
   };
 
-  return { getDashboardData };
+  const invalidateCache = () => {
+    lastFetchTime = null;
+    cachedData = null;
+  };
+
+  return { getDashboardData, invalidateCache };
 };
 
 export type DashboardService = ReturnType<typeof createDashboardService>;
