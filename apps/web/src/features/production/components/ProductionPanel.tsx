@@ -1,33 +1,40 @@
 /**
- * Componente principal del panel de producción MRP.
- * Gestiona la creación de recetas (BOM), órdenes de producción,
- * e inicio/completado de órdenes. Escucha eventos del bus para actualización automática.
+ * Panel Maestro de Producción MRP.
+ * Gestiona el ciclo completo: Recetas (BOM), Órdenes y Trazabilidad.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { Product } from "@/features/products/types/products.types";
+import type { ProductionActorContext, ProductionOrder, CreateRecipeInput, CreateProductionOrderInput } from "../types/production.types";
 import { eventBus } from "@/lib/core/runtime";
 import { useProduction } from "../hooks/useProduction";
 import { productionService } from "../services/production.service.instance";
-import type { ProductionActorContext, RecipeIngredient } from "../types/production.types";
+import { KpiHeader } from "./KpiHeader";
+import { RecipesTab } from "./RecipesTab";
+import { ProductionOrdersTab } from "./ProductionOrdersTab";
+import { ProductionLogsTab } from "./ProductionLogsTab";
+import { NewRecipeModal } from "./NewRecipeModal";
+import { NewOrderModal } from "./NewOrderModal";
+import { CompleteOrderModal } from "./CompleteOrderModal";
+import { Tabs } from "@/common/components/Tabs";
+import { AlertCircle } from "lucide-react";
 
 interface ProductionPanelProps {
   tenantSlug: string;
   actor: ProductionActorContext;
   products: Product[];
+  warehouses?: { localId: string; name: string }[];
 }
 
-export function ProductionPanel({ tenantSlug, actor, products }: ProductionPanelProps) {
-  const [recipeProductLocalId, setRecipeProductLocalId] = useState("");
-  const [recipeName, setRecipeName] = useState("");
-  const [recipeYieldQty, setRecipeYieldQty] = useState("1");
-  const [ingredientProductLocalId, setIngredientProductLocalId] = useState("");
-  const [ingredientQty, setIngredientQty] = useState("1");
-  const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
-  const [selectedRecipeLocalId, setSelectedRecipeLocalId] = useState("");
-  const [warehouseLocalId, setWarehouseLocalId] = useState("");
-  const [plannedQty, setPlannedQty] = useState("1");
-  const [producedQtyByOrder, setProducedQtyByOrder] = useState<Record<string, string>>({});
+const defaultWarehouses = [
+  { localId: "default-warehouse", name: "Bodega Principal" },
+];
+
+export function ProductionPanel({ tenantSlug, actor, products, warehouses = defaultWarehouses }: ProductionPanelProps) {
+  const [, setActiveTab] = useState("orders");
+  const [showNewRecipeModal, setShowNewRecipeModal] = useState(false);
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<ProductionOrder | null>(null);
 
   const {
     state,
@@ -47,15 +54,9 @@ export function ProductionPanel({ tenantSlug, actor, products }: ProductionPanel
   }, [refresh]);
 
   useEffect(() => {
-    const offCreated = eventBus.on("PRODUCTION.ORDER_CREATED", () => {
-      void refresh();
-    });
-    const offStarted = eventBus.on("PRODUCTION.STARTED", () => {
-      void refresh();
-    });
-    const offCompleted = eventBus.on("PRODUCTION.COMPLETED", () => {
-      void refresh();
-    });
+    const offCreated = eventBus.on("PRODUCTION.ORDER_CREATED", () => void refresh());
+    const offStarted = eventBus.on("PRODUCTION.STARTED", () => void refresh());
+    const offCompleted = eventBus.on("PRODUCTION.COMPLETED", () => void refresh());
     return () => {
       offCreated();
       offStarted();
@@ -63,225 +64,145 @@ export function ProductionPanel({ tenantSlug, actor, products }: ProductionPanel
     };
   }, [refresh]);
 
-  const selectedRecipe = useMemo(
-    () => state.recipes.find((item) => item.localId === selectedRecipeLocalId),
-    [selectedRecipeLocalId, state.recipes]
-  );
+  const selectedRecipe = useMemo(() => {
+    if (!selectedOrder) return undefined;
+    return state.recipes.find((r) => r.localId === selectedOrder.recipeLocalId);
+  }, [selectedOrder, state.recipes]);
+
+  const handleCreateRecipe = async (input: CreateRecipeInput) => {
+    const result = await createRecipe(input);
+    if (result) {
+      setShowNewRecipeModal(false);
+    }
+  };
+
+  const handleCreateOrder = async (recipeLocalId: string, warehouseLocalId: string, plannedQty: number) => {
+    const input: CreateProductionOrderInput = {
+      recipeLocalId,
+      warehouseLocalId,
+      plannedQty,
+    };
+    const result = await createProductionOrder(input);
+    if (result) {
+      setShowNewOrderModal(false);
+    }
+  };
+
+  const handleStartOrder = async (orderLocalId: string) => {
+    await startProductionOrder({ productionOrderLocalId: orderLocalId });
+  };
+
+  const handleCompleteOrder = async (producedQty: number) => {
+    if (!selectedOrder) return;
+    await completeProductionOrder({
+      productionOrderLocalId: selectedOrder.localId,
+      producedQty,
+    });
+    setSelectedOrder(null);
+  };
+
+  const tabs = useMemo(() => [
+    {
+      id: "orders",
+      label: "Órdenes",
+      content: (
+        <ProductionOrdersTab
+          orders={state.orders}
+          recipes={state.recipes}
+          warehouses={warehouses}
+          isLoading={state.isLoading}
+          onStartOrder={handleStartOrder}
+          onCompleteOrder={setSelectedOrder}
+          onCreateOrder={() => setShowNewOrderModal(true)}
+          isSubmitting={state.isSubmitting}
+        />
+      ),
+    },
+    {
+      id: "recipes",
+      label: "Recetas",
+      content: (
+        <RecipesTab
+          recipes={state.recipes}
+          products={products}
+          isLoading={state.isLoading}
+          onCreateRecipe={() => setShowNewRecipeModal(true)}
+        />
+      ),
+    },
+    {
+      id: "logs",
+      label: "Historial",
+      content: (
+        <ProductionLogsTab
+          logs={state.logs}
+          recipes={state.recipes}
+          products={products}
+          isLoading={state.isLoading}
+        />
+      ),
+    },
+  ], [state, products, warehouses]);
 
   return (
-    <section
-      style={{
-        border: "1px solid var(--border)",
-        borderRadius: "8px",
-        padding: "12px",
-        marginTop: "16px"
-      }}
-    >
-      <h2 style={{ marginTop: 0 }}>Produccion MRP</h2>
-      {state.lastError ? <p className="text-red-700">{state.lastError.message}</p> : null}
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-content-primary">Producción MRP</h1>
+        <p className="text-content-secondary mt-1">
+          Gestiona recetas, órdenes y trazabilidad de producción
+        </p>
+      </div>
 
-      <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
-        <h3 style={{ margin: 0 }}>Crear receta</h3>
-        <select
-          value={recipeProductLocalId}
-          onChange={(event) => setRecipeProductLocalId(event.target.value)}
-        >
-          <option value="">Producto terminado</option>
-          {products.map((product) => (
-            <option key={product.localId} value={product.localId}>
-              {product.name}
-            </option>
-          ))}
-        </select>
-        <input
-          value={recipeName}
-          onChange={(event) => setRecipeName(event.target.value)}
-          placeholder="Nombre receta"
-        />
-        <input
-          type="number"
-          min="0.0001"
-          step="0.0001"
-          value={recipeYieldQty}
-          onChange={(event) => setRecipeYieldQty(event.target.value)}
-          placeholder="Rendimiento"
-        />
+      <KpiHeader
+        orders={state.orders}
+        logs={state.logs}
+        recipes={state.recipes}
+      />
 
-        <div style={{ display: "grid", gap: "8px", borderTop: "1px solid var(--border)", paddingTop: "8px" }}>
-          <strong>Ingredientes</strong>
-          <select
-            value={ingredientProductLocalId}
-            onChange={(event) => setIngredientProductLocalId(event.target.value)}
-          >
-            <option value="">Producto ingrediente</option>
-            {products.map((product) => (
-              <option key={product.localId} value={product.localId}>
-                {product.name}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            min="0.0001"
-            step="0.0001"
-            value={ingredientQty}
-            onChange={(event) => setIngredientQty(event.target.value)}
-            placeholder="Cantidad ingrediente"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              if (!ingredientProductLocalId) {
-                return;
-              }
-              setRecipeIngredients((previous) => [
-                ...previous,
-                {
-                  productLocalId: ingredientProductLocalId,
-                  requiredQty: Number(ingredientQty)
-                }
-              ]);
-            }}
-          >
-            Agregar ingrediente
-          </button>
-          <ul>
-            {recipeIngredients.map((ingredient, index) => (
-              <li key={`${ingredient.productLocalId}-${index}`}>
-                {ingredient.productLocalId} | {ingredient.requiredQty.toFixed(4)}
-              </li>
-            ))}
-          </ul>
+      {state.lastError && (
+        <div className="alert alert-error">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <div>
+            <p className="font-medium">Error</p>
+            <p className="text-sm">{state.lastError.message}</p>
+          </div>
         </div>
+      )}
 
-        <button
-          type="button"
-          disabled={state.isSubmitting}
-          onClick={async () => {
-            const created = await createRecipe({
-              productLocalId: recipeProductLocalId,
-              name: recipeName,
-              yieldQty: Number(recipeYieldQty),
-              ingredients: recipeIngredients
-            });
-            if (created) {
-              setRecipeProductLocalId("");
-              setRecipeName("");
-              setRecipeYieldQty("1");
-              setRecipeIngredients([]);
-            }
-          }}
-        >
-          Guardar receta
-        </button>
-      </div>
+      <Tabs
+        items={tabs}
+        defaultTab="orders"
+        onChange={setActiveTab}
+        variant="underline"
+      />
 
-      <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
-        <h3 style={{ margin: 0 }}>Crear orden de produccion</h3>
-        <select
-          value={selectedRecipeLocalId}
-          onChange={(event) => setSelectedRecipeLocalId(event.target.value)}
-        >
-          <option value="">Seleccionar receta</option>
-          {state.recipes.map((recipe) => (
-            <option key={recipe.localId} value={recipe.localId}>
-              {recipe.name}
-            </option>
-          ))}
-        </select>
-        <input
-          value={warehouseLocalId}
-          onChange={(event) => setWarehouseLocalId(event.target.value)}
-          placeholder="Warehouse localId"
-        />
-        <input
-          type="number"
-          min="0.0001"
-          step="0.0001"
-          value={plannedQty}
-          onChange={(event) => setPlannedQty(event.target.value)}
-          placeholder="Cantidad planificada"
-        />
-        {selectedRecipe ? (
-          <p style={{ margin: 0 }}>
-            Receta: <strong>{selectedRecipe.name}</strong>
-          </p>
-        ) : null}
-        <button
-          type="button"
-          disabled={state.isSubmitting}
-          onClick={() => {
-            void createProductionOrder({
-              recipeLocalId: selectedRecipeLocalId,
-              warehouseLocalId,
-              plannedQty: Number(plannedQty)
-            });
-          }}
-        >
-          Crear orden
-        </button>
-      </div>
+      <NewRecipeModal
+        isOpen={showNewRecipeModal}
+        onClose={() => setShowNewRecipeModal(false)}
+        products={products}
+        onSubmit={handleCreateRecipe}
+        isSubmitting={state.isSubmitting}
+      />
 
-      <h3>Ordenes</h3>
-      <ul>
-        {state.orders.map((order) => (
-          <li key={order.localId}>
-            {order.localId.slice(0, 8)} | {order.status} | plan {order.plannedQty.toFixed(4)}
-            {order.status === "draft" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void startProductionOrder({ productionOrderLocalId: order.localId });
-                }}
-                style={{ marginLeft: "8px" }}
-              >
-                Iniciar
-              </button>
-            ) : null}
-            {order.status === "in_progress" ? (
-              <>
-                <input
-                  type="number"
-                  min="0.0001"
-                  step="0.0001"
-                  value={producedQtyByOrder[order.localId] ?? String(order.plannedQty)}
-                  onChange={(event) =>
-                    setProducedQtyByOrder((prev) => ({
-                      ...prev,
-                      [order.localId]: event.target.value
-                    }))
-                  }
-                  style={{ width: "120px", marginLeft: "8px" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    void completeProductionOrder({
-                      productionOrderLocalId: order.localId,
-                      producedQty: Number(
-                        producedQtyByOrder[order.localId] ?? String(order.plannedQty)
-                      )
-                    });
-                  }}
-                  style={{ marginLeft: "8px" }}
-                >
-                  Completar
-                </button>
-              </>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+      <NewOrderModal
+        isOpen={showNewOrderModal}
+        onClose={() => setShowNewOrderModal(false)}
+        recipes={state.recipes}
+        products={products}
+        warehouses={warehouses}
+        onSubmit={handleCreateOrder}
+        isSubmitting={state.isSubmitting}
+      />
 
-      <h3>Logs de produccion</h3>
-      <ul>
-        {state.logs.map((log) => (
-          <li key={log.localId}>
-            {log.localId.slice(0, 8)} | orden {log.productionOrderLocalId.slice(0, 8)} | prod {" "}
-            {log.producedQty.toFixed(4)} | var {log.variancePercent.toFixed(2)}%
-          </li>
-        ))}
-      </ul>
-    </section>
+      <CompleteOrderModal
+        isOpen={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        order={selectedOrder}
+        recipe={selectedRecipe}
+        products={products}
+        onSubmit={handleCompleteOrder}
+        isSubmitting={state.isSubmitting}
+      />
+    </div>
   );
 }

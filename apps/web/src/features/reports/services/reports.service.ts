@@ -9,10 +9,15 @@ import {
 } from "@logiscore/core";
 import type {
   BoxClosingSummary,
+  FinanceReport,
   GrossProfit,
   KardexEntry,
+  KardexEntryExtended,
+  LotLayer,
   ReportsActorContext,
+  ReportsKpis,
   ReportsTenantContext,
+  SaleWithDetails,
   SalesByDay,
   SalesByProduct,
   SecurityAuditLog
@@ -22,10 +27,15 @@ export interface ReportsDb {
   listSalesByDay(tenantId: string): Promise<SalesByDay[]>;
   listSalesByProduct(tenantId: string): Promise<SalesByProduct[]>;
   listKardex(tenantId: string, warehouseLocalId?: string): Promise<KardexEntry[]>;
+  listKardexWithLayers(tenantId: string, warehouseLocalId?: string): Promise<KardexEntryExtended[]>;
   listGrossProfit(tenantId: string): Promise<GrossProfit[]>;
   listBoxClosings(tenantId: string): Promise<BoxClosingSummary[]>;
   createAuditLog(log: Omit<SecurityAuditLog, "localId">): Promise<void>;
   listAuditLogs(tenantId: string, eventType?: string): Promise<SecurityAuditLog[]>;
+  getReportsKpis(tenantId: string): Promise<ReportsKpis>;
+  getLotLayers(tenantId: string, productLocalId?: string): Promise<LotLayer[]>;
+  listSalesWithDetails(tenantId: string, warehouseLocalId?: string): Promise<SaleWithDetails[]>;
+  getFinanceReport(tenantId: string, startDate?: string, endDate?: string): Promise<FinanceReport[]>;
 }
 
 export interface ReportsService {
@@ -39,6 +49,10 @@ export interface ReportsService {
     tenant: ReportsTenantContext,
     warehouseLocalId?: string
   ): Promise<Result<KardexEntry[], AppError>>;
+  getKardexWithLayers(
+    tenant: ReportsTenantContext,
+    warehouseLocalId?: string
+  ): Promise<Result<KardexEntryExtended[], AppError>>;
   getGrossProfit(
     tenant: ReportsTenantContext
   ): Promise<Result<GrossProfit[], AppError>>;
@@ -61,6 +75,22 @@ export interface ReportsService {
     actor: ReportsActorContext,
     eventType?: string
   ): Promise<Result<SecurityAuditLog[], AppError>>;
+  getReportsKpis(
+    tenant: ReportsTenantContext
+  ): Promise<Result<ReportsKpis, AppError>>;
+  getLotLayers(
+    tenant: ReportsTenantContext,
+    productLocalId?: string
+  ): Promise<Result<LotLayer[], AppError>>;
+  listSalesWithDetails(
+    tenant: ReportsTenantContext,
+    warehouseLocalId?: string
+  ): Promise<Result<SaleWithDetails[], AppError>>;
+  getFinanceReport(
+    tenant: ReportsTenantContext,
+    startDate?: string,
+    endDate?: string
+  ): Promise<Result<FinanceReport[], AppError>>;
 }
 
 interface CreateReportsServiceDependencies {
@@ -230,13 +260,111 @@ export const createReportsService = ({
     }
   };
 
+  const getReportsKpis: ReportsService["getReportsKpis"] = async (tenant) => {
+    try {
+      const data = await db.getReportsKpis(tenant.tenantSlug);
+      return ok(data);
+    } catch (cause) {
+      return err(
+        createAppError({
+          code: "REPORT_KPIS_FAILED",
+          message: "No se pudieron obtener los KPIs de reportes.",
+          retryable: false,
+          cause
+        })
+      );
+    }
+  };
+
+  const getLotLayers: ReportsService["getLotLayers"] = async (
+    tenant,
+    productLocalId
+  ) => {
+    try {
+      const data = await db.getLotLayers(tenant.tenantSlug, productLocalId);
+      return ok(data);
+    } catch (cause) {
+      return err(
+        createAppError({
+          code: "REPORT_LOT_LAYERS_FAILED",
+          message: "No se pudieron obtener las capas de inventario.",
+          retryable: false,
+          cause
+        })
+      );
+    }
+  };
+
+  const getKardexWithLayers: ReportsService["getKardexWithLayers"] = async (
+    tenant,
+    warehouseLocalId
+  ) => {
+    try {
+      const data = await db.listKardexWithLayers(tenant.tenantSlug, warehouseLocalId);
+      return ok(data);
+    } catch (cause) {
+      return err(
+        createAppError({
+          code: "REPORT_KARDEX_LAYERS_FAILED",
+          message: "No se pudo obtener el kardex con capas.",
+          retryable: false,
+          cause
+        })
+      );
+    }
+  };
+
+  const listSalesWithDetails: ReportsService["listSalesWithDetails"] = async (
+    tenant,
+    warehouseLocalId
+  ) => {
+    try {
+      const data = await db.listSalesWithDetails(tenant.tenantSlug, warehouseLocalId);
+      return ok(data);
+    } catch (cause) {
+      return err(
+        createAppError({
+          code: "REPORT_SALES_DETAILS_FAILED",
+          message: "No se pudieron obtener las ventas con detalles.",
+          retryable: false,
+          cause
+        })
+      );
+    }
+  };
+
+  const getFinanceReport: ReportsService["getFinanceReport"] = async (
+    tenant,
+    startDate,
+    endDate
+  ) => {
+    try {
+      const data = await db.getFinanceReport(tenant.tenantSlug, startDate, endDate);
+      return ok(data);
+    } catch (cause) {
+      return err(
+        createAppError({
+          code: "REPORT_FINANCE_FAILED",
+          message: "No se pudo obtener el reporte financiero.",
+          retryable: false,
+          cause
+        })
+      );
+    }
+  };
+
   return {
     getSalesByDay,
     getSalesByProduct,
     getKardex,
+    getKardexWithLayers,
     getGrossProfit,
     getBoxClosings,
     logSecurityEvent,
-    getAuditLogs
+    getAuditLogs,
+    getReportsKpis,
+    getLotLayers,
+    listSalesWithDetails,
+    getFinanceReport
   };
 };

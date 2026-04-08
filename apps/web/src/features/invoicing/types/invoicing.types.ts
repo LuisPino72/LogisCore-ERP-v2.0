@@ -21,7 +21,6 @@ export interface InvoicingActorPermissions {
   canVoidInvoice: boolean;
   canAdjustStock: boolean;
   allowedWarehouseLocalIds?: string[];
-  // Nuevos permisos para operaciones avanzadas
   canCreatePurchaseOrders?: boolean;
   canApprovePurchaseOrders?: boolean;
   canCreateProductionOrders?: boolean;
@@ -30,10 +29,6 @@ export interface InvoicingActorPermissions {
   canManageTenants?: boolean;
 }
 
-/**
- * Contexto del actor (usuario) para operaciones de facturación.
- * Combina el rol y los permisos del usuario.
- */
 /**
  * Contexto del actor (usuario) para operaciones de facturación.
  * Combina el rol y los permisos del usuario.
@@ -50,6 +45,11 @@ export interface InvoicingActorContext {
 export type InvoiceStatus = "draft" | "issued" | "voided";
 
 /**
+ * Estados de filtro para facturas.
+ */
+export type InvoiceStatusFilter = "all" | InvoiceStatus;
+
+/**
  * Ítem de línea de una factura.
  * Representa un producto o servicio facturado.
  */
@@ -63,12 +63,9 @@ export interface InvoiceItem {
   subtotal: number;
   discountPercent?: number;
   discountAmount?: number;
+  isWeighted?: boolean;
 }
 
-/**
- * Pago de una factura.
- * Define el método, moneda y monto del pago.
- */
 /**
  * Pago de una factura.
  * Define el método, moneda y monto del pago.
@@ -116,9 +113,12 @@ export interface Invoice {
 }
 
 /**
- * Regla fiscal.
- * Define tasas de impuestos (IVA, ISLR, IGTF) y su jurisdicción.
+ * Datos extendido de invoice para UI (con nombre de producto).
  */
+export interface InvoiceWithDetails extends Invoice {
+  itemsWithDetails?: Array<InvoiceItem & { productName?: string }>;
+}
+
 /**
  * Regla fiscal.
  * Define tasas de impuestos (IVA, ISLR, IGTF) y su jurisdicción.
@@ -143,10 +143,6 @@ export interface TaxRule {
  * Tipo de cambio de moneda.
  * Define la tasa de cambio entre dos monedas.
  */
-/**
- * Tipo de cambio de moneda.
- * Define la tasa de cambio entre dos monedas.
- */
 export interface ExchangeRate {
   localId: string;
   tenantId: string;
@@ -163,8 +159,18 @@ export interface ExchangeRate {
 }
 
 /**
- * Datos de entrada para crear una factura desde una venta.
+ * KPIs fiscales del módulo de facturación.
  */
+export interface InvoicingKpis {
+  totalInvoicedMonth: number;
+  debitFiscalIva: number;
+  collectedIgtf: number;
+  nextControlNumber: string;
+  invoicesIssuedCount: number;
+  invoicesDraftCount: number;
+  invoicesVoidedCount: number;
+}
+
 /**
  * Datos de entrada para crear una factura desde una venta.
  */
@@ -177,8 +183,14 @@ export interface CreateInvoiceFromSaleInput {
 }
 
 /**
- * Datos de entrada para anular una factura.
+ * Datos de entrada para emitir una factura.
  */
+export interface IssueInvoiceInput {
+  invoiceLocalId: string;
+  pointOfSale?: string;
+  controlNumber?: string;
+}
+
 /**
  * Datos de entrada para anular una factura.
  */

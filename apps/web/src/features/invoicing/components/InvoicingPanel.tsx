@@ -1,28 +1,55 @@
 /**
- * Componente principal del panel de facturación.
- * Permite crear facturas desde ventas y anular facturas existentes.
- * Escucha eventos del bus para actualización automática.
+ * Panel Maestro de Facturación Fiscal.
+ * Gestiona el ciclo completo de facturas, emisiones y configuración SENIAT.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import type { InvoicingActorContext, Invoice, CreateInvoiceFromSaleInput, VoidInvoiceInput } from "../types/invoicing.types";
 import { eventBus } from "@/lib/core/runtime";
 import { useInvoicing } from "../hooks/useInvoicing";
 import { invoicingService } from "../services/invoicing.service.instance";
-import type { InvoicingActorContext, VoidInvoiceInput } from "../types/invoicing.types";
+import { InvoicingKpiHeader } from "./InvoicingKpiHeader";
+import { InvoicesTab } from "./InvoicesTab";
+import { IssueInvoiceTab } from "./IssueInvoiceTab";
+import { SalesBookTab } from "./SalesBookTab";
+import { ConfigTab } from "./ConfigTab";
+import { InvoiceModal } from "./InvoiceModal";
+import { VoidInvoiceModal } from "./VoidInvoiceModal";
+import { Tabs } from "@/common/components/Tabs";
+import { AlertCircle } from "lucide-react";
 
 interface InvoicingPanelProps {
   tenantSlug: string;
   actor: InvoicingActorContext;
 }
 
-export function InvoicingPanel({ tenantSlug, actor }: InvoicingPanelProps) {
-  const [saleLocalId, setSaleLocalId] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [customerRif, setCustomerRif] = useState("");
-  const [invoiceLocalIdToVoid, setInvoiceLocalIdToVoid] = useState("");
-  const [voidReason, setVoidReason] = useState("");
+interface SaleForInvoice {
+  localId: string;
+  customerId?: string;
+  customerName?: string;
+  customerRif?: string;
+  status: "draft" | "completed" | "voided" | "refunded";
+  subtotal: number;
+  taxTotal: number;
+  igtfAmount?: number;
+  total: number;
+  createdAt: string;
+}
 
-  const { state, refresh, createInvoiceFromSale, voidInvoice } = useInvoicing({
+export function InvoicingPanel({ tenantSlug, actor }: InvoicingPanelProps) {
+  const [, setActiveTab] = useState("invoices");
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showVoidModal, setShowVoidModal] = useState(false);
+
+  const mockSales: SaleForInvoice[] = [];
+
+  const {
+    state,
+    refresh,
+    createInvoiceFromSale,
+    voidInvoice
+  } = useInvoicing({
     service: invoicingService,
     tenant: { tenantSlug },
     actor
@@ -33,128 +60,140 @@ export function InvoicingPanel({ tenantSlug, actor }: InvoicingPanelProps) {
   }, [refresh]);
 
   useEffect(() => {
-    const offCreated = eventBus.on("INVOICE.CREATED", () => {
-      void refresh();
-    });
-    const offVoided = eventBus.on("INVOICE.VOIDED", () => {
-      void refresh();
-    });
+    const offCreated = eventBus.on("INVOICE.CREATED", () => void refresh());
+    const offIssued = eventBus.on("INVOICE.ISSUED", () => void refresh());
+    const offVoided = eventBus.on("INVOICE.VOIDED", () => void refresh());
     return () => {
       offCreated();
+      offIssued();
       offVoided();
     };
   }, [refresh]);
 
-  return (
-    <section
-      style={{
-        border: "1px solid var(--border)",
-        borderRadius: "8px",
-        padding: "12px",
-        marginTop: "16px"
-      }}
-    >
-      <h2 style={{ marginTop: 0 }}>Facturacion SENIAT</h2>
-      {state.lastError ? <p className="text-red-700">{state.lastError.message}</p> : null}
+  const handleViewInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowInvoiceModal(true);
+  };
 
-      <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
-        <h3 style={{ margin: 0 }}>Crear factura desde venta</h3>
-        <input
-          value={saleLocalId}
-          onChange={(event) => setSaleLocalId(event.target.value)}
-          placeholder="Sale Local ID"
+  const handleVoidInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowVoidModal(true);
+  };
+
+  const handleCreateInvoice = async (input: CreateInvoiceFromSaleInput) => {
+    await createInvoiceFromSale(input);
+  };
+
+  const handleVoidSubmit = async (reason: string) => {
+    if (!selectedInvoice) return;
+    const input: VoidInvoiceInput = {
+      invoiceLocalId: selectedInvoice.localId,
+      reason,
+    };
+    await voidInvoice(input);
+    setShowVoidModal(false);
+    setSelectedInvoice(null);
+  };
+
+  const canVoid = actor.role === "owner" || actor.role === "admin" || actor.permissions.canVoidInvoice;
+
+  const tabs = useMemo(() => [
+    {
+      id: "invoices",
+      label: "Facturas",
+      content: (
+        <InvoicesTab
+          invoices={state.invoices}
+          isLoading={state.isLoading}
+          onViewInvoice={handleViewInvoice}
+          onVoidInvoice={handleVoidInvoice}
+          canVoid={canVoid}
         />
-        <input
-          value={customerName}
-          onChange={(event) => setCustomerName(event.target.value)}
-          placeholder="Nombre cliente"
+      ),
+    },
+    {
+      id: "issue",
+      label: "Emitir",
+      content: (
+        <IssueInvoiceTab
+          sales={mockSales}
+          taxRules={state.taxRules}
+          onCreateInvoice={handleCreateInvoice}
+          isSubmitting={state.isSubmitting}
+          lastError={state.lastError?.message || null}
         />
-        <input
-          value={customerRif}
-          onChange={(event) => setCustomerRif(event.target.value)}
-          placeholder="RIF cliente"
+      ),
+    },
+    {
+      id: "salesbook",
+      label: "Libro de Ventas",
+      content: (
+        <SalesBookTab
+          invoices={state.invoices}
+          taxRules={state.taxRules}
         />
-        <button
-          type="button"
-          disabled={state.isSubmitting}
-          onClick={async () => {
-            const created = await createInvoiceFromSale({
-              saleLocalId,
-              customerName,
-              customerRif
-            });
-            if (created) {
-              setSaleLocalId("");
-              setCustomerName("");
-              setCustomerRif("");
-            }
-          }}
-        >
-          Crear factura
-        </button>
+      ),
+    },
+    {
+      id: "config",
+      label: "Configuración",
+      content: (
+        <ConfigTab
+          taxRules={state.taxRules}
+          exchangeRates={state.exchangeRates}
+          isLoading={state.isLoading}
+        />
+      ),
+    },
+  ], [state, mockSales, canVoid]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-content-primary">Facturación SENIAT</h1>
+        <p className="text-content-secondary mt-1">
+          Gestiona facturas, impuestos y cumplimiento fiscal
+        </p>
       </div>
 
-      {actor.permissions.canVoidInvoice ? (
-        <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
-          <h3 style={{ margin: 0 }}>Anular factura</h3>
-          <input
-            value={invoiceLocalIdToVoid}
-            onChange={(event) => setInvoiceLocalIdToVoid(event.target.value)}
-            placeholder="Invoice Local ID"
-          />
-          <input
-            value={voidReason}
-            onChange={(event) => setVoidReason(event.target.value)}
-            placeholder="Razon"
-          />
-          <button
-            type="button"
-            disabled={state.isSubmitting}
-            onClick={async () => {
-              const input: VoidInvoiceInput = {
-                invoiceLocalId: invoiceLocalIdToVoid,
-                reason: voidReason
-              };
-              const voided = await voidInvoice(input);
-              if (voided) {
-                setInvoiceLocalIdToVoid("");
-                setVoidReason("");
-              }
-            }}
-          >
-            Anular factura
-          </button>
+      <InvoicingKpiHeader
+        invoices={state.invoices}
+        taxRules={state.taxRules}
+      />
+
+      {state.lastError && (
+        <div className="alert alert-error">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <div>
+            <p className="font-medium">Error</p>
+            <p className="text-sm">{state.lastError.message}</p>
+          </div>
         </div>
-      ) : null}
+      )}
 
-      <h3>Facturas</h3>
-      <ul>
-        {state.invoices.map((invoice) => (
-          <li key={invoice.localId}>
-            {invoice.invoiceNumber ?? invoice.localId.slice(0, 8)} |{" "}
-            {invoice.customerName ?? "Sin cliente"} | {invoice.status} | Total:{" "}
-            {invoice.total.toFixed(2)}
-          </li>
-        ))}
-      </ul>
+      <Tabs
+        items={tabs}
+        defaultTab="invoices"
+        onChange={setActiveTab}
+        variant="underline"
+      />
 
-      <h3>Reglas de impuestos</h3>
-      <ul>
-        {state.taxRules.map((rule) => (
-          <li key={rule.localId}>
-            {rule.name} | {rule.type} | {rule.rate}% | {rule.isActive ? "Activo" : "Inactivo"}
-          </li>
-        ))}
-      </ul>
+      <InvoiceModal
+        isOpen={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        invoice={selectedInvoice}
+      />
 
-      <h3>Tipos de cambio</h3>
-      <ul>
-        {state.exchangeRates.map((rate) => (
-          <li key={rate.localId}>
-            {rate.fromCurrency} → {rate.toCurrency} | {rate.rate}
-          </li>
-        ))}
-      </ul>
-    </section>
+      <VoidInvoiceModal
+        isOpen={showVoidModal}
+        onClose={() => {
+          setShowVoidModal(false);
+          setSelectedInvoice(null);
+        }}
+        invoice={selectedInvoice}
+        onVoid={handleVoidSubmit}
+        isSubmitting={state.isSubmitting}
+      />
+    </div>
   );
 }

@@ -99,3 +99,66 @@ export interface ReportsUiState {
   auditLogs: SecurityAuditLog[];
   lastError: AppError | null;
 }
+
+export interface ReportsKpis {
+  totalSalesMonth: number;
+  estimatedProfit: number;
+  inventoryValue: number;
+  auditAlerts: number;
+}
+
+export interface KardexEntryExtended extends KardexEntry {
+  isWeighted: boolean;
+  lastMovementDate: string;
+  lastMovementType: string;
+  costLayers: LotLayer[];
+}
+
+export interface LotLayer {
+  layerId: string;
+  productLocalId: string;
+  warehouseLocalId: string;
+  quantity: number;
+  remainingQty: number;
+  unitCost: number;
+  totalCost: number;
+  receivedAt: string;
+  referenceType?: string;
+  referenceLocalId?: string;
+}
+
+export interface FinanceReport {
+  period: string;
+  totalSales: number;
+  totalCost: number;
+  grossProfit: number;
+  profitMarginPercent: number;
+  ivaCollected: number;
+  igtfCollected: number;
+  exchangeRateUsed: number;
+}
+
+export interface SaleWithDetails {
+  localId: string;
+  saleDate: string;
+  status: "completed" | "voided" | "refunded";
+  subtotal: number;
+  taxTotal: number;
+  total: number;
+  itemsCount: number;
+  paymentMethod: string;
+  exchangeRate: number;
+  totalUsd: number;
+}
+
+export interface AuditLogWithUser extends SecurityAuditLog {
+  userName?: string;
+  userEmail?: string;
+  severity: "low" | "medium" | "high" | "critical";
+}
+
+export interface ReportsFilters {
+  dateRange?: { start: string; end: string };
+  warehouseLocalId?: string;
+  searchQuery?: string;
+}

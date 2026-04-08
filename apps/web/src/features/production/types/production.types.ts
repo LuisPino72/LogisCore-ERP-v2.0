@@ -45,7 +45,17 @@ export interface ProductionActorContext {
  */
 export interface RecipeIngredient {
   productLocalId: string;
+  productName?: string;
   requiredQty: number;
+  isWeighted?: boolean;
+}
+
+/**
+ * Ingrediente con información extendida para UI.
+ */
+export interface RecipeIngredientWithDetails extends RecipeIngredient {
+  productName: string;
+  stockAvailable?: number;
 }
 
 /**
