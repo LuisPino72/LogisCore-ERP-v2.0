@@ -32,7 +32,7 @@ export const createEdgeFunctionSyncProcessor = (): SyncProcessor => ({
         );
       }
 
-      const response = await supabase.functions.invoke("sync_table_item", {
+      const response = await supabase.functions.invoke("sync-table-item-hardened-2026", {
         body: {
           table: item.table,
           operation: item.operation,

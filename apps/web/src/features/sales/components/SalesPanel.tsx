@@ -16,7 +16,6 @@ import { Tabs, type TabItem } from "@/common/components/Tabs";
 import type { Product } from "@/features/products/types/products.types";
 import { useSales } from "../hooks/useSales";
 import { salesService } from "../services/sales.service.instance";
-import { exchangeRatesService } from "@/features/exchange-rates/services/exchange-rates.service.instance";
 import type {
   SaleItem,
   SalePayment,
@@ -44,6 +43,8 @@ interface SalesPanelProps {
   tenantSlug: string;
   actor: SalesActorContext;
   products: Product[];
+  exchangeRate?: number;
+  onRefreshExchangeRate?: () => Promise<void>;
 }
 
 const IVA_RATE = 0.16;
@@ -52,7 +53,9 @@ const MAX_SUSPENDED = 10;
 export function SalesPanel({
   tenantSlug,
   actor,
-  products
+  products,
+  exchangeRate: exchangeRateFromApp,
+  onRefreshExchangeRate
 }: SalesPanelProps) {
   const [selectedWarehouse, setSelectedWarehouse] = useState("");
   const [cart, setCart] = useState<SaleItem[]>([]);
@@ -98,24 +101,18 @@ export function SalesPanel({
   }, [refresh]);
 
   useEffect(() => {
-    const loadExchangeRate = async () => {
-      const result = await exchangeRatesService.getActiveRate(tenantSlug, "USD", "VES");
-      if (result.ok && result.data) {
-        setExchangeRate(result.data.rate);
-      }
-    };
-    void loadExchangeRate();
-  }, [tenantSlug]);
+    if (typeof exchangeRateFromApp === "number" && exchangeRateFromApp > 0) {
+      setExchangeRate(exchangeRateFromApp);
+    }
+  }, [exchangeRateFromApp]);
 
   const handleRefreshRate = useCallback(async () => {
     setIsLoadingRate(true);
-    await exchangeRatesService.fetchAndSaveRates();
-    const result = await exchangeRatesService.getActiveRate(tenantSlug, "USD", "VES");
-    if (result.ok && result.data) {
-      setExchangeRate(result.data.rate);
+    if (onRefreshExchangeRate) {
+      await onRefreshExchangeRate();
     }
     setIsLoadingRate(false);
-  }, [tenantSlug]);
+  }, [onRefreshExchangeRate]);
 
   const boxIsOpen = useMemo(
     () => isBoxOpen(state.boxClosings, selectedWarehouse),

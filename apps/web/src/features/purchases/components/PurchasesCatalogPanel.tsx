@@ -20,7 +20,7 @@ import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
 import { Badge } from "@/common/components/Badge";
 import { Tabs, type TabItem } from "@/common/components/Tabs";
 import { purchasesService } from "../services/purchases.service.instance";
-import { productsService } from "@/features/products/services/products.service.instance";
+import { purchasesCatalogService } from "../services/purchases-catalog.service.instance";
 import type { PurchasesTenantContext } from "../types/purchases.types";
 
 interface PurchasesCatalogPanelProps {
@@ -168,9 +168,9 @@ export function PurchasesCatalogPanel({
     setLastError(null);
     
     const [categoriesResult, productsResult, presentationsResult] = await Promise.all([
-      productsService.listCategories(tenant),
-      productsService.listProducts(tenant),
-      productsService.listPresentations(tenant)
+      purchasesCatalogService.listCategories(tenant),
+      purchasesCatalogService.listProducts(tenant),
+      purchasesCatalogService.listPresentations(tenant)
     ]);
     
     if (!categoriesResult.ok) setLastError(categoriesResult.error.message);
@@ -229,7 +229,7 @@ export function PurchasesCatalogPanel({
     setIsSubmitting(true);
     setCategoryError(null);
     
-    const result = await productsService.createCategory({
+    const result = await purchasesCatalogService.createCategory({
       name,
       sourceModule: "purchases"
     });
@@ -292,7 +292,7 @@ export function PurchasesCatalogPanel({
     if (productForm.unitOfMeasure) Object.assign(input, { unitOfMeasure: productForm.unitOfMeasure });
     if (productForm.defaultPresentationId) Object.assign(input, { defaultPresentationId: productForm.defaultPresentationId });
     
-    const result = await productsService.createProduct(input);
+    const result = await purchasesCatalogService.createProduct(input);
     
     if (!result.ok) {
       setProductErrors({ submit: result.error.message });
@@ -340,7 +340,7 @@ export function PurchasesCatalogPanel({
     setIsSubmitting(true);
     setPresentationErrors({});
     
-    const result = await productsService.createPresentation({
+    const result = await purchasesCatalogService.createPresentation({
       productLocalId: presentationForm.productLocalId,
       name,
       factor,

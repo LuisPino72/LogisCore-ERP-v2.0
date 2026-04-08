@@ -64,6 +64,23 @@ const decodeJwtPayload = (token: string): JwtPayload | null => {
 
 type DbRow = Record<string, unknown>;
 
+const protectedColumns = new Set([
+  "id",
+  "tenant_id",
+  "tenant_slug",
+  "local_id",
+  "created_at",
+  "updated_at",
+  "deleted_at"
+]);
+
+const sanitizeMutationPayload = (payload: DbRow): DbRow => {
+  const sanitizedEntries = Object.entries(payload).filter(
+    ([key]) => !protectedColumns.has(key)
+  );
+  return Object.fromEntries(sanitizedEntries);
+};
+
 const insertRecord = async (
   client: Awaited<ReturnType<typeof createClient>>,
   table: string,
@@ -71,10 +88,12 @@ const insertRecord = async (
   localId: string,
   payload: DbRow
 ): Promise<{ success: boolean; error?: string }> => {
+  const sanitizedPayload = sanitizeMutationPayload(payload);
+
   const result = await client
     .from(table)
     .insert({
-      ...payload,
+      ...sanitizedPayload,
       local_id: localId,
       tenant_id: tenantId,
       created_at: new Date().toISOString(),
@@ -96,10 +115,12 @@ const updateRecord = async (
   localId: string,
   payload: DbRow
 ): Promise<{ success: boolean; error?: string }> => {
+  const sanitizedPayload = sanitizeMutationPayload(payload);
+
   const result = await client
     .from(table)
     .update({
-      ...payload,
+      ...sanitizedPayload,
       updated_at: new Date().toISOString()
     })
     .eq("local_id", localId)

@@ -4,7 +4,6 @@ import { eventBus } from "@/lib/core/runtime";
 import { useProducts } from "../hooks/useProducts";
 import { productsService } from "../services/products.service.instance";
 import type { ProductsActorContext, Product } from "../types/products.types";
-import { exchangeRatesService } from "@/features/exchange-rates/services/exchange-rates.service.instance";
 import { Tabs } from "@/common/components/Tabs";
 import { KPIHeader } from "./KPIHeader";
 import { ProductsDataTable } from "./ProductsDataTable";
@@ -16,9 +15,10 @@ const DEFAULT_EXCHANGE_RATE = 480;
 interface ProductsCatalogProps {
   tenantSlug: string;
   actor: ProductsActorContext;
+  exchangeRate?: number;
 }
 
-export function ProductsCatalog({ tenantSlug, actor }: ProductsCatalogProps) {
+export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateFromApp }: ProductsCatalogProps) {
   const { state, refresh } = useProducts({
     service: productsService,
     tenant: { tenantSlug },
@@ -37,18 +37,10 @@ export function ProductsCatalog({ tenantSlug, actor }: ProductsCatalogProps) {
   }, [refresh]);
 
   useEffect(() => {
-    const loadExchangeRate = async () => {
-      const rateResult = await exchangeRatesService.getActiveRate(
-        tenantSlug,
-        "USD",
-        "VES"
-      );
-      if (rateResult.ok && rateResult.data) {
-        setExchangeRate(rateResult.data.rate);
-      }
-    };
-    loadExchangeRate();
-  }, [tenantSlug]);
+    if (typeof exchangeRateFromApp === "number" && exchangeRateFromApp > 0) {
+      setExchangeRate(exchangeRateFromApp);
+    }
+  }, [exchangeRateFromApp]);
 
   useEffect(() => {
     const offCreatedCategory = eventBus.on("CATALOG.CATEGORY_CREATED", () => {

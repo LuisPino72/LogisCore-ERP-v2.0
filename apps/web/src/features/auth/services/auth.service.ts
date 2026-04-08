@@ -4,8 +4,8 @@ import type { AuthSession } from "../types/auth.types";
 // Abstracción del cliente de autenticación
 export interface AuthSupabaseLike {
   auth: {
-    getSession: () => Promise<{ data: { session: { user: { id: string; email?: string } } | null }; error: { message: string } | null }>;
-    signInWithPassword: (options: { email: string; password: string }) => Promise<{ data: { session: { user: { id: string; email?: string } } | null } | null; error: { message: string } | null }>;
+    getSession: () => Promise<{ data: { session: { user: { id: string; email?: string }; access_token?: string } | null }; error: { message: string } | null }>;
+    signInWithPassword: (options: { email: string; password: string }) => Promise<{ data: { session: { user: { id: string; email?: string }; access_token?: string } | null } | null; error: { message: string } | null }>;
     signOut: () => Promise<{ error: { message: string } | null }>;
     resetPasswordForEmail: (email: string, options?: { redirectTo?: string }) => Promise<{ data: unknown; error: { message: string } | null }>;
     updateUser: (options: { password: string }) => Promise<{ data: unknown; error: { message: string } | null }>;
@@ -109,17 +109,22 @@ export const createAuthService = ({
   async logAuditEvent(action: string, userId: string | null, email: string | null): Promise<Result<void, AppError>> {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!supabaseUrl || !anonKey) {
+      if (!supabaseUrl) {
         return ok(undefined);
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/audit-log-v2`, {
+      const sessionResponse = await supabase.auth.getSession();
+      const accessToken = sessionResponse.data.session?.access_token;
+      if (!accessToken) {
+        return ok(undefined);
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/audit-log-hrd-2026`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${anonKey}`
+          "Authorization": `Bearer ${accessToken}`
         },
         body: JSON.stringify({ action, userId, email })
       }).catch(() => null);

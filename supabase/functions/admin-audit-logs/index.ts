@@ -22,10 +22,46 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ success: false, error: "MISSING_BEARER_TOKEN" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "").trim();
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+
+    const authResult = await authClient.auth.getUser(token);
+    if (authResult.error || !authResult.data.user) {
+      return new Response(
+        JSON.stringify({ success: false, error: "INVALID_JWT" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: roleRow, error: roleError } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", authResult.data.user.id)
+      .eq("role", "admin")
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (roleError || !roleRow) {
+      return new Response(
+        JSON.stringify({ success: false, error: "FORBIDDEN_ADMIN_ONLY" }),
+        { status: 403, headers: jsonHeaders }
+      );
+    }
 
     const url = new URL(req.url);
     const limit = parseInt(url.searchParams.get("limit") || "50");
