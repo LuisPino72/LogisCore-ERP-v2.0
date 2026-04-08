@@ -125,13 +125,16 @@ export const createAuthService = ({
         return ok(undefined);
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/audit-log-hrd-2026`, {
+      const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/audit-log-hrd-2026`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${resolvedAccessToken}`
         },
-        body: JSON.stringify({ action, userId, email })
+        body: JSON.stringify({ 
+          action: action,
+          metadata: email ? { email } : undefined
+        })
       }).catch(() => null);
 
       if (!response || !response.ok) {
