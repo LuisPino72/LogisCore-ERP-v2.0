@@ -22,7 +22,7 @@ export interface AuthService {
   signOut(): Promise<Result<void, AppError>>; // Cerrar sesión
   resetPassword(email: string): Promise<Result<void, AppError>>; // Recuperar contraseña
   updatePassword(password: string): Promise<Result<void, AppError>>; // Actualizar contraseña
-  logAuditEvent(action: string, userId: string | null, email: string | null): Promise<Result<void, AppError>>; // Registrar evento de auditoría
+  logAuditEvent(action: string, userId: string | null, email: string | null, accessToken?: string): Promise<Result<void, AppError>>; // Registrar evento de auditoría
 }
 
 // Dependencias necesarias para crear el servicio
@@ -100,13 +100,13 @@ export const createAuthService = ({
     eventBus.emit("AUTH.SIGNIN_SUCCESS", session);
 
     // Registrar login exitoso en auditoría
-    await this.logAuditEvent("LOGIN", signInResponse.data.session.user.id, email);
+    await this.logAuditEvent("LOGIN", signInResponse.data.session.user.id, email, signInResponse.data.session.access_token);
 
     return ok(session);
   },
 
   // Registra evento de auditoría
-  async logAuditEvent(action: string, userId: string | null, email: string | null): Promise<Result<void, AppError>> {
+  async logAuditEvent(action: string, userId: string | null, email: string | null, accessToken?: string): Promise<Result<void, AppError>> {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       
@@ -114,9 +114,14 @@ export const createAuthService = ({
         return ok(undefined);
       }
 
-      const sessionResponse = await supabase.auth.getSession();
-      const accessToken = sessionResponse.data.session?.access_token;
-      if (!accessToken) {
+      let resolvedAccessToken = accessToken;
+
+      if (!resolvedAccessToken) {
+        const sessionResponse = await supabase.auth.getSession();
+        resolvedAccessToken = sessionResponse.data.session?.access_token;
+      }
+
+      if (!resolvedAccessToken) {
         return ok(undefined);
       }
 
@@ -124,7 +129,7 @@ export const createAuthService = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`
+          "Authorization": `Bearer ${resolvedAccessToken}`
         },
         body: JSON.stringify({ action, userId, email })
       }).catch(() => null);
