@@ -117,9 +117,9 @@ export const createCoreService = ({
 
     const tenantQuery = await supabaseClient
       .from("tenants")
-      .select("id, slug, name")
+      .select("id, slug, name, business_type_id")
       .eq("owner_user_id", userId)
-      .maybeSingle<{ id: string; slug: string; name: string }>();
+      .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
 
     if (tenantQuery.error || !tenantQuery.data) {
       return err(
@@ -138,7 +138,8 @@ export const createCoreService = ({
       tenantUuid: tenantQuery.data.id,
       tenantSlug: tenantQuery.data.slug,
       tenantName: tenantQuery.data.name,
-      userId
+      userId,
+      businessTypeId: tenantQuery.data.business_type_id ?? undefined
     };
     eventBus.emit("TENANT.RESOLVED", tenantContext);
     return ok(tenantContext);
@@ -238,18 +239,102 @@ export const createCoreService = ({
 
     const tables = ["categories", "products", "product_presentations", "product_size_colors", "warehouses"] as const;
 
+    const tenantInfoQuery = await supabaseClient
+      .from("tenants")
+      .select("id, business_type_id")
+      .eq("slug", tenantSlug)
+      .maybeSingle<{ id: string; business_type_id: string | null }>();
+    const tenantId = tenantInfoQuery.data?.id;
+    const businessTypeId = tenantInfoQuery.data?.business_type_id;
+
+    const supabaseAny = supabaseClient as unknown as {
+      from: (table: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string | boolean) => {
+            is: (column: string, value: null) => {
+              order: (column: string, options?: { ascending?: boolean }) => Promise<SupabaseRowResponse<Record<string, unknown>[]>>;
+            };
+            order: (column: string, options?: { ascending?: boolean }) => Promise<SupabaseRowResponse<Record<string, unknown>[]>>;
+          };
+        };
+      };
+    };
+
     for (const table of tables) {
       try {
-        const response = await supabaseClient
-          .from(table)
-          .select("*")
-          .eq("tenant_slug", tenantSlug)
-          .order("created_at", { ascending: true });
+        let response: SupabaseRowResponse<Record<string, unknown>[]>;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data = (response as any).data as Record<string, unknown>[] | null;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const error = (response as any).error as { message: string } | null;
+        if ((table === "categories" || table === "products") && businessTypeId) {
+          const tenantResponse = tenantId
+            ? await supabaseAny
+                .from(table)
+                .select("*")
+                .eq("tenant_id", tenantId)
+                .is("deleted_at", null)
+                .order("created_at", { ascending: true })
+            : await supabaseAny
+                .from(table)
+                .select("*")
+                .eq("tenant_slug", tenantSlug)
+                .is("deleted_at", null)
+                .order("created_at", { ascending: true });
+
+          let globalRows: Record<string, unknown>[] = [];
+          const globalResponse = await supabaseAny
+            .from(table)
+            .select("*")
+            .eq("is_global", true)
+            .eq("business_type_id", businessTypeId)
+            .is("deleted_at", null)
+            .order("created_at", { ascending: true });
+
+          if (!globalResponse.error && Array.isArray(globalResponse.data)) {
+            globalRows = globalResponse.data;
+          }
+
+          const tenantRows = Array.isArray(tenantResponse.data) ? tenantResponse.data : [];
+          const dedup = new Map<string, Record<string, unknown>>();
+          [...tenantRows, ...globalRows].forEach((row) => {
+            const key = (row.local_id as string | undefined) ?? (row.id as string | undefined);
+            if (key) {
+              dedup.set(key, row);
+            }
+          });
+
+          response = {
+            data: Array.from(dedup.values()),
+            error: tenantResponse.error
+          };
+        } else if (table === "categories") {
+          response = tenantId
+            ? await supabaseAny
+                .from(table)
+                .select("*")
+                .eq("tenant_id", tenantId)
+                .is("deleted_at", null)
+                .order("created_at", { ascending: true })
+            : await supabaseAny
+                .from(table)
+                .select("*")
+                .eq("tenant_slug", tenantSlug)
+                .is("deleted_at", null)
+                .order("created_at", { ascending: true });
+        } else {
+          response = tenantId
+            ? await supabaseAny
+                .from(table)
+                .select("*")
+                .eq("tenant_id", tenantId)
+                .order("created_at", { ascending: true })
+            : await supabaseAny
+                .from(table)
+                .select("*")
+                .eq("tenant_slug", tenantSlug)
+                .order("created_at", { ascending: true });
+        }
+
+        const data = response.data;
+        const error = response.error;
 
         if (error || !data) {
           continue;

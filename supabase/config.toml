@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.audit-log]
 verify_jwt = false
+
+[functions.sync_table_item]
+verify_jwt = false
+
+[functions.sync-table-item-hardened-2026]
+verify_jwt = false

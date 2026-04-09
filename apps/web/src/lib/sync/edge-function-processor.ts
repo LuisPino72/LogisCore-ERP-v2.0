@@ -19,9 +19,20 @@ export const createEdgeFunctionSyncProcessor = (): SyncProcessor => ({
     }
 
     try {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
+      const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
+        const parts = token.split(".");
+        if (parts.length !== 3) return null;
+        try {
+          const base64 = parts[1]!.replace(/-/g, "+").replace(/_/g, "/");
+          const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+          const json = atob(padded);
+          return JSON.parse(json) as Record<string, unknown>;
+        } catch {
+          return null;
+        }
+      };
 
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !sessionData.session) {
         return err(
           createAppError({
@@ -32,19 +43,122 @@ export const createEdgeFunctionSyncProcessor = (): SyncProcessor => ({
         );
       }
 
-      const response = await supabase.functions.invoke("sync-table-item-hardened-2026", {
-        body: {
-          table: item.table,
-          operation: item.operation,
-          localId: item.localId,
-          payload: item.payload
-        }
-      });
+      let accessToken = sessionData.session.access_token;
+      if (!accessToken) {
+        return err(
+          createAppError({
+            code: "SYNC_NO_ACCESS_TOKEN",
+            message: "No hay access token en la sesion activa.",
+            retryable: false
+          })
+        );
+      }
 
-      if (response.error) {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+      if (!supabaseUrl || !anonKey) {
+        return err(
+          createAppError({
+            code: "SYNC_ENV_MISSING",
+            message: "Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY para sincronizar.",
+            retryable: false
+          })
+        );
+      }
+
+      const urlRef = (() => {
+        try {
+          return new URL(supabaseUrl).host.split(".")[0] ?? "";
+        } catch {
+          return "";
+        }
+      })();
+
+      const tokenPayload = decodeJwtPayload(accessToken);
+      const tokenIss = typeof tokenPayload?.iss === "string" ? tokenPayload.iss : "";
+      const tokenRefFromIss = tokenIss.includes("/auth/v1") ? tokenIss.split("https://")[1]?.split(".")[0] : "";
+      const anonPayload = decodeJwtPayload(anonKey);
+      const anonRef = typeof anonPayload?.ref === "string" ? anonPayload.ref : "";
+
+      if ((tokenRefFromIss && tokenRefFromIss !== urlRef) || (anonRef && anonRef !== urlRef)) {
+        return err(
+          createAppError({
+            code: "SYNC_PROJECT_REF_MISMATCH",
+            message: `Mismatch de proyecto Supabase (urlRef=${urlRef}, tokenRef=${tokenRefFromIss || "n/a"}, anonRef=${anonRef || "n/a"}).`,
+            retryable: false
+          })
+        );
+      }
+
+      // Valida token actual y fuerza refresh si expiró.
+      const tokenValidation = await supabase.auth.getUser(accessToken);
+      if (tokenValidation.error) {
+        const refreshResult = await supabase.auth.refreshSession();
+        const refreshedToken = refreshResult.data.session?.access_token;
+        if (!refreshedToken) {
+          return err(
+            createAppError({
+              code: "SYNC_SESSION_REFRESH_FAILED",
+              message: refreshResult.error?.message ?? "No se pudo refrescar la sesion.",
+              retryable: true
+            })
+          );
+        }
+        accessToken = refreshedToken;
+      }
+
+      const functionCandidates = ["sync_table_item", "sync-table-item-hardened-2026"];
+      let rawResponse: Response | null = null;
+      let responseBody: { error?: string; details?: string } | null = null;
+
+      for (let i = 0; i < functionCandidates.length; i++) {
+        const functionName = functionCandidates[i]!;
+        const endpoint = `${supabaseUrl.replace(/\/$/, "")}/functions/v1/${functionName}`;
+        rawResponse = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+            "apikey": anonKey
+          },
+          body: JSON.stringify({
+            table: item.table,
+            operation: item.operation,
+            localId: item.localId,
+            payload: item.payload
+          })
+        });
+
+        try {
+          responseBody = (await rawResponse.json()) as { error?: string; details?: string };
+        } catch {
+          responseBody = null;
+        }
+
+        const shouldFallback =
+          rawResponse.status === 401 &&
+          i < functionCandidates.length - 1;
+
+        if (!shouldFallback) {
+          break;
+        }
+      }
+
+      if (!rawResponse) {
+        return err(
+          createAppError({
+            code: "SYNC_FUNCTION_NO_RESPONSE",
+            message: "No se obtuvo respuesta de la Edge Function de sincronizacion.",
+            retryable: true
+          })
+        );
+      }
+
+      if (!rawResponse.ok) {
         const errorMessage =
-          response.data?.error ?? response.error.message ?? "Unknown error";
-        const errorDetails = response.data?.details;
+          responseBody?.error ??
+          `HTTP_${rawResponse.status}`;
+        const errorDetails = responseBody?.details;
 
         const isConflict =
           errorMessage.includes("CONFLICT") ||

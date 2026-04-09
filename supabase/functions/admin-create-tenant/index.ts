@@ -12,12 +12,12 @@ interface GlobalProductSeed {
 
 const GLOBAL_PRODUCTS_BY_BUSINESS: Record<string, GlobalProductSeed[]> = {
   Bodega: [
-    { name: "Tomate", category: "Verduras", sku: "TOM-001", visible: true, is_weighted: true, unit_of_measure: "kg", presentation: { name: "Unidad", factor: 1 } },
-    { name: "Cebolla", category: "Verduras", sku: "CEB-001", visible: true, is_weighted: true, unit_of_measure: "kg", presentation: { name: "Unidad", factor: 1 } },
-    { name: "Arroz", category: "Granos", sku: "ARR-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
-    { name: "Harina", category: "Harinas", sku: "HAR-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
+    { name: "Tomate", category: "Frutas y Verduras", sku: "TOM-001", visible: true, is_weighted: true, unit_of_measure: "kg", presentation: { name: "Unidad", factor: 1 } },
+    { name: "Cebolla", category: "Frutas y Verduras", sku: "CEB-001", visible: true, is_weighted: true, unit_of_measure: "kg", presentation: { name: "Unidad", factor: 1 } },
+    { name: "Arroz", category: "Víveres", sku: "ARR-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
+    { name: "Harina", category: "Víveres", sku: "HAR-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
     { name: "Aceite", category: "Enlatados", sku: "ACE-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Litro", factor: 1 } },
-    { name: "Azúcar", category: "Granos", sku: "AZU-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
+    { name: "Azúcar", category: "Víveres", sku: "AZU-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
     { name: "Sal", category: "Condimentos", sku: "SAL-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
     { name: "Pasta", category: "Pastas", sku: "PAS-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Paquete", factor: 1 } },
     { name: "Leche", category: "Lácteos", sku: "LEC-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Litro", factor: 1 } },
@@ -40,6 +40,14 @@ const GLOBAL_PRODUCTS_BY_BUSINESS: Record<string, GlobalProductSeed[]> = {
   Otro: [
     { name: "Producto Genérico", category: "General", sku: "GEN-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Unidad", factor: 1 } }
   ]
+};
+
+const DEFAULT_CATEGORIES_BY_BUSINESS: Record<string, string[]> = {
+  Bodega: ["Frutas y Verduras", "Víveres", "Lácteos", "Enlatados", "Condimentos", "Pastas", "Bebidas", "Limpieza"],
+  Restaurante: ["Insumos", "Proteínas", "Bebidas", "Limpieza", "Empaques"],
+  Manufactura: ["Materia Prima", "Insumos", "Productos Terminados", "Empaques", "Limpieza"],
+  Servicios: ["Insumos", "Herramientas", "Repuestos", "Limpieza"],
+ Otro: ["General", "Varios"]
 };
 
 const jsonHeaders = {
@@ -250,8 +258,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const categoriesCreatedCount = 0;
-
+    let categoriesCreatedCount = 0;
     let productsCreated = 0;
     let presentationsCreated = 0;
 
@@ -263,24 +270,32 @@ Deno.serve(async (req: Request) => {
         .maybeSingle<{ name: string }>();
 
       const businessName = businessType?.name ?? "Otro";
+      const defaultCategories = DEFAULT_CATEGORIES_BY_BUSINESS[businessName] ?? DEFAULT_CATEGORIES_BY_BUSINESS["Otro"];
+      const categoryMap = new Map<string, string>();
+      const now = new Date().toISOString();
+
+      for (const catName of defaultCategories) {
+        const catLocalId = crypto.randomUUID();
+        const { error: catError } = await supabase.from("categories").insert({
+          local_id: catLocalId,
+          tenant_id: tenantId,
+          tenant_slug: input.slug,
+          name: catName,
+          created_at: now,
+          updated_at: now,
+          business_type_id: input.businessTypeId,
+          is_global: false
+        });
+
+        if (!catError) {
+          categoriesCreatedCount++;
+          categoryMap.set(catName.toLowerCase(), catLocalId);
+        }
+      }
+
       const seedProducts = GLOBAL_PRODUCTS_BY_BUSINESS[businessName] ?? [];
 
       if (seedProducts.length > 0) {
-        const { data: categories } = await supabase
-          .from("categories")
-          .select("local_id, name")
-          .eq("tenant_slug", input.slug)
-          .is("deleted_at", null);
-
-        const categoryMap = new Map<string, string>();
-        if (categories) {
-          for (const cat of categories) {
-            categoryMap.set(cat.name.toLowerCase(), cat.local_id);
-          }
-        }
-
-        const now = new Date().toISOString();
-
         for (const sp of seedProducts) {
           const categoryId = categoryMap.get(sp.category.toLowerCase()) ?? null;
           const productLocalId = crypto.randomUUID();

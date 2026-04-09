@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Plus, Package, Folder, Box, Search, Check, Building2, Edit2, X } from "lucide-react";
+import { Plus, Package, Folder, Box, Search, Check, Building2, Edit2 } from "lucide-react";
 import type { Category, Product, ProductPresentation } from "@/features/products/types/products.types";
 import type { PurchasesActorContext, Supplier, CreateSupplierInput, UpdateSupplierInput } from "../types/purchases.types";
 import { eventBus } from "@/lib/core/runtime";
@@ -151,7 +151,7 @@ function SimpleTable<T extends Record<string, unknown>>({
 
 export function PurchasesCatalogPanel({
   tenantSlug,
-  actor: _actor,
+  actor,
   categories: initialCategories,
   products: initialProducts,
   presentations: initialPresentations,
@@ -160,7 +160,6 @@ export function PurchasesCatalogPanel({
   onUpdateSupplier,
   isLoadingSuppliers = false
 }: PurchasesCatalogPanelProps) {
-  void _actor;
   const [activeTab, setActiveTab] = useState<"products" | "categories" | "presentations" | "suppliers">("products");
   
   const [categories, setCategories] = useState<Category[]>(initialCategories);
@@ -190,7 +189,7 @@ export function PurchasesCatalogPanel({
   const [presentationErrors, setPresentationErrors] = useState<Record<string, string>>({});
   const [supplierError, setSupplierError] = useState<string | null>(null);
 
-  const tenant: PurchasesTenantContext = { tenantSlug };
+  const tenant = useMemo<PurchasesTenantContext>(() => ({ tenantSlug }), [tenantSlug]);
 
   const refreshData = useCallback(async () => {
     setIsLoading(true);
@@ -221,13 +220,29 @@ export function PurchasesCatalogPanel({
     setSuppliers(initialSuppliers);
   }, [initialCategories, initialProducts, initialPresentations, initialSuppliers]);
 
+  useEffect(() => {
+    void refreshData();
+  }, [refreshData]);
+
+  useEffect(() => {
+    const offCatalogPulled = eventBus.on("CORE.CATALOGS_PULLED", () => {
+      void refreshData();
+    });
+    const offGlobalHydrated = eventBus.on("CATALOG.GLOBAL_PRODUCTS_HYDRATED", () => {
+      void refreshData();
+    });
+    return () => {
+      offCatalogPulled();
+      offGlobalHydrated();
+    };
+  }, [refreshData]);
+
   const filteredCategories = useMemo(() => {
     return categories.filter(c => 
-      c.tenantId === tenantSlug && 
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
       !c.deletedAt
     );
-  }, [categories, tenantSlug, searchQuery]);
+  }, [categories, searchQuery]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => 
@@ -266,10 +281,14 @@ export function PurchasesCatalogPanel({
     setIsSubmitting(true);
     setCategoryError(null);
     
-    const result = await purchasesCatalogService.createCategory({
+    const result = await purchasesCatalogService.createCategory(
+      tenant,
+      actor,
+      {
       name,
       sourceModule: "purchases"
-    });
+      }
+    );
     
     if (!result.ok) {
       setCategoryError(result.error.message);
@@ -282,7 +301,7 @@ export function PurchasesCatalogPanel({
     setCategoryForm(initialCategoryForm);
     setIsSubmitting(false);
     void refreshData();
-  }, [categoryForm.name, refreshData]);
+  }, [categoryForm.name, refreshData, tenant, actor]);
 
   const handleCreateProduct = useCallback(async () => {
     const errors: Record<string, string> = {};
@@ -329,7 +348,7 @@ export function PurchasesCatalogPanel({
     if (productForm.unitOfMeasure) Object.assign(input, { unitOfMeasure: productForm.unitOfMeasure });
     if (productForm.defaultPresentationId) Object.assign(input, { defaultPresentationId: productForm.defaultPresentationId });
     
-    const result = await purchasesCatalogService.createProduct(input);
+    const result = await purchasesCatalogService.createProduct(tenant, actor, input);
     
     if (!result.ok) {
       setProductErrors({ submit: result.error.message });
@@ -350,7 +369,7 @@ export function PurchasesCatalogPanel({
     setProductForm(initialProductForm);
     setIsSubmitting(false);
     void refreshData();
-  }, [productForm, products, tenantSlug, tenant, refreshData]);
+  }, [productForm, products, tenantSlug, tenant, actor, refreshData]);
 
   const handleCreatePresentation = useCallback(async () => {
     const errors: Record<string, string> = {};
@@ -377,7 +396,7 @@ export function PurchasesCatalogPanel({
     setIsSubmitting(true);
     setPresentationErrors({});
     
-    const result = await purchasesCatalogService.createPresentation({
+    const result = await purchasesCatalogService.createPresentation(tenant, actor, {
       productLocalId: presentationForm.productLocalId,
       name,
       factor,
@@ -395,7 +414,7 @@ export function PurchasesCatalogPanel({
     setPresentationForm(initialPresentationForm);
     setIsSubmitting(false);
     void refreshData();
-  }, [presentationForm, refreshData]);
+  }, [presentationForm, refreshData, tenant, actor]);
 
   const handleCreateSupplier = useCallback(async () => {
     if (!supplierForm.name.trim()) {
@@ -742,7 +761,7 @@ export function PurchasesCatalogPanel({
                   className="input"
                 >
                   <option value="">Sin categoría</option>
-                  {categories.filter(c => c.tenantId === tenantSlug && !c.deletedAt).map((cat) => (
+                  {categories.filter(c => !c.deletedAt).map((cat) => (
                     <option key={cat.localId} value={cat.localId}>{cat.name}</option>
                   ))}
                 </select>

@@ -20,10 +20,10 @@ export function SubscriptionExpirationBanner() {
   );
 }
 
-interface TenantBootstrapGateProps {
+export interface TenantBootstrapGateProps {
   authService: Parameters<typeof useAuth>[0]["service"];
   tenantService: Parameters<typeof useTenantData>[0]["tenant"];
-  coreService: { startSync: () => unknown };
+  coreService: { startSync: () => unknown; bootstrapSession: () => Promise<unknown> };
   renderApp?: (tenantSlug: string, actor: ActorContext, signOut: () => void) => ReactNode;
 }
 
@@ -61,6 +61,7 @@ export function TenantBootstrapGate({
     void (async () => {
       await bootstrapTenantData();
       coreService.startSync();
+      await coreService.bootstrapSession();
     })();
   }, [authState.session, bootstrapTenantData, coreService]);
 

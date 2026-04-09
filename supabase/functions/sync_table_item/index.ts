@@ -44,6 +44,9 @@ const jsonHeaders = {
 type JwtPayload = {
   sub?: string;
   tenant_slug?: string;
+  app_metadata?: {
+    tenant_id?: string;
+  };
 };
 
 const decodeJwtPayload = (token: string): JwtPayload | null => {
@@ -217,29 +220,106 @@ Deno.serve(async (request) => {
     );
   }
 
+  const userId = authResult.data.user.id;
   const tokenPayload = decodeJwtPayload(token);
+  const tokenTenantId = tokenPayload?.app_metadata?.tenant_id;
   const tokenTenantSlug = tokenPayload?.tenant_slug;
-  if (!tokenTenantSlug) {
+
+  let tenantId: string | null = null;
+  let tenantSlug: string | null = null;
+
+  if (tokenTenantId) {
+    const tenantFromToken = await adminClient
+      .from("tenants")
+      .select("id, slug")
+      .eq("id", tokenTenantId)
+      .maybeSingle<{ id: string; slug: string }>();
+
+    if (tenantFromToken.error || !tenantFromToken.data) {
+      return new Response(
+        JSON.stringify({ error: "TENANT_NOT_FOUND" }),
+        { status: 404, headers: jsonHeaders }
+      );
+    }
+
+    tenantId = tenantFromToken.data.id;
+    tenantSlug = tenantFromToken.data.slug;
+  } else if (tokenTenantSlug) {
+    const tenantFromSlug = await adminClient
+      .from("tenants")
+      .select("id, slug")
+      .eq("slug", tokenTenantSlug)
+      .maybeSingle<{ id: string; slug: string }>();
+
+    if (tenantFromSlug.error || !tenantFromSlug.data) {
+      return new Response(
+        JSON.stringify({ error: "TENANT_NOT_FOUND" }),
+        { status: 404, headers: jsonHeaders }
+      );
+    }
+
+    tenantId = tenantFromSlug.data.id;
+    tenantSlug = tenantFromSlug.data.slug;
+  } else {
+    const roleLookup = await adminClient
+      .from("user_roles")
+      .select("tenant_id")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .limit(2);
+
+    if (roleLookup.error || !roleLookup.data || roleLookup.data.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "TENANT_CONTEXT_MISSING" }),
+        { status: 403, headers: jsonHeaders }
+      );
+    }
+
+    if (roleLookup.data.length > 1) {
+      return new Response(
+        JSON.stringify({ error: "TENANT_CONTEXT_AMBIGUOUS" }),
+        { status: 403, headers: jsonHeaders }
+      );
+    }
+
+    tenantId = roleLookup.data[0]!.tenant_id as string | null;
+    if (!tenantId) {
+      return new Response(
+        JSON.stringify({ error: "TENANT_CONTEXT_MISSING" }),
+        { status: 403, headers: jsonHeaders }
+      );
+    }
+
+    const tenantFromRole = await adminClient
+      .from("tenants")
+      .select("id, slug")
+      .eq("id", tenantId)
+      .maybeSingle<{ id: string; slug: string }>();
+
+    if (tenantFromRole.error || !tenantFromRole.data) {
+      return new Response(
+        JSON.stringify({ error: "TENANT_NOT_FOUND" }),
+        { status: 404, headers: jsonHeaders }
+      );
+    }
+
+    tenantSlug = tenantFromRole.data.slug;
+  }
+
+  const membership = await adminClient
+    .from("user_roles")
+    .select("tenant_id, role, is_active")
+    .eq("user_id", userId)
+    .eq("tenant_id", tenantId)
+    .eq("is_active", true)
+    .maybeSingle<{ tenant_id: string; role: string; is_active: boolean }>();
+
+  if (membership.error || !membership.data) {
     return new Response(
-      JSON.stringify({ error: "MISSING_TENANT_SLUG_CLAIM" }),
+      JSON.stringify({ error: "FORBIDDEN_TENANT_ACCESS" }),
       { status: 403, headers: jsonHeaders }
     );
   }
-
-  const tenantResult = await adminClient
-    .from("tenants")
-    .select("id, slug")
-    .eq("slug", tokenTenantSlug)
-    .maybeSingle<{ id: string; slug: string }>();
-
-  if (tenantResult.error || !tenantResult.data) {
-    return new Response(
-      JSON.stringify({ error: "TENANT_NOT_FOUND" }),
-      { status: 404, headers: jsonHeaders }
-    );
-  }
-
-  const tenantId = tenantResult.data.id;
   const { table, operation, localId, payload } = parsedInput.data;
 
   let syncResult: { success: boolean; error?: string };
@@ -299,7 +379,8 @@ Deno.serve(async (request) => {
       table,
       operation,
       localId,
-      tenantId
+      tenantId,
+      tenantSlug
     }),
     { status: 200, headers: jsonHeaders }
   );

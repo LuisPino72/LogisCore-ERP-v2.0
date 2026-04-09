@@ -115,29 +115,42 @@ describe("core.service", () => {
     const catalogsDb = createCatalogsDbMock();
     const eventBus = new InMemoryEventBus();
 
-    // Mock de Supabase que retorna datos válidos
     const supabaseMock: any = {
-      from: (table: string) => ({
-        select: () => ({
-          eq: () => ({
-            order: () => ({
+      from: (table: string) => {
+        if (table === "tenants") {
+          return {
+            select: () => ({
               eq: () => ({
-                order: async () => {
-                  if (table === "categories") {
-                    return {
-                      data: [
-                        { local_id: "cat-1", tenant_slug: "tenant-demo", name: "Bebidas", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" }
-                      ],
-                      error: null
-                    };
+                maybeSingle: async () => ({
+                  data: { business_type_id: null },
+                  error: null
+                })
+              })
+            })
+          };
+        }
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                eq: () => ({
+                  order: async () => {
+                    if (table === "categories") {
+                      return {
+                        data: [
+                          { local_id: "cat-1", tenant_slug: "tenant-demo", name: "Bebidas", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" }
+                        ],
+                        error: null
+                      };
+                    }
+                    return { data: [], error: null };
                   }
-                  return { data: [], error: null };
-                }
+                })
               })
             })
           })
-        })
-      })
+        };
+      }
     };
 
     const service = createCoreService({
@@ -150,7 +163,6 @@ describe("core.service", () => {
 
     const result = await service.pullCatalogs("tenant-demo");
     expect(result.ok).toBe(true);
-    // Verifica que se intentó hacer bulkPut (puede fallar por el mapeo pero se intenta)
   });
 
   it("pullCatalogs no hace nada si no hay catalogsDb", async () => {
