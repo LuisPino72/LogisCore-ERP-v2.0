@@ -129,7 +129,10 @@ export const createAuthService = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${resolvedAccessToken}`
+          "Authorization": `Bearer ${resolvedAccessToken}`,
+          ...(import.meta.env.VITE_SUPABASE_ANON_KEY
+            ? { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY }
+            : {})
         },
         body: JSON.stringify({ 
           action: action,

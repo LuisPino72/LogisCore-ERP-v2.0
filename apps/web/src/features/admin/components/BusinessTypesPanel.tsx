@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import type { BusinessType, CreateBusinessTypeInput, UpdateBusinessTypeInput } from "../types/admin.types";
+import { ConfirmDialog } from "../../../common/components/ConfirmDialog";
 
 interface BusinessTypesPanelProps {
   businessTypes: BusinessType[];
@@ -29,6 +30,8 @@ export function BusinessTypesPanel({
     name: "", 
     description: "" 
   });
+  const [deletingType, setDeletingType] = useState<BusinessType | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     onRefresh();
@@ -135,7 +138,7 @@ export function BusinessTypesPanel({
                     Editar
                   </button>
                   <button 
-                    onClick={() => onDelete(type.id)}
+                    onClick={() => setDeletingType(type)}
                     className="text-state-error hover:text-red-700 text-sm"
                   >
                     Eliminar
@@ -158,6 +161,25 @@ export function BusinessTypesPanel({
           No hay tipos de negocio configurados
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!deletingType}
+        onClose={() => setDeletingType(null)}
+        onConfirm={async () => {
+          if (!deletingType) return;
+          setIsDeleting(true);
+          const result = await onDelete(deletingType.id);
+          setIsDeleting(false);
+          if (result.ok) {
+            setDeletingType(null);
+          }
+        }}
+        title="Eliminar Tipo de Negocio"
+        message={`¿Está seguro de eliminar "${deletingType?.name}"? Esta acción no se puede deshacer y podría afectar tenants que usen este tipo de negocio.`}
+        confirmLabel="Eliminar"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

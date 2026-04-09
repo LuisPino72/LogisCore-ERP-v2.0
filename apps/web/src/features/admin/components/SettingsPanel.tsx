@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import type { GlobalConfig, UpdateGlobalConfigInput } from "../types/admin.types";
+import { ConfirmDialog } from "../../../common/components/ConfirmDialog";
 
 interface SettingsPanelProps {
   config: GlobalConfig | null;
@@ -19,6 +20,7 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
   });
 
   const [newTax, setNewTax] = useState({ name: "", rate: 0, type: "iva" as "iva" | "islr" | "igtf" });
+  const [deletingRule, setDeletingRule] = useState<{ name: string; index: number } | null>(null);
 
   useEffect(() => {
     if (config) {
@@ -40,10 +42,19 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
     setNewTax({ name: "", rate: 0, type: "iva" });
   };
 
-  const removeTaxRule = (index: number) => {
+  const confirmDeleteRule = (index: number) => {
+    const rule = formData.globalTaxRules?.[index];
+    if (rule) {
+      setDeletingRule({ name: rule.name, index });
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingRule) return;
     const updatedRules = [...(formData.globalTaxRules || [])];
-    updatedRules.splice(index, 1);
+    updatedRules.splice(deletingRule.index, 1);
     setFormData({ ...formData, globalTaxRules: updatedRules });
+    setDeletingRule(null);
   };
 
   return (
@@ -83,7 +94,17 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
                     type="number"
                     className="input input-sm"
                     value={newTax.rate}
-                    onChange={e => setNewTax({ ...newTax, rate: parseFloat(e.target.value) })}
+                    onChange={e => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val) && val >= 0) {
+                        setNewTax({ ...newTax, rate: val });
+                      } else if (e.target.value === "") {
+                        setNewTax({ ...newTax, rate: 0 });
+                      }
+                    }}
+                    placeholder="0"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
                 <div>
@@ -116,7 +137,7 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
                       <span className="text-sm font-bold text-brand-600">{rule.rate}%</span>
                       <button
                         type="button"
-                        onClick={() => removeTaxRule(idx)}
+                        onClick={() => confirmDeleteRule(idx)}
                         className="text-state-error hover:text-red-700 text-xs font-medium"
                       >
                         Eliminar
@@ -140,6 +161,16 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        isOpen={!!deletingRule}
+        onClose={() => setDeletingRule(null)}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar Regla de Impuesto"
+        message={`¿Está seguro de eliminar la regla "${deletingRule?.name}"? Esta acción puede afectar el cálculo de impuestos en todos los tenants que usen esta regla.`}
+        confirmLabel="Eliminar"
+        variant="danger"
+      />
     </div>
   );
 }

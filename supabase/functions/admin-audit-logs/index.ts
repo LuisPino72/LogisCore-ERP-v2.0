@@ -81,14 +81,17 @@ Deno.serve(async (req: Request) => {
       .from("audit_log_entries")
       .select("*", { count: "exact", head: true });
 
-    const formattedLogs: AuditLogEntry[] = (auditLogs || []).map(log => ({
-      id: log.id,
-      timestamp: log.created_at,
-      action: log.action,
-      userId: log.actor_id,
-      email: log.actor_email,
-      metadata: log.metadata
-    }));
+    const formattedLogs: AuditLogEntry[] = (auditLogs || []).map((log) => {
+      const rawDetails = (log.details ?? log.metadata ?? null) as Record<string, unknown> | null;
+      return {
+        id: log.id,
+        timestamp: log.created_at,
+        action: (log.event_type ?? log.action ?? "UNKNOWN") as string,
+        userId: (log.user_id ?? log.actor_id ?? null) as string | null,
+        email: (rawDetails?.email as string | undefined) ?? (log.actor_email as string | undefined) ?? null,
+        metadata: rawDetails
+      };
+    });
 
     return new Response(
       JSON.stringify({

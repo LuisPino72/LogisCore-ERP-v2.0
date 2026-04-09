@@ -18,6 +18,8 @@ interface AdminSidebarProps {
   onModuleChange: (module: AdminModule) => void;
   onLogout: () => void;
   userEmail: string;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 /** Lista de módulos del admin panel con etiquetas e iconos */
@@ -30,52 +32,77 @@ const modules: { id: AdminModule; label: string; icon: string }[] = [
   { id: "settings", label: "Configuración", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
 ];
 
-export function AdminSidebar({ activeModule, onModuleChange, onLogout, userEmail }: AdminSidebarProps) {
+export function AdminSidebar({ activeModule, onModuleChange, onLogout, userEmail, isOpen = true, onClose }: AdminSidebarProps) {
+  const handleModuleClick = (module: AdminModule) => {
+    onModuleChange(module);
+    if (onClose) onClose();
+  };
+
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-surface-900 text-content-inverse flex flex-col">
-      <div className="p-6 border-b border-surface-700">
-        <div className="flex items-center gap-3">
-          <img src="/Emblema.ico" alt="LogisCore" className="w-10 h-10" />
-          <div>
-            <h1 className="font-bold text-lg">LogisCore</h1>
-            <p className="text-xs text-surface-400">Panel de Administración</p>
+    <>
+      {/* Overlay para móvil */}
+      {isOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={onClose}
+        />
+      )}
+      
+      <aside className={`fixed left-0 top-0 h-full w-64 bg-surface-900 text-content-inverse flex flex-col z-50 transform transition-transform duration-300 ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      } md:translate-x-0`}>
+        <div className="p-4 md:p-6 border-b border-surface-700">
+          <div className="flex items-center gap-3">
+            <img src="/Emblema.ico" alt="LogisCore" className="w-8 h-8 md:w-10 md:h-10" />
+            <div>
+              <h1 className="font-bold text-lg">LogisCore</h1>
+              <p className="text-xs text-surface-400 hidden md:block">Panel de Administración</p>
+            </div>
+            <button 
+              onClick={onClose}
+              className="md:hidden ml-auto p-1 text-surface-400 hover:text-white"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
-      </div>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {modules.map(module => (
+        <nav className="flex-1 p-2 md:p-4 space-y-1 overflow-y-auto">
+          {modules.map(module => (
+            <button
+              key={module.id}
+              onClick={() => handleModuleClick(module.id)}
+              className={`w-full flex items-center gap-3 px-3 md:px-4 py-3 rounded-lg text-left transition-colors ${
+                activeModule === module.id
+                  ? "bg-brand-600 text-white"
+                  : "text-surface-300 hover:bg-surface-800 hover:text-white"
+              }`}
+            >
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={module.icon} />
+              </svg>
+              <span className="font-medium truncate">{module.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-2 md:p-4 border-t border-surface-700">
+          {userEmail && (
+            <p className="text-xs text-surface-400 mb-2 md:mb-3 truncate px-2">{userEmail}</p>
+          )}
           <button
-            key={module.id}
-            onClick={() => onModuleChange(module.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
-              activeModule === module.id
-                ? "bg-brand-600 text-white"
-                : "text-surface-300 hover:bg-surface-800 hover:text-white"
-            }`}
+            onClick={onLogout}
+            className="w-full flex items-center gap-3 px-3 md:px-4 py-2 rounded-lg text-surface-400 hover:bg-surface-800 hover:text-white transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={module.icon} />
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            <span className="font-medium">{module.label}</span>
+            <span className="truncate">Cerrar Sesión</span>
           </button>
-        ))}
-      </nav>
-
-      <div className="p-4 border-t border-surface-700">
-        {userEmail && (
-          <p className="text-xs text-surface-400 mb-3 truncate">{userEmail}</p>
-        )}
-        <button
-          onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-surface-400 hover:bg-surface-800 hover:text-white transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span>Cerrar Sesión</span>
-        </button>
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 }

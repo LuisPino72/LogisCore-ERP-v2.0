@@ -445,9 +445,9 @@ export function TenantForm({
       </div>
       <div className="card-body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
+            <div>
             <h3 className="text-sm font-medium text-content-primary mb-3 border-b pb-1">Información Básica</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="label">Nombre de la Empresa</label>
                 <input

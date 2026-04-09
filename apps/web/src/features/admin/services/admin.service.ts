@@ -72,6 +72,44 @@ interface CreateAdminServiceDependencies {
   eventBus: EventBus;
 }
 
+const getEdgeAuthHeaders = (accessToken: string): Record<string, string> => {
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${accessToken}`,
+    ...(anonKey ? { apikey: anonKey } : {})
+  };
+};
+
+const getAuthToken = async (supabase: SupabaseClient): Promise<string | null> => {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error) {
+    return null;
+  }
+
+  if (!session?.access_token) {
+    return null;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = session.expires_at ?? 0;
+  const isExpiringSoon = expiresAt > 0 && expiresAt <= now + 30;
+
+  if (isExpiringSoon && session.refresh_token) {
+    const refreshResult = await supabase.auth.refreshSession({
+      refresh_token: session.refresh_token
+    });
+
+    if (refreshResult.error || !refreshResult.data.session?.access_token) {
+      return null;
+    }
+
+    return refreshResult.data.session.access_token;
+  }
+
+  return session.access_token;
+};
+
 /**
  * Factory que crea el servicio de admin.
  * Inyecta las dependencias (supabase y eventBus).
@@ -179,15 +217,19 @@ export const createAdminService = ({
 
   const createTenant: AdminService["createTenant"] = async (input) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const authToken = await getAuthToken(supabase);
+    if (!supabaseUrl || !authToken) {
+      return err(createAppError({
+        code: "ADMIN_AUTH_TOKEN_MISSING",
+        message: "Sesión admin inválida o expirada. Vuelve a iniciar sesión.",
+        retryable: false
+      }));
+    }
     
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${anonKey}`
-        },
+        headers: getEdgeAuthHeaders(authToken),
         body: JSON.stringify(input)
       });
 
@@ -223,7 +265,14 @@ export const createAdminService = ({
 
   const updateTenant: AdminService["updateTenant"] = async (id, input) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const authToken = await getAuthToken(supabase);
+    if (!supabaseUrl || !authToken) {
+      return err(createAppError({
+        code: "ADMIN_AUTH_TOKEN_MISSING",
+        message: "Sesión admin inválida o expirada. Vuelve a iniciar sesión.",
+        retryable: false
+      }));
+    }
     
     try {
       const { employees, ...tenantData } = input as UpdateTenantInput & { employees?: EmployeeManagement[] };
@@ -231,10 +280,7 @@ export const createAdminService = ({
       if (tenantData && Object.keys(tenantData).length > 0) {
         const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${anonKey}`
-          },
+          headers: getEdgeAuthHeaders(authToken),
           body: JSON.stringify({ action: "update", tenantId: id, data: tenantData })
         });
 
@@ -252,10 +298,7 @@ export const createAdminService = ({
       if (employees && employees.length > 0) {
         const empResponse = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${anonKey}`
-          },
+          headers: getEdgeAuthHeaders(authToken),
           body: JSON.stringify({ action: "manage_employees", tenantId: id, data: { employees } })
         });
 
@@ -326,15 +369,19 @@ export const createAdminService = ({
 
   const deleteTenant: AdminService["deleteTenant"] = async (id, permanent = false) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const authToken = await getAuthToken(supabase);
+    if (!supabaseUrl || !authToken) {
+      return err(createAppError({
+        code: "ADMIN_AUTH_TOKEN_MISSING",
+        message: "Sesión admin inválida o expirada. Vuelve a iniciar sesión.",
+        retryable: false
+      }));
+    }
     
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${anonKey}`
-        },
+        headers: getEdgeAuthHeaders(authToken),
         body: JSON.stringify({ action: "delete", tenantId: id, permanent })
       });
 
@@ -361,15 +408,19 @@ export const createAdminService = ({
 
   const deactivateTenant: AdminService["deactivateTenant"] = async (id) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const authToken = await getAuthToken(supabase);
+    if (!supabaseUrl || !authToken) {
+      return err(createAppError({
+        code: "ADMIN_AUTH_TOKEN_MISSING",
+        message: "Sesión admin inválida o expirada. Vuelve a iniciar sesión.",
+        retryable: false
+      }));
+    }
     
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${anonKey}`
-        },
+        headers: getEdgeAuthHeaders(authToken),
         body: JSON.stringify({ action: "deactivate", tenantId: id })
       });
 
@@ -795,17 +846,21 @@ export const createAdminService = ({
 
   const getAuditLogs: AdminService["getAuditLogs"] = async (limit = 50, offset = 0) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const authToken = await getAuthToken(supabase);
+    if (!supabaseUrl || !authToken) {
+      return err(createAppError({
+        code: "ADMIN_AUTH_TOKEN_MISSING",
+        message: "Sesión admin inválida o expirada. Vuelve a iniciar sesión.",
+        retryable: false
+      }));
+    }
 
     try {
       const response = await fetch(
         `${supabaseUrl}/functions/v1/admin-audit-logs?limit=${limit}&offset=${offset}`,
         {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${anonKey}`
-          }
+          headers: getEdgeAuthHeaders(authToken)
         }
       );
 

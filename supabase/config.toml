@@ -4,13 +4,13 @@ project_id = "wijvuslujomodxsigyvv"
 verify_jwt = true
 
 [functions.admin-create-tenant]
-verify_jwt = true
+verify_jwt = false
 
 [functions.admin-manage-tenant]
-verify_jwt = true
+verify_jwt = false
 
 [functions.admin-audit-logs]
-verify_jwt = true
+verify_jwt = false
 
 [functions.audit-log]
 verify_jwt = false
