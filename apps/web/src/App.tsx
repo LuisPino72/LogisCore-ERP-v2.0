@@ -16,7 +16,6 @@ import type { Warehouse } from "@/features/inventory/types/inventory.types";
 const InventoryPanel = lazy(() => import("@/features/inventory/components/InventoryPanel").then(m => ({ default: m.InventoryPanel })));
 const DashboardPanel = lazy(() => import("@/features/dashboard").then(m => ({ default: m.DashboardPanel })));
 const ProductsCatalog = lazy(() => import("@/features/products/components/ProductsCatalog").then(m => ({ default: m.ProductsCatalog })));
-const PurchasesCatalogPanel = lazy(() => import("@/features/purchases/components/PurchasesCatalogPanel").then(m => ({ default: m.PurchasesCatalogPanel })));
 const PurchasesPanel = lazy(() => import("@/features/purchases/components/PurchasesPanel").then(m => ({ default: m.PurchasesPanel })));
 const SalesPanel = lazy(() => import("@/features/sales/components/SalesPanel").then(m => ({ default: m.SalesPanel })));
 const ProductionPanel = lazy(() => import("@/features/production/components/ProductionPanel").then(m => ({ default: m.ProductionPanel })));
@@ -177,23 +176,14 @@ function ModuleRenderer({
         );
       case "purchases":
         return (
-          <>
-            <PurchasesCatalogPanel
-              tenantSlug={tenantSlug}
-              actor={actor as never}
-              categories={sharedData.categories}
-              products={sharedData.products}
-              presentations={sharedData.presentations}
-            />
-            <PurchasesPanel
-              tenantSlug={tenantSlug}
-              actor={actor as never}
-              products={sharedData.products}
-              categories={sharedData.categories}
-              presentations={sharedData.presentations}
-              warehouses={sharedData.warehouses}
-            />
-          </>
+          <PurchasesPanel
+            tenantSlug={tenantSlug}
+            actor={actor as never}
+            products={sharedData.products}
+            categories={sharedData.categories}
+            presentations={sharedData.presentations}
+            warehouses={sharedData.warehouses}
+          />
         );
       case "sales":
         return (

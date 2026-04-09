@@ -20,7 +20,6 @@ import type { Warehouse } from "@/features/inventory/types/inventory.types";
 import { eventBus } from "@/lib/core/runtime";
 import { usePurchases } from "../hooks/usePurchases";
 import { purchasesService } from "../services/purchases.service.instance";
-import { SuppliersPanel } from "./SuppliersPanel";
 import { PurchasesCatalogPanel } from "./PurchasesCatalogPanel";
 import { Badge } from "@/common/components/Badge";
 import { Modal } from "@/common/components/Modal";
@@ -72,9 +71,8 @@ export function PurchasesPanel({
   
   // Nivel 1: main tabs
   const [activeMainTab, setActiveMainTab] = useState<"orders" | "catalog">("orders");
-  // Nivel 2: sub tabs
+  // Nivel 2: sub tabs (only for orders)
   const [ordersSubTab, setOrdersSubTab] = useState<"orders-list" | "receivings">("orders-list");
-  const [catalogSubTab, setCatalogSubTab] = useState<"products" | "categories" | "presentations" | "suppliers">("products");
   
   // Form states
   const [warehouseLocalId, setWarehouseLocalId] = useState("");
@@ -94,7 +92,7 @@ export function PurchasesPanel({
 
   const tenant: PurchasesTenantContext = { tenantSlug };
   
-  const { state: purchasesState, refresh: refreshPurchases, createPurchase, receivePurchase, confirmPurchase, cancelPurchase, editPurchase } = usePurchases({
+  const { state: purchasesState, refresh: refreshPurchases, createPurchase, receivePurchase, confirmPurchase, cancelPurchase, editPurchase, createSupplier, updateSupplier } = usePurchases({
     service: purchasesService,
     tenant,
     actor
@@ -584,30 +582,20 @@ export function PurchasesPanel({
     { id: "receivings", label: "Recepciones", content: <ReceivingsTabContent /> }
   ];
 
-  // Catalog Tab Content (imports PurchasesCatalogPanel and SuppliersPanel)
-  const CatalogTabContent = () => {
-    const catalogSubTabs: TabItem[] = [
-      { id: "products", label: "Productos", content: <PurchasesCatalogPanel tenantSlug={tenantSlug} actor={actor} categories={categories} products={products} presentations={presentations} /> },
-      { id: "categories", label: "Categorías", content: <PurchasesCatalogPanel tenantSlug={tenantSlug} actor={actor} categories={categories} products={products} presentations={presentations} /> },
-      { id: "presentations", label: "Presentaciones", content: <PurchasesCatalogPanel tenantSlug={tenantSlug} actor={actor} categories={categories} products={products} presentations={presentations} /> },
-      { id: "suppliers", label: "Proveedores", content: <SuppliersPanel tenantSlug={tenantSlug} actor={actor} /> }
-    ];
-
-    const activeCatalogTab = catalogSubTabs.find(t => t.id === catalogSubTab) ?? catalogSubTabs[0];
-    const activeCatalogContent = activeCatalogTab?.content;
-
-    return (
-      <div className="space-y-4">
-        <Tabs 
-          items={catalogSubTabs} 
-          defaultTab={catalogSubTab} 
-          onChange={(id) => setCatalogSubTab(id as typeof catalogSubTab)} 
-          variant="underline" 
-        />
-        {activeCatalogContent}
-      </div>
-    );
-  };
+  // Catalog Content - Now unified
+  const CatalogTabContent = () => (
+    <PurchasesCatalogPanel 
+      tenantSlug={tenantSlug} 
+      actor={actor} 
+      categories={categories} 
+      products={products} 
+      presentations={presentations} 
+      suppliers={purchasesState.suppliers}
+      onCreateSupplier={createSupplier}
+      onUpdateSupplier={updateSupplier}
+      isLoadingSuppliers={purchasesState.isLoading}
+    />
+  );
 
   return (
     <section className="p-6">
@@ -632,7 +620,7 @@ export function PurchasesPanel({
             }`}
           >
             <Users className="w-4 h-4 inline mr-2" />
-            Catálogo y Proveedores
+            Gestión del Catálogo
           </button>
         </div>
         

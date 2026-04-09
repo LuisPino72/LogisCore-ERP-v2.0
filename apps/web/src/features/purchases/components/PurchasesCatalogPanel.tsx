@@ -11,9 +11,9 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Plus, Package, Folder, Box, Search, Check } from "lucide-react";
+import { Plus, Package, Folder, Box, Search, Check, Building2, Edit2, X } from "lucide-react";
 import type { Category, Product, ProductPresentation } from "@/features/products/types/products.types";
-import type { PurchasesActorContext } from "../types/purchases.types";
+import type { PurchasesActorContext, Supplier, CreateSupplierInput, UpdateSupplierInput } from "../types/purchases.types";
 import { eventBus } from "@/lib/core/runtime";
 import { Modal } from "@/common/components/Modal";
 import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
@@ -29,6 +29,10 @@ interface PurchasesCatalogPanelProps {
   categories: Category[];
   products: Product[];
   presentations: ProductPresentation[];
+  suppliers: Supplier[];
+  onCreateSupplier: (input: CreateSupplierInput) => Promise<unknown>;
+  onUpdateSupplier: (input: UpdateSupplierInput) => Promise<unknown>;
+  isLoadingSuppliers?: boolean;
 }
 
 interface CategoryFormData {
@@ -53,6 +57,14 @@ interface PresentationFormData {
   isDefault: boolean;
 }
 
+interface SupplierFormData {
+  name: string;
+  rif: string;
+  phone: string;
+  contactPerson: string;
+  notes: string;
+}
+
 const initialCategoryForm: CategoryFormData = { name: "" };
 
 const initialProductForm: ProductFormData = {
@@ -73,6 +85,14 @@ const initialPresentationForm: PresentationFormData = {
   isDefault: false
 };
 
+const initialSupplierForm: SupplierFormData = {
+  name: "",
+  rif: "",
+  phone: "",
+  contactPerson: "",
+  notes: ""
+};
+
 const unitOptions = [
   { value: "unidad", label: "Unidad" },
   { value: "kg", label: "Kilogramo (kg)" },
@@ -80,14 +100,14 @@ const unitOptions = [
   { value: "m", label: "Metro (m)" }
 ];
 
-function SimpleTable({ 
+function SimpleTable<T extends Record<string, unknown>>({ 
   columns, 
   data, 
   emptyMessage = "No hay datos",
   loading = false
 }: { 
-  columns: { key: string; header: string; render?: (row: Record<string, unknown>) => React.ReactNode }[];
-  data: Record<string, unknown>[];
+  columns: { key: string; header: string; render?: (row: T) => React.ReactNode }[];
+  data: T[];
   emptyMessage?: string;
   loading?: boolean;
 }) {
@@ -134,14 +154,19 @@ export function PurchasesCatalogPanel({
   actor: _actor,
   categories: initialCategories,
   products: initialProducts,
-  presentations: initialPresentations
+  presentations: initialPresentations,
+  suppliers: initialSuppliers,
+  onCreateSupplier,
+  onUpdateSupplier,
+  isLoadingSuppliers = false
 }: PurchasesCatalogPanelProps) {
   void _actor;
-  const [, setActiveTab] = useState<"products" | "categories" | "presentations">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "categories" | "presentations" | "suppliers">("products");
   
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [presentations, setPresentations] = useState<ProductPresentation[]>(initialPresentations);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,14 +177,18 @@ export function PurchasesCatalogPanel({
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [showPresentationModal, setShowPresentationModal] = useState(false);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
   
   const [categoryForm, setCategoryForm] = useState<CategoryFormData>(initialCategoryForm);
   const [productForm, setProductForm] = useState<ProductFormData>(initialProductForm);
   const [presentationForm, setPresentationForm] = useState<PresentationFormData>(initialPresentationForm);
+  const [supplierForm, setSupplierForm] = useState<SupplierFormData>(initialSupplierForm);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [productErrors, setProductErrors] = useState<Record<string, string>>({});
   const [presentationErrors, setPresentationErrors] = useState<Record<string, string>>({});
+  const [supplierError, setSupplierError] = useState<string | null>(null);
 
   const tenant: PurchasesTenantContext = { tenantSlug };
 
@@ -189,7 +218,8 @@ export function PurchasesCatalogPanel({
     setCategories(initialCategories);
     setProducts(initialProducts);
     setPresentations(initialPresentations);
-  }, [initialCategories, initialProducts, initialPresentations]);
+    setSuppliers(initialSuppliers);
+  }, [initialCategories, initialProducts, initialPresentations, initialSuppliers]);
 
   const filteredCategories = useMemo(() => {
     return categories.filter(c => 
@@ -214,6 +244,13 @@ export function PurchasesCatalogPanel({
       p.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [presentations, tenantSlug, searchQuery]);
+
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter(s => 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.rif && s.rif.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }, [suppliers, searchQuery]);
 
   const handleCreateCategory = useCallback(async () => {
     const name = categoryForm.name.trim();
@@ -283,7 +320,7 @@ export function PurchasesCatalogPanel({
       name,
       sku,
       visible: true,
-      sourceModule: "purchases"
+      sourceModule: "purchases" as const
     };
     
     if (productForm.categoryId) Object.assign(input, { categoryId: productForm.categoryId });
@@ -360,40 +397,97 @@ export function PurchasesCatalogPanel({
     void refreshData();
   }, [presentationForm, refreshData]);
 
-  const categoryColumns = [
+  const handleCreateSupplier = useCallback(async () => {
+    if (!supplierForm.name.trim()) {
+      setSupplierError("El nombre es requerido");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setSupplierError(null);
+    
+    const input: CreateSupplierInput | UpdateSupplierInput = editingSupplier
+      ? { localId: editingSupplier.localId, ...supplierForm }
+      : supplierForm;
+    
+    const result = editingSupplier
+      ? await onUpdateSupplier(input as UpdateSupplierInput)
+      : await onCreateSupplier(input as CreateSupplierInput);
+
+    if (result) {
+      setShowSupplierModal(false);
+      setSupplierForm(initialSupplierForm);
+      setEditingSupplier(null);
+      void refreshData();
+    } else {
+      setSupplierError("Error al guardar el proveedor");
+    }
+    
+    setIsSubmitting(false);
+  }, [supplierForm, editingSupplier, onUpdateSupplier, onCreateSupplier, refreshData]);
+
+  const handleOpenEditSupplier = (supplier: Supplier) => {
+    setSupplierForm({
+      name: supplier.name,
+      rif: supplier.rif ?? "",
+      phone: supplier.phone ?? "",
+      contactPerson: supplier.contactPerson ?? "",
+      notes: supplier.notes ?? ""
+    });
+    setEditingSupplier(supplier);
+    setSupplierError(null);
+    setShowSupplierModal(true);
+  };
+
+  const categoryColumns: { key: string; header: string; render?: (row: Category) => React.ReactNode }[] = [
     { key: "name", header: "Nombre" },
-    { key: "createdAt", header: "Creado", render: (row: Record<string, unknown>) => 
-      row.createdAt ? new Date(row.createdAt as string).toLocaleDateString("es-VE") : "-"
+    { key: "createdAt", header: "Creado", render: (row: Category) => 
+      row.createdAt ? new Date(row.createdAt).toLocaleDateString("es-VE") : "-"
     }
   ];
 
-  const productColumns = [
+  const productColumns: { key: string; header: string; render?: (row: Product) => React.ReactNode }[] = [
     { key: "name", header: "Nombre" },
     { key: "sku", header: "SKU" },
-    { key: "categoryId", header: "Categoría", render: (row: Record<string, unknown>) => {
+    { key: "categoryId", header: "Categoría", render: (row: Product) => {
       const cat = categories.find(c => c.localId === row.categoryId);
       return cat?.name || "-";
     }},
-    { key: "isWeighted", header: "Tipo", render: (row: Record<string, unknown>) => 
+    { key: "isWeighted", header: "Tipo", render: (row: Product) => 
       row.isWeighted ? <Badge variant="info">Pesable</Badge> : <Badge variant="default">Unitario</Badge>
     },
-    { key: "isTaxable", header: "IVA", render: (row: Record<string, unknown>) => 
+    { key: "isTaxable", header: "IVA", render: (row: Product) => 
       row.isTaxable ? <Badge variant="warning">Gravable</Badge> : <Badge variant="default">Exento</Badge>
     }
   ];
 
-  const presentationColumns = [
+  const presentationColumns: { key: string; header: string; render?: (row: ProductPresentation) => React.ReactNode }[] = [
     { key: "name", header: "Nombre" },
-    { key: "productLocalId", header: "Producto", render: (row: Record<string, unknown>) => {
+    { key: "productLocalId", header: "Producto", render: (row: ProductPresentation) => {
       const prod = products.find(p => p.localId === row.productLocalId);
       return prod?.name || row.productLocalId;
     }},
-    { key: "factor", header: "Factor", render: (row: Record<string, unknown>) => 
-      (row.factor as number)?.toFixed(4) || "-"
+    { key: "factor", header: "Factor", render: (row: ProductPresentation) => 
+      row.factor?.toFixed(4) || "-"
     },
-    { key: "isDefault", header: "Por defecto", render: (row: Record<string, unknown>) => 
+    { key: "isDefault", header: "Por defecto", render: (row: ProductPresentation) => 
       row.isDefault ? <Badge variant="success">Default</Badge> : <span className="text-content-tertiary">-</span>
     }
+  ];
+
+  const supplierColumns: { key: string; header: string; render?: (row: Supplier) => React.ReactNode }[] = [
+    { key: "name", header: "Nombre" },
+    { key: "rif", header: "RIF", render: (row: Supplier) => <span className="font-mono text-xs">{row.rif || "-"}</span> },
+    { key: "phone", header: "Teléfono" },
+    { key: "contactPerson", header: "Contacto" },
+    { key: "isActive", header: "Estado", render: (row: Supplier) => 
+      <Badge variant={row.isActive ? "success" : "default"}>{row.isActive ? "Activo" : "Inactivo"}</Badge>
+    },
+    { key: "actions", header: "", render: (row: Supplier) => (
+      <button onClick={() => handleOpenEditSupplier(row)} className="p-1 hover:text-brand-500 transition-colors">
+        <Edit2 className="w-4 h-4" />
+      </button>
+    )}
   ];
 
   const CategoriesTabContent = () => (
@@ -413,7 +507,7 @@ export function PurchasesCatalogPanel({
             }
           />
         ) : (
-          <SimpleTable columns={categoryColumns} data={filteredCategories} />
+          <SimpleTable columns={categoryColumns as unknown as { key: string; header: string; render?: (row: Record<string, unknown>) => React.ReactNode }[]} data={filteredCategories as unknown as Record<string, unknown>[]} />
         )}
       </div>
     </div>
@@ -436,7 +530,7 @@ export function PurchasesCatalogPanel({
             }
           />
         ) : (
-          <SimpleTable columns={productColumns} data={filteredProducts} />
+          <SimpleTable columns={productColumns as unknown as { key: string; header: string; render?: (row: Record<string, unknown>) => React.ReactNode }[]} data={filteredProducts as unknown as Record<string, unknown>[]} />
         )}
       </div>
     </div>
@@ -459,7 +553,30 @@ export function PurchasesCatalogPanel({
             }
           />
         ) : (
-          <SimpleTable columns={presentationColumns} data={filteredPresentations} />
+          <SimpleTable columns={presentationColumns as unknown as { key: string; header: string; render?: (row: Record<string, unknown>) => React.ReactNode }[]} data={filteredPresentations as unknown as Record<string, unknown>[]} />
+        )}
+      </div>
+    </div>
+  );
+
+  const SuppliersTabContent = () => (
+    <div className="card">
+      <div className="card-body">
+        {isLoadingSuppliers ? (
+          <LoadingSpinner message="Cargando proveedores..." />
+        ) : filteredSuppliers.length === 0 ? (
+          <EmptyState
+            icon={<Building2 className="w-12 h-12" />}
+            title="No hay proveedores"
+            description="Crea tu primer proveedor para comenzar"
+            action={
+              <button onClick={() => { setShowSupplierModal(true); setEditingSupplier(null); setSupplierForm(initialSupplierForm); }} className="btn btn-primary">
+                <Plus className="w-4 h-4" /> Nuevo Proveedor
+              </button>
+            }
+          />
+        ) : (
+          <SimpleTable columns={supplierColumns as unknown as { key: string; header: string; render?: (row: Record<string, unknown>) => React.ReactNode }[]} data={filteredSuppliers as unknown as Record<string, unknown>[]} />
         )}
       </div>
     </div>
@@ -468,7 +585,8 @@ export function PurchasesCatalogPanel({
   const tabs: TabItem[] = [
     { id: "products", label: "Productos", content: <ProductsTabContent /> },
     { id: "categories", label: "Categorías", content: <CategoriesTabContent /> },
-    { id: "presentations", label: "Presentaciones", content: <PresentationsTabContent /> }
+    { id: "presentations", label: "Presentaciones", content: <PresentationsTabContent /> },
+    { id: "suppliers", label: "Proveedores", content: <SuppliersTabContent /> }
   ];
 
   const activeProducts = useMemo(() => 
@@ -480,10 +598,7 @@ export function PurchasesCatalogPanel({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="card-title">Gestión de Catálogo</h2>
-          <p className="text-sm text-content-secondary mt-1">
-            Regla 7.5: Categorías y productos se crean desde Compras
-          </p>
+          <h2 className="card-title">Gestión del Catálogo</h2>
         </div>
         
         <div className="relative">
@@ -499,32 +614,46 @@ export function PurchasesCatalogPanel({
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() => { setShowProductModal(true); setProductForm(initialProductForm); setProductErrors({}); }}
-          className="btn btn-primary"
-        >
-          <Plus className="w-4 h-4" /> Nuevo Producto
-        </button>
-        <button
-          onClick={() => { setShowCategoryModal(true); setCategoryForm(initialCategoryForm); setCategoryError(null); }}
-          className="btn btn-secondary"
-        >
-          <Plus className="w-4 h-4" /> Nueva Categoría
-        </button>
-        <button
-          onClick={() => { setShowPresentationModal(true); setPresentationForm(initialPresentationForm); setPresentationErrors({}); }}
-          className="btn btn-secondary"
-        >
-          <Plus className="w-4 h-4" /> Nueva Presentación
-        </button>
+        {activeTab === "products" && (
+          <button
+            onClick={() => { setShowProductModal(true); setProductForm(initialProductForm); setProductErrors({}); }}
+            className="btn btn-primary"
+          >
+            <Plus className="w-4 h-4" /> Nuevo Producto
+          </button>
+        )}
+        {activeTab === "categories" && (
+          <button
+            onClick={() => { setShowCategoryModal(true); setCategoryForm(initialCategoryForm); setCategoryError(null); }}
+            className="btn btn-primary"
+          >
+            <Plus className="w-4 h-4" /> Nueva Categoría
+          </button>
+        )}
+        {activeTab === "presentations" && (
+          <button
+            onClick={() => { setShowPresentationModal(true); setPresentationForm(initialPresentationForm); setPresentationErrors({}); }}
+            className="btn btn-primary"
+          >
+            <Plus className="w-4 h-4" /> Nueva Presentación
+          </button>
+        )}
+        {activeTab === "suppliers" && (
+          <button
+            onClick={() => { setShowSupplierModal(true); setEditingSupplier(null); setSupplierForm(initialSupplierForm); setSupplierError(null); }}
+            className="btn btn-primary"
+          >
+            <Plus className="w-4 h-4" /> Nuevo Proveedor
+          </button>
+        )}
       </div>
 
       {lastError && <div className="alert alert-error">{lastError}</div>}
 
       <Tabs
         items={tabs}
-        defaultTab="products"
-        onChange={(tabId) => setActiveTab(tabId as typeof activeTab)}
+        defaultTab={activeTab}
+        onChange={(tabId) => setActiveTab(tabId as "products" | "categories" | "presentations" | "suppliers")}
         variant="underline"
       />
 
@@ -674,6 +803,9 @@ export function PurchasesCatalogPanel({
                   className="input"
                 >
                   <option value="">Sin proveedor</option>
+                  {suppliers.filter(s => s.isActive).map(s => (
+                    <option key={s.localId} value={s.localId}>{s.name}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -763,6 +895,90 @@ export function PurchasesCatalogPanel({
           </label>
 
           {presentationErrors.submit && <div className="alert alert-error">{presentationErrors.submit}</div>}
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showSupplierModal}
+        onClose={() => { setShowSupplierModal(false); setSupplierForm(initialSupplierForm); setEditingSupplier(null); setSupplierError(null); }}
+        title={editingSupplier ? "Editar Proveedor" : "Nuevo Proveedor"}
+        size="lg"
+        footer={
+          <>
+            <button onClick={() => { setShowSupplierModal(false); setSupplierForm(initialSupplierForm); setEditingSupplier(null); setSupplierError(null); }} className="btn btn-secondary">
+              Cancelar
+            </button>
+            <button onClick={handleCreateSupplier} disabled={isSubmitting} className="btn btn-primary">
+              {isSubmitting ? <LoadingSpinner size="sm" /> : <><Check className="w-4 h-4" /> {editingSupplier ? "Guardar" : "Crear"}</>}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          <fieldset>
+            <legend className="label mb-3">Información Básica</legend>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-content-secondary mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  value={supplierForm.name}
+                  onChange={(e) => setSupplierForm({ ...supplierForm, name: e.target.value })}
+                  placeholder="Nombre del proveedor"
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-content-secondary mb-1">RIF</label>
+                <input
+                  type="text"
+                  value={supplierForm.rif}
+                  onChange={(e) => setSupplierForm({ ...supplierForm, rif: e.target.value.toUpperCase() })}
+                  placeholder="J-12345678-9"
+                  className="input font-mono"
+                />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="label mb-3">Contacto</legend>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-content-secondary mb-1">Teléfono</label>
+                <input
+                  type="tel"
+                  value={supplierForm.phone}
+                  onChange={(e) => setSupplierForm({ ...supplierForm, phone: e.target.value })}
+                  placeholder="0412-1234567"
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-content-secondary mb-1">Persona de contacto</label>
+                <input
+                  type="text"
+                  value={supplierForm.contactPerson}
+                  onChange={(e) => setSupplierForm({ ...supplierForm, contactPerson: e.target.value })}
+                  placeholder="Nombre del contacto"
+                  className="input"
+                />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="label mb-3">Notas</legend>
+            <textarea
+              value={supplierForm.notes}
+              onChange={(e) => setSupplierForm({ ...supplierForm, notes: e.target.value })}
+              placeholder="Notas adicionales sobre el proveedor..."
+              className="input min-h-[80px] resize-none"
+              rows={3}
+            />
+          </fieldset>
+
+          {supplierError && <div className="alert alert-error">{supplierError}</div>}
         </div>
       </Modal>
     </div>

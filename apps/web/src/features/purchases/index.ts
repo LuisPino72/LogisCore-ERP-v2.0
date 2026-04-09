@@ -8,4 +8,3 @@ export * from "./services/purchases.service";
 export * from "./hooks/usePurchases";
 export * from "./components/PurchasesCatalogPanel";
 export * from "./components/PurchasesPanel";
-export * from "./components/SuppliersPanel";
