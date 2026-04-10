@@ -112,6 +112,9 @@ function ModuleRenderer({
     const loadSharedData = async () => {
       setSharedData((previous) => ({ ...previous, isLoading: true, lastError: null }));
 
+      // Rehidrata catalogos desde remoto para incluir categorias/globales recientes.
+      await coreService.pullCatalogs(tenantSlug);
+
       const [productsResult, categoriesResult, presentationsResult, warehousesResult] =
         await Promise.all([
           productsService.listProducts({ tenantSlug }),

@@ -58,6 +58,9 @@ interface CatalogRecord {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+  // Campos para productos globales
+  isGlobal?: boolean;
+  businessTypeId?: string;
 }
 
 interface CatalogsDb {
@@ -264,7 +267,7 @@ export const createCoreService = ({
       try {
         let response: SupabaseRowResponse<Record<string, unknown>[]>;
 
-        if ((table === "categories" || table === "products") && businessTypeId) {
+        if (table === "categories" && businessTypeId) {
           const tenantResponse = tenantId
             ? await supabaseAny
                 .from(table)
@@ -319,6 +322,98 @@ export const createCoreService = ({
                 .eq("tenant_slug", tenantSlug)
                 .is("deleted_at", null)
                 .order("created_at", { ascending: true });
+        } else if (table === "products" && businessTypeId) {
+          // Productos propios del tenant
+          const tenantResponse = tenantId
+            ? await supabaseAny
+                .from(table)
+                .select("*")
+                .eq("tenant_id", tenantId)
+                .is("deleted_at", null)
+                .order("created_at", { ascending: true })
+            : await supabaseAny
+                .from(table)
+                .select("*")
+                .eq("tenant_slug", tenantSlug)
+                .is("deleted_at", null)
+                .order("created_at", { ascending: true });
+
+          // Productos globales del mismo business_type
+          const globalResponse = await supabaseAny
+            .from(table)
+            .select("*")
+            .eq("is_global", true)
+            .eq("business_type_id", businessTypeId)
+            .is("deleted_at", null)
+            .order("created_at", { ascending: true });
+
+          const tenantRows = Array.isArray(tenantResponse.data) ? tenantResponse.data : [];
+          const globalRows = !globalResponse.error && Array.isArray(globalResponse.data) ? globalResponse.data : [];
+          
+          // Deduplicar por local_id (los propios tienen prioridad sobre globales)
+          const dedup = new Map<string, Record<string, unknown>>();
+          tenantRows.forEach((row) => {
+            const key = row.local_id as string;
+            if (key) dedup.set(key, row);
+          });
+          globalRows.forEach((row) => {
+            const key = row.local_id as string;
+            if (key && !dedup.has(key)) {
+              dedup.set(key, row);
+            }
+          });
+
+          response = {
+            data: Array.from(dedup.values()),
+            error: tenantResponse.error
+          };
+        } else if (table === "products") {
+          response = tenantId
+            ? await supabaseAny
+                .from(table)
+                .select("*")
+                .eq("tenant_id", tenantId)
+                .is("deleted_at", null)
+                .order("created_at", { ascending: true })
+            : await supabaseAny
+                .from(table)
+                .select("*")
+                .eq("tenant_slug", tenantSlug)
+                .is("deleted_at", null)
+                .order("created_at", { ascending: true });
+        } else if ((table === "product_presentations" || table === "product_size_colors") && businessTypeId && tenantId) {
+          // Obtener product_local_id de productos propios del tenant
+          const tenantProducts = await supabaseAny
+            .from("products")
+            .select("local_id")
+            .eq("tenant_id", tenantId)
+            .is("deleted_at", null);
+
+          // Obtener product_local_id de productos globales del mismo business_type
+          const globalProducts = await supabaseAny
+            .from("products")
+            .select("local_id")
+            .eq("is_global", true)
+            .eq("business_type_id", businessTypeId)
+            .is("deleted_at", null);
+
+          // Combinar IDs con Set para deduplicar
+          const allProductLocalIds = new Set<string>([
+            ...(tenantProducts.data || []).map(p => p.local_id),
+            ...(globalProducts.data || []).map(p => p.local_id)
+          ]);
+
+          if (allProductLocalIds.size > 0) {
+            const relatedResponse = await supabaseAny
+              .from(table)
+              .select("*")
+              .in("product_local_id", Array.from(allProductLocalIds))
+              .is("deleted_at", null)
+              .order("created_at", { ascending: true });
+            response = relatedResponse;
+          } else {
+            response = { data: [], error: null };
+          }
         } else {
           response = tenantId
             ? await supabaseAny
@@ -371,6 +466,15 @@ export const createCoreService = ({
             record.unitOfMeasure = (row.unit_of_measure as string) ?? 'unidad';
             if (row.category_id) record.categoryId = row.category_id as string;
             if (row.default_presentation_id) record.defaultPresentationId = row.default_presentation_id as string;
+            // Campos para productos globales
+            if (row.is_global === true) {
+              record.tenantId = "__global__";
+              record.isGlobal = true;
+              if (row.business_type_id) record.businessTypeId = row.business_type_id as string;
+            } else {
+              record.tenantId = tenantSlug;
+              record.isGlobal = false;
+            }
           } else {
             record.localId = row.local_id as string;
             record.name = row.name as string;

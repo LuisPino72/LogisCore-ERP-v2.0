@@ -289,4 +289,99 @@ export type AdminModule =
   | "security"
   | "businessTypes"
   | "subscriptions"
-  | "settings";
+  | "settings"
+  | "globalCatalog";
+
+/**
+ * Categoría global asignada a un tipo de negocio.
+ */
+export interface GlobalCategory {
+  id: string;
+  localId: string;
+  name: string;
+  businessTypeId: string;
+  businessTypeName?: string | undefined;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Datos para crear una categoría global.
+ */
+export interface CreateGlobalCategoryInput {
+  name: string;
+  businessTypeId: string;
+}
+
+/**
+ * Presentación de producto global.
+ */
+export interface GlobalProductPresentation {
+  id?: string | undefined;
+  name: string;
+  factor: number;
+  price: number;
+  isDefault: boolean;
+  barcode?: string | undefined;
+}
+
+/**
+ * Talla/color de producto global.
+ */
+export interface GlobalProductSizeColor {
+  size?: string | undefined;
+  color?: string | undefined;
+  skuSuffix?: string | undefined;
+  barcode?: string | undefined;
+}
+
+/**
+ * Producto global con todas sus características.
+ */
+export interface GlobalProduct {
+  id: string;
+  localId: string;
+  name: string;
+  sku: string;
+  description?: string | undefined;
+  businessTypeId: string;
+  businessTypeName?: string | undefined;
+  categoryId?: string | undefined;
+  categoryName?: string | undefined;
+  isWeighted: boolean;
+  unitOfMeasure: string;
+  isTaxable: boolean;
+  isSerialized: boolean;
+  weight?: number | undefined;
+  length?: number | undefined;
+  width?: number | undefined;
+  height?: number | undefined;
+  visible: boolean;
+  defaultPresentationId?: string | undefined;
+  presentations: GlobalProductPresentation[];
+  sizeColors: GlobalProductSizeColor[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Datos para crear un producto global.
+ */
+export interface CreateGlobalProductInput {
+  name: string;
+  sku: string;
+  description?: string | undefined;
+  businessTypeId: string;
+  categoryId?: string | undefined;
+  isWeighted: boolean;
+  unitOfMeasure: string;
+  isTaxable: boolean;
+  isSerialized?: boolean | undefined;
+  weight?: number | undefined;
+  length?: number | undefined;
+  width?: number | undefined;
+  height?: number | undefined;
+  visible?: boolean | undefined;
+  presentations: GlobalProductPresentation[];
+  sizeColors?: GlobalProductSizeColor[] | undefined;
+}

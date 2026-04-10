@@ -194,35 +194,52 @@ export function PurchasesCatalogPanel({
   const refreshData = useCallback(async () => {
     setIsLoading(true);
     setLastError(null);
-    
-    const [categoriesResult, productsResult, presentationsResult] = await Promise.all([
-      purchasesCatalogService.listCategories(tenant),
-      purchasesCatalogService.listProducts(tenant),
-      purchasesCatalogService.listPresentations(tenant)
-    ]);
-    
-    if (!categoriesResult.ok) setLastError(categoriesResult.error.message);
-    else setCategories(categoriesResult.data);
-    
-    if (!productsResult.ok) setLastError(productsResult.error.message);
-    else setProducts(productsResult.data);
-    
-    if (!presentationsResult.ok) setLastError(presentationsResult.error.message);
-    else setPresentations(presentationsResult.data);
-    
-    setIsLoading(false);
-  }, [tenant]);
+    try {
+      const [categoriesResult, productsResult, presentationsResult] = await Promise.all([
+        purchasesCatalogService.listCategories(tenant),
+        purchasesCatalogService.listProducts(tenant),
+        purchasesCatalogService.listPresentations(tenant)
+      ]);
 
-  useEffect(() => {
-    setCategories(initialCategories);
-    setProducts(initialProducts);
-    setPresentations(initialPresentations);
-    setSuppliers(initialSuppliers);
-  }, [initialCategories, initialProducts, initialPresentations, initialSuppliers]);
+      if (!categoriesResult.ok) {
+        setLastError(categoriesResult.error.message);
+      } else {
+        setCategories(categoriesResult.data);
+      }
+
+      if (!productsResult.ok) {
+        setLastError(productsResult.error.message);
+      } else {
+        setProducts(productsResult.data);
+      }
+
+      if (!presentationsResult.ok) {
+        setLastError(presentationsResult.error.message);
+      } else {
+        setPresentations(presentationsResult.data);
+      }
+
+      console.log("[PurchasesCatalogPanel] refreshData", {
+        tenantSlug,
+        categoriesOk: categoriesResult.ok,
+        categoriesCount: categoriesResult.ok ? categoriesResult.data.length : -1,
+        productsOk: productsResult.ok,
+        productsCount: productsResult.ok ? productsResult.data.length : -1,
+        presentationsOk: presentationsResult.ok,
+        presentationsCount: presentationsResult.ok ? presentationsResult.data.length : -1
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [tenant]);
 
   useEffect(() => {
     void refreshData();
   }, [refreshData]);
+
+  useEffect(() => {
+    setSuppliers(initialSuppliers);
+  }, [initialSuppliers]);
 
   useEffect(() => {
     const offCatalogPulled = eventBus.on("CORE.CATALOGS_PULLED", () => {

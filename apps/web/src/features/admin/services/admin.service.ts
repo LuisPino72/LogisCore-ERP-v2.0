@@ -32,7 +32,11 @@ import type {
   GlobalConfig,
   UpdateGlobalConfigInput,
   EmployeeManagement,
-  AuditLogEntry
+  AuditLogEntry,
+  GlobalCategory,
+  CreateGlobalCategoryInput,
+  GlobalProduct,
+  CreateGlobalProductInput
 } from "../types/admin.types";
 
 /**
@@ -64,6 +68,15 @@ export interface AdminService {
   getGlobalConfig(): Promise<Result<GlobalConfig, AppError>>;
   updateGlobalConfig(input: UpdateGlobalConfigInput): Promise<Result<GlobalConfig, AppError>>;
   getAuditLogs(limit?: number, offset?: number): Promise<Result<{ logs: AuditLogEntry[]; total: number }, AppError>>;
+  // Categorías y Productos Globales
+  listGlobalCategories(businessTypeId?: string): Promise<Result<GlobalCategory[], AppError>>;
+  createGlobalCategory(input: CreateGlobalCategoryInput): Promise<Result<GlobalCategory, AppError>>;
+  updateGlobalCategory(id: string, input: CreateGlobalCategoryInput): Promise<Result<GlobalCategory, AppError>>;
+  deleteGlobalCategory(id: string): Promise<Result<void, AppError>>;
+  listGlobalProducts(businessTypeId?: string): Promise<Result<GlobalProduct[], AppError>>;
+  createGlobalProduct(input: CreateGlobalProductInput): Promise<Result<GlobalProduct, AppError>>;
+  updateGlobalProduct(id: string, input: CreateGlobalProductInput): Promise<Result<GlobalProduct, AppError>>;
+  deleteGlobalProduct(id: string): Promise<Result<void, AppError>>;
 }
 
 /** Dependencias necesarias para crear el servicio */
@@ -844,6 +857,468 @@ export const createAdminService = ({
     });
   };
 
+  // ========== CATEGORÍAS GLOBALES ==========
+  const listGlobalCategories: AdminService["listGlobalCategories"] = async (businessTypeId) => {
+    try {
+      let query = supabase
+        .from("categories")
+        .select("*, business_types(name)")
+        .eq("is_global", true)
+        .is("deleted_at", null)
+        .order("name", { ascending: true });
+
+      if (businessTypeId) {
+        query = query.eq("business_type_id", businessTypeId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const categories: GlobalCategory[] = (data || []).map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        localId: row.local_id as string,
+        name: row.name as string,
+        businessTypeId: row.business_type_id as string,
+        businessTypeName: (row.business_types as { name: string } | null)?.name || "",
+        createdAt: row.created_at as string,
+        updatedAt: row.updated_at as string
+      }));
+
+      return ok(categories);
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_LIST_GLOBAL_CATEGORIES_FAILED",
+        message: String(error),
+        retryable: true
+      }));
+    }
+  };
+
+  const createGlobalCategory: AdminService["createGlobalCategory"] = async (input) => {
+    try {
+      const localId = crypto.randomUUID();
+      const now = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from("categories")
+        .insert({
+          local_id: localId,
+          name: input.name,
+          business_type_id: input.businessTypeId,
+          is_global: true,
+          tenant_id: null,
+          tenant_slug: "__global__",
+          created_at: now,
+          updated_at: now,
+          deleted_at: null
+        })
+        .select("*, business_types(name)")
+        .single();
+
+      if (error) throw error;
+
+      return ok({
+        id: data.id,
+        localId: data.local_id,
+        name: data.name,
+        businessTypeId: data.business_type_id,
+        businessTypeName: (data.business_types as unknown as { name: string } | null)?.name || "",
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      } as GlobalCategory);
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_CREATE_GLOBAL_CATEGORY_FAILED",
+        message: String(error),
+        retryable: false
+      }));
+    }
+  };
+
+  const updateGlobalCategory: AdminService["updateGlobalCategory"] = async (id, input) => {
+    try {
+      const now = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from("categories")
+        .update({
+          name: input.name,
+          business_type_id: input.businessTypeId,
+          updated_at: now
+        })
+        .eq("id", id)
+        .select("*, business_types(name)")
+        .single();
+
+      if (error) throw error;
+
+      return ok({
+        id: data.id,
+        localId: data.local_id,
+        name: data.name,
+        businessTypeId: data.business_type_id,
+        businessTypeName: (data.business_types as unknown as { name: string } | null)?.name || "",
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      } as GlobalCategory);
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_UPDATE_GLOBAL_CATEGORY_FAILED",
+        message: String(error),
+        retryable: false
+      }));
+    }
+  };
+
+  const deleteGlobalCategory: AdminService["deleteGlobalCategory"] = async (id) => {
+    try {
+      const now = new Date().toISOString();
+
+      const { error } = await supabase
+        .from("categories")
+        .update({ deleted_at: now })
+        .eq("id", id)
+        .eq("is_global", true);
+
+      if (error) throw error;
+
+      return ok(undefined);
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_DELETE_GLOBAL_CATEGORY_FAILED",
+        message: String(error),
+        retryable: false
+      }));
+    }
+  };
+
+  // ========== PRODUCTOS GLOBALES ==========
+  const listGlobalProducts: AdminService["listGlobalProducts"] = async (businessTypeId) => {
+    try {
+      let query = supabase
+        .from("products")
+        .select("*, business_types(name), categories(name)")
+        .eq("is_global", true)
+        .is("deleted_at", null)
+        .order("name", { ascending: true });
+
+      if (businessTypeId) {
+        query = query.eq("business_type_id", businessTypeId);
+      }
+
+      const { data: productsData, error } = await query;
+
+      if (error) throw error;
+
+      // Obtener presentaciones para cada producto
+      const products: GlobalProduct[] = await Promise.all(
+        (productsData || []).map(async (product: Record<string, unknown>) => {
+          const { data: presentationsData } = await supabase
+            .from("product_presentations")
+            .select("*")
+            .eq("product_local_id", product.local_id)
+            .is("deleted_at", null);
+
+          return {
+            id: product.id as string,
+            localId: product.local_id as string,
+            name: product.name as string,
+            sku: product.sku as string,
+            description: product.description as string | undefined,
+            businessTypeId: product.business_type_id as string,
+            businessTypeName: (product.business_types as { name: string } | null)?.name || "",
+            categoryId: product.category_id as string | undefined,
+            categoryName: (product.categories as { name: string } | null)?.name || undefined,
+            isWeighted: product.is_weighted as boolean,
+            unitOfMeasure: (product.unit_of_measure as string) || "unidad",
+            isTaxable: product.is_taxable as boolean,
+            isSerialized: product.is_serialized as boolean,
+            weight: product.weight as number | undefined,
+            length: product.length as number | undefined,
+            width: product.width as number | undefined,
+            height: product.height as number | undefined,
+            visible: product.visible as boolean,
+            defaultPresentationId: product.default_presentation_id as string | undefined,
+            presentations: (presentationsData || []).map((p: Record<string, unknown>) => ({
+              id: p.id as string,
+              name: p.name as string,
+              factor: Number(p.factor),
+              price: Number(p.price),
+              isDefault: p.is_default as boolean,
+              barcode: p.barcode as string | undefined
+            })),
+            sizeColors: [],
+            createdAt: product.created_at as string,
+            updatedAt: product.updated_at as string
+          };
+        })
+      );
+
+      return ok(products);
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_LIST_GLOBAL_PRODUCTS_FAILED",
+        message: String(error),
+        retryable: true
+      }));
+    }
+  };
+
+  const createGlobalProduct: AdminService["createGlobalProduct"] = async (input) => {
+    const client = supabase;
+    try {
+      const localId = crypto.randomUUID();
+      const now = new Date().toISOString();
+
+      // Crear el producto y obtener datos relacionados en una sola operación
+      const insertData: Record<string, unknown> = {
+        local_id: localId,
+        name: input.name,
+        sku: input.sku,
+        description: input.description || null,
+        business_type_id: input.businessTypeId,
+        category_id: input.categoryId || null,
+        is_weighted: input.isWeighted,
+        unit_of_measure: input.unitOfMeasure,
+        is_taxable: input.isTaxable,
+        is_serialized: input.isSerialized || false,
+        weight: input.weight || null,
+        length: input.length || null,
+        width: input.width || null,
+        height: input.height || null,
+        visible: input.visible !== false,
+        is_global: true,
+        tenant_id: null,
+        tenant_slug: "__global__",
+        created_at: now,
+        updated_at: now,
+        deleted_at: null
+      };
+
+      const { data, error: productError } = await client
+        .from("products")
+        .insert(insertData)
+        .select("*, business_types(name), categories(name)")
+        .single();
+
+      if (productError) throw productError;
+      if (!data) throw new Error("No se pudo recuperar el producto creado");
+
+      // Preparar presentaciones para inserción masiva
+      const presentationsToInsert = input.presentations.map(pres => ({
+        product_local_id: localId,
+        name: pres.name,
+        factor: pres.factor,
+        price: pres.price,
+        is_default: pres.isDefault,
+        barcode: pres.barcode || null,
+        tenant_id: null,
+        tenant_slug: "__global__",
+        created_at: now,
+        updated_at: now
+      }));
+
+      let finalPresentations: any[] = [];
+
+      if (presentationsToInsert.length > 0) {
+        const { data: insertedPres, error: presError } = await client
+          .from("product_presentations")
+          .insert(presentationsToInsert)
+          .select();
+
+        if (presError) throw presError;
+        finalPresentations = insertedPres || [];
+      }
+
+      return ok({
+        id: data.id,
+        localId: data.local_id,
+        name: data.name,
+        sku: data.sku,
+        description: data.description || undefined,
+        businessTypeId: data.business_type_id,
+        businessTypeName: (data.business_types as unknown as { name: string } | null)?.name || "",
+        categoryId: data.category_id || undefined,
+        categoryName: (data.categories as unknown as { name: string } | null)?.name || undefined,
+        isWeighted: data.is_weighted,
+        unitOfMeasure: (data.unit_of_measure as string) || "unidad",
+        isTaxable: data.is_taxable,
+        isSerialized: data.is_serialized,
+        weight: data.weight || undefined,
+        length: data.length || undefined,
+        width: data.width || undefined,
+        height: data.height || undefined,
+        visible: data.visible,
+        defaultPresentationId: data.default_presentation_id || undefined,
+        presentations: finalPresentations.map(p => ({
+          id: p.id,
+          name: p.name,
+          factor: p.factor,
+          price: p.price,
+          isDefault: p.is_default,
+          barcode: p.barcode || undefined
+        })),
+        sizeColors: [],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      } as GlobalProduct);
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_CREATE_GLOBAL_PRODUCT_FAILED",
+        message: String(error),
+        retryable: false
+      }));
+    }
+  };
+
+  const updateGlobalProduct: AdminService["updateGlobalProduct"] = async (id, input) => {
+    const client = supabase;
+    try {
+      const now = new Date().toISOString();
+
+      // Actualizar producto y obtener datos relacionados en una sola operación
+      const { data, error: productError } = await client
+        .from("products")
+        .update({
+          name: input.name,
+          sku: input.sku,
+          description: input.description || null,
+          business_type_id: input.businessTypeId,
+          category_id: input.categoryId || null,
+          is_weighted: input.isWeighted,
+          unit_of_measure: input.unitOfMeasure,
+          is_taxable: input.isTaxable,
+          is_serialized: input.isSerialized || false,
+          weight: input.weight || null,
+          length: input.length || null,
+          width: input.width || null,
+          height: input.height || null,
+          visible: input.visible !== false,
+          updated_at: now
+        })
+        .eq("id", id)
+        .select("*, business_types(name), categories(name)")
+        .single();
+
+      if (productError) throw productError;
+      if (!data) throw new Error("No se pudo recuperar el producto actualizado");
+
+      // Soft delete presentaciones existentes
+      const { error: deleteError } = await client
+        .from("product_presentations")
+        .update({ deleted_at: now })
+        .eq("product_local_id", data.local_id);
+      
+      if (deleteError) throw deleteError;
+
+      // Preparar nuevas presentaciones para inserción masiva
+      // Usamos nuevos IDs para evitar conflictos con los registros soft-deleted
+      const presentationsToInsert = input.presentations.map(pres => ({
+        product_local_id: data.local_id,
+        name: pres.name,
+        factor: pres.factor,
+        price: pres.price,
+        is_default: pres.isDefault,
+        barcode: pres.barcode || null,
+        tenant_id: null,
+        tenant_slug: "__global__",
+        created_at: now,
+        updated_at: now
+      }));
+
+      let finalPresentations: any[] = [];
+
+      if (presentationsToInsert.length > 0) {
+        const { data: insertedPres, error: presError } = await client
+          .from("product_presentations")
+          .insert(presentationsToInsert)
+          .select();
+
+        if (presError) throw presError;
+        finalPresentations = insertedPres || [];
+      }
+
+      return ok({
+        id: data.id,
+        localId: data.local_id,
+        name: data.name,
+        sku: data.sku,
+        description: data.description || undefined,
+        businessTypeId: data.business_type_id,
+        businessTypeName: (data.business_types as unknown as { name: string } | null)?.name || "",
+        categoryId: data.category_id || undefined,
+        categoryName: (data.categories as unknown as { name: string } | null)?.name || undefined,
+        isWeighted: data.is_weighted,
+        unitOfMeasure: (data.unit_of_measure as string) || "unidad",
+        isTaxable: data.is_taxable,
+        isSerialized: data.is_serialized,
+        weight: data.weight || undefined,
+        length: data.length || undefined,
+        width: data.width || undefined,
+        height: data.height || undefined,
+        visible: data.visible,
+        defaultPresentationId: data.default_presentation_id || undefined,
+        presentations: finalPresentations.map(p => ({
+          id: p.id,
+          name: p.name,
+          factor: p.factor,
+          price: p.price,
+          isDefault: p.is_default,
+          barcode: p.barcode || undefined
+        })),
+        sizeColors: [],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      } as GlobalProduct);
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_UPDATE_GLOBAL_PRODUCT_FAILED",
+        message: String(error),
+        retryable: false
+      }));
+    }
+  };
+
+  const deleteGlobalProduct: AdminService["deleteGlobalProduct"] = async (id) => {
+    const client = supabase;
+    try {
+      const now = new Date().toISOString();
+
+      // Obtener el local_id del producto
+      const { data: product, error: productError } = await client
+        .from("products")
+        .select("local_id")
+        .eq("id", id)
+        .single();
+
+      if (productError) throw productError;
+
+      // Eliminar presentaciones
+      await client
+        .from("product_presentations")
+        .update({ deleted_at: now })
+        .eq("product_local_id", product.local_id);
+
+      // Eliminar producto
+      const { error } = await client
+        .from("products")
+        .update({ deleted_at: now })
+        .eq("id", id)
+        .eq("is_global", true);
+
+      if (error) throw error;
+
+      return ok(undefined);
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_DELETE_GLOBAL_PRODUCT_FAILED",
+        message: String(error),
+        retryable: false
+      }));
+    }
+  };
+
   const getAuditLogs: AdminService["getAuditLogs"] = async (limit = 50, offset = 0) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const authToken = await getAuthToken(supabase);
@@ -921,6 +1396,15 @@ export const createAdminService = ({
     toggleUserStatus,
     getGlobalConfig,
     updateGlobalConfig,
-    getAuditLogs
+    getAuditLogs,
+    // Categorías y Productos Globales
+    listGlobalCategories,
+    createGlobalCategory,
+    updateGlobalCategory,
+    deleteGlobalCategory,
+    listGlobalProducts,
+    createGlobalProduct,
+    updateGlobalProduct,
+    deleteGlobalProduct
   };
 };

@@ -74,7 +74,10 @@ const protectedColumns = new Set([
   "local_id",
   "created_at",
   "updated_at",
-  "deleted_at"
+  "deleted_at",
+  // Columnas de productos globales - protegidas contra manipulación
+  "is_global",
+  "business_type_id"
 ]);
 
 const sanitizeMutationPayload = (payload: DbRow): DbRow => {
@@ -82,6 +85,15 @@ const sanitizeMutationPayload = (payload: DbRow): DbRow => {
     ([key]) => !protectedColumns.has(key)
   );
   return Object.fromEntries(sanitizedEntries);
+};
+
+// Validar que usuario normal no intente crear productos globales
+const validateNoGlobalMutation = (table: string, payload: DbRow, role: string): boolean => {
+  if (table !== "products") return true;
+  if (payload.is_global === true && role !== "owner" && role !== "admin") {
+    return false;
+  }
+  return true;
 };
 
 const insertRecord = async (
@@ -320,6 +332,16 @@ Deno.serve(async (request) => {
       { status: 403, headers: jsonHeaders }
     );
   }
+
+  // Validar que usuario normal no intente mutar productos globales
+  const userRole = membership.data.role;
+  if (!validateNoGlobalMutation(table, payload ?? {}, userRole)) {
+    return new Response(
+      JSON.stringify({ error: "FORBIDDEN_GLOBAL_MUTATION" }),
+      { status: 403, headers: jsonHeaders }
+    );
+  }
+
   const { table, operation, localId, payload } = parsedInput.data;
 
   let syncResult: { success: boolean; error?: string };

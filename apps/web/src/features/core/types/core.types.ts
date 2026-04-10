@@ -8,6 +8,7 @@ export interface TenantContext {
   tenantSlug: string;
   tenantName: string;
   userId: string;
+  businessTypeId?: string;
 }
 
 /**

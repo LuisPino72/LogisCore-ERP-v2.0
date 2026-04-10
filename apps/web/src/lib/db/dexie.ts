@@ -65,6 +65,9 @@ export interface ProductRecord {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+  // Campos para productos globales
+  isGlobal?: boolean;
+  businessTypeId?: string;
 }
 
 export interface WarehouseRecord {
