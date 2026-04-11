@@ -161,7 +161,7 @@ export function ProductionPanel({ tenantSlug, actor, products, warehouses = defa
 
       {state.lastError && (
         <div className="alert alert-error">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <div>
             <p className="font-medium">Error</p>
             <p className="text-sm">{state.lastError.message}</p>

@@ -166,7 +166,7 @@ export function CompleteOrderModal({
         </div>
 
         <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg flex items-start gap-2">
-          <AlertTriangle className="w-5 h-5 text-state-info flex-shrink-0 mt-0.5" />
+          <AlertTriangle className="w-5 h-5 text-state-info shrink-0 mt-0.5" />
           <p className="text-sm text-blue-800">
             Al completar esta orden se registrará la salida de los ingredientes del inventario
             y la entrada del producto terminado. Verifique que el stock sea suficiente.

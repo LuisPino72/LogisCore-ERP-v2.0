@@ -157,7 +157,7 @@ export function TerminalView({
                         {product.name}
                       </span>
                       {product.isWeighted && (
-                        <Scale className="w-3 h-3 text-brand-600 flex-shrink-0 ml-1" />
+                        <Scale className="w-3 h-3 text-brand-600 shrink-0 ml-1" />
                       )}
                     </div>
                     <div className="text-xs text-content-secondary mt-1">

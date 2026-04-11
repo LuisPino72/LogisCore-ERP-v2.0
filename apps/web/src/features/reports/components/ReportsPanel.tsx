@@ -189,7 +189,7 @@ export function ReportsPanel({ tenantSlug, actor, warehouses = defaultWarehouses
 
       {lastError && (
         <div className="alert alert-error">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{lastError}</span>
         </div>
       )}
