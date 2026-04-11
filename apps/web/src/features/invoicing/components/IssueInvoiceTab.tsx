@@ -118,7 +118,7 @@ export function IssueInvoiceTab({
 
       {lastError && (
         <div className="alert alert-error">
-          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <AlertTriangle className="w-5 h-5 shrink-0" />
           <span>{lastError}</span>
         </div>
       )}

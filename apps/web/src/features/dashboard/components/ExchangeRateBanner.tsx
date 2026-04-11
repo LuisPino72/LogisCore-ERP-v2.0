@@ -119,7 +119,7 @@ export function ExchangeRateBanner({ rate, isLoading, onUpdateRate, onFetchFromB
     <div className="flex items-center gap-1">
       <button
         onClick={handleClick}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 hover:from-emerald-100 hover:to-teal-100 transition-colors"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-linear-to-r from-emerald-50 to-teal-50 border border-emerald-200 hover:from-emerald-100 hover:to-teal-100 transition-colors"
       >
         <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />

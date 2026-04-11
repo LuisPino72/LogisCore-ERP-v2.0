@@ -59,7 +59,7 @@ export function VoidInvoiceModal({
     >
       <div className="space-y-4">
         <div className="alert alert-warning">
-          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <AlertTriangle className="w-5 h-5 shrink-0" />
           <div>
             <p className="font-medium">Esta acción es irreversible</p>
             <p className="text-sm">
