@@ -36,7 +36,8 @@ import type {
   GlobalCategory,
   CreateGlobalCategoryInput,
   GlobalProduct,
-  CreateGlobalProductInput
+  CreateGlobalProductInput,
+  GlobalProductPresentation
 } from "../types/admin.types";
 
 /**
@@ -1119,7 +1120,7 @@ export const createAdminService = ({
         updated_at: now
       }));
 
-      let finalPresentations: any[] = [];
+      let finalPresentations: GlobalProductPresentation[] = [];
 
       if (presentationsToInsert.length > 0) {
         const { data: insertedPres, error: presError } = await client
@@ -1151,13 +1152,13 @@ export const createAdminService = ({
         height: data.height || undefined,
         visible: data.visible,
         defaultPresentationId: data.default_presentation_id || undefined,
-        presentations: finalPresentations.map(p => ({
-          id: p.id,
-          name: p.name,
-          factor: p.factor,
-          price: p.price,
-          isDefault: p.is_default,
-          barcode: p.barcode || undefined
+        presentations: finalPresentations.map((p): GlobalProductPresentation => ({
+          id: p.id as string,
+          name: p.name as string,
+          factor: p.factor as number,
+          price: p.price as number,
+          isDefault: p.isDefault as boolean,
+          barcode: (p.barcode as string) || undefined
         })),
         sizeColors: [],
         createdAt: data.created_at,
@@ -1227,7 +1228,7 @@ export const createAdminService = ({
         updated_at: now
       }));
 
-      let finalPresentations: any[] = [];
+      let finalPresentations: GlobalProductPresentation[] = [];
 
       if (presentationsToInsert.length > 0) {
         const { data: insertedPres, error: presError } = await client
@@ -1259,13 +1260,13 @@ export const createAdminService = ({
         height: data.height || undefined,
         visible: data.visible,
         defaultPresentationId: data.default_presentation_id || undefined,
-        presentations: finalPresentations.map(p => ({
-          id: p.id,
-          name: p.name,
-          factor: p.factor,
-          price: p.price,
-          isDefault: p.is_default,
-          barcode: p.barcode || undefined
+        presentations: finalPresentations.map((p): GlobalProductPresentation => ({
+          id: p.id as string,
+          name: p.name as string,
+          factor: p.factor as number,
+          price: p.price as number,
+          isDefault: p.isDefault as boolean,
+          barcode: (p.barcode as string) || undefined
         })),
         sizeColors: [],
         createdAt: data.created_at,
