@@ -134,14 +134,15 @@ function ModuleRenderer({
         warehousesResult.ok ? null : warehousesResult.error.message
       ].find(Boolean) ?? null;
 
-      setSharedData({
+      setSharedData((previous) => ({
+        ...previous,
         products: productsResult.ok ? productsResult.data : [],
         categories: categoriesResult.ok ? categoriesResult.data : [],
         presentations: presentationsResult.ok ? presentationsResult.data : [],
         warehouses: warehousesResult.ok ? warehousesResult.data : [],
         isLoading: false,
         lastError: nextError
-      });
+      }));
     };
 
     void loadSharedData();
