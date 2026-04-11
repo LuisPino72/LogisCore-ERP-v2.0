@@ -15,7 +15,6 @@ import { Plus, Search } from "lucide-react";
 import type { Category, Product, ProductPresentation, CreateProductInput } from "@/features/products/types/products.types";
 import type { PurchasesActorContext, Supplier, CreateSupplierInput, UpdateSupplierInput } from "../types/purchases.types";
 import { eventBus } from "@/lib/core/runtime";
-import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
 import { Tabs, type TabItem } from "@/common/components/Tabs";
 import { purchasesService } from "../services/purchases.service.instance";
 import { purchasesCatalogService } from "../services/purchases-catalog.service.instance";

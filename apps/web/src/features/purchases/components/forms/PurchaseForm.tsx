@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Modal } from "@/common/components/Modal";
 import { LoadingSpinner } from "@/common/components/EmptyState";
 import { Plus, Check, X } from "lucide-react";
 import type { Product } from "@/features/products/types/products.types";

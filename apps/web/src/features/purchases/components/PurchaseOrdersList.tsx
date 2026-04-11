@@ -1,14 +1,12 @@
-import { Search, Edit2, X, Check } from "lucide-react";
+import { Search, Edit2, X } from "lucide-react";
 import { Badge } from "@/common/components/Badge";
 import type { Purchase, Supplier } from "../types/purchases.types";
 import type { Warehouse } from "@/features/inventory/types/inventory.types";
-import type { Product } from "@/features/products/types/products.types";
 
 interface PurchaseOrdersListProps {
   purchases: Purchase[];
   suppliers: Supplier[];
   warehouses: Warehouse[];
-  products: Product[];
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onConfirm: (id: string) => void;
@@ -33,10 +31,6 @@ const statusVariants: Record<string, "default" | "warning" | "success" | "error"
   cancelled: "error"
 };
 
-function formatQty(qty: number, isWeighted?: boolean | null): string {
-  return (isWeighted ?? false) ? qty.toFixed(4) : qty.toFixed(2);
-}
-
 function canReceive(status: string): boolean {
   return ["draft", "confirmed", "partial_received"].includes(status);
 }
@@ -45,7 +39,6 @@ export function PurchaseOrdersList({
   purchases,
   suppliers,
   warehouses,
-  products,
   searchQuery,
   onSearchChange,
   onConfirm,

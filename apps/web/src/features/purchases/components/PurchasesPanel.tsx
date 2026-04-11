@@ -14,14 +14,12 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Plus, Check } from "lucide-react";
 import type { Product, Category, ProductPresentation } from "@/features/products/types/products.types";
 import type { Warehouse } from "@/features/inventory/types/inventory.types";
 import { eventBus } from "@/lib/core/runtime";
 import { usePurchases } from "../hooks/usePurchases";
 import { purchasesService } from "../services/purchases.service.instance";
 import { PurchasesCatalogPanel } from "./PurchasesCatalogPanel";
-import { LoadingSpinner } from "@/common/components/EmptyState";
 import { Tabs, type TabItem } from "@/common/components/Tabs";
 import { useKeyboardShortcuts } from "@/common";
 import type { PurchaseItem, PurchasesActorContext, PurchasesTenantContext, ReceivePurchaseInput } from "../types/purchases.types";
@@ -276,7 +274,6 @@ export function PurchasesPanel({
         purchases={purchasesState.purchases}
         suppliers={purchasesState.suppliers}
         warehouses={warehouses ?? []}
-        products={products}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onConfirm={handleConfirmPurchase}

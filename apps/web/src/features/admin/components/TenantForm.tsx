@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import type { SecurityUser, Tenant, EmployeeInput, WarehouseInput, EmployeeManagement } from "../types/admin.types";
 import { 
   validateRequired, 
@@ -161,7 +161,6 @@ export function TenantForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(initialData?.logoUrl || null);
   const [deletedEmployeeIds, setDeletedEmployeeIds] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isNew = !initialData;
 

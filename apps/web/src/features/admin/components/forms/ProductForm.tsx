@@ -2,7 +2,7 @@
  * Formulario de producto global.
  */
 
-import type { GlobalProduct, GlobalProductPresentation, BusinessType, CreateGlobalProductInput } from "../../types/admin.types";
+import type { GlobalProductPresentation, BusinessType, CreateGlobalProductInput } from "../../types/admin.types";
 
 const UNIT_OPTIONS = [
   { value: "unidad", label: "Unidad" },

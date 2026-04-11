@@ -2,7 +2,6 @@ import { Check } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
 import { LoadingSpinner } from "@/common/components/EmptyState";
 import { FormField, Input } from "@/common";
-import type { Supplier } from "../../types/purchases.types";
 
 interface SupplierFormProps {
   isOpen: boolean;

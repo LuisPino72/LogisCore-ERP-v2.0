@@ -1,4 +1,5 @@
 import type { Invoice, TaxRule } from "../types/invoicing.types";
+import { Tooltip } from "@/common";
 
 interface InvoicingKpiHeaderProps {
   invoices: Invoice[];
@@ -52,45 +53,53 @@ export function InvoicingKpiHeader({ invoices, taxRules }: InvoicingKpiHeaderPro
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div className="stat-card">
-        <div className="stat-value text-state-success">
-          {formatCurrency(totalInvoicedMonth)}
+      <Tooltip content="Monto total facturado en el mes actual (solo facturas emitidas)" position="top">
+        <div className="stat-card cursor-help hover:bg-surface-50 transition-colors">
+          <div className="stat-value text-state-success">
+            {formatCurrency(totalInvoicedMonth)}
+          </div>
+          <div className="stat-label">Total Facturado (Mes)</div>
+          <div className="text-xs text-content-tertiary mt-1">
+            {invoicesIssuedCount} facturas emitidas
+          </div>
         </div>
-        <div className="stat-label">Total Facturado (Mes)</div>
-        <div className="text-xs text-content-tertiary mt-1">
-          {invoicesIssuedCount} facturas emitidas
-        </div>
-      </div>
+      </Tooltip>
 
-      <div className="stat-card">
-        <div className="stat-value text-state-info">
-          {formatCurrency(debitFiscalIva)}
+      <Tooltip content="Monto total de IVA crédito fiscal generado en el mes" position="top">
+        <div className="stat-card cursor-help hover:bg-surface-50 transition-colors">
+          <div className="stat-value text-state-info">
+            {formatCurrency(debitFiscalIva)}
+          </div>
+          <div className="stat-label">Débito Fiscal (IVA)</div>
+          <div className="text-xs text-content-tertiary mt-1">
+            Tasa: {ivaRule?.rate || 16}%
+          </div>
         </div>
-        <div className="stat-label">Débito Fiscal (IVA)</div>
-        <div className="text-xs text-content-tertiary mt-1">
-          Tasa: {ivaRule?.rate || 16}%
-        </div>
-      </div>
+      </Tooltip>
 
-      <div className="stat-card">
-        <div className="stat-value text-state-warning">
-          {formatCurrency(collectedIgtf)}
+      <Tooltip content="Monto total de IGTF (Impuesto a las Transacciones Financieras) retenido" position="top">
+        <div className="stat-card cursor-help hover:bg-surface-50 transition-colors">
+          <div className="stat-value text-state-warning">
+            {formatCurrency(collectedIgtf)}
+          </div>
+          <div className="stat-label">Recaudación IGTF</div>
+          <div className="text-xs text-content-tertiary mt-1">
+            Tasa: {igtfRule?.rate || 3}%
+          </div>
         </div>
-        <div className="stat-label">Recaudación IGTF</div>
-        <div className="text-xs text-content-tertiary mt-1">
-          Tasa: {igtfRule?.rate || 3}%
-        </div>
-      </div>
+      </Tooltip>
 
-      <div className="stat-card">
-        <div className="stat-value text-content-secondary font-mono">
-          {nextControlNumber}
+      <Tooltip content="Próximo número de control para nueva factura fiscal" position="top">
+        <div className="stat-card cursor-help hover:bg-surface-50 transition-colors">
+          <div className="stat-value text-content-secondary font-mono">
+            {nextControlNumber}
+          </div>
+          <div className="stat-label">Próximo Control</div>
+          <div className="text-xs text-content-tertiary mt-1">
+            {invoicesDraftCount} borradores | {invoicesVoidedCount} anuladas
+          </div>
         </div>
-        <div className="stat-label">Próximo Control</div>
-        <div className="text-xs text-content-tertiary mt-1">
-          {invoicesDraftCount} borradores | {invoicesVoidedCount} anuladas
-        </div>
-      </div>
+      </Tooltip>
     </div>
   );
 }

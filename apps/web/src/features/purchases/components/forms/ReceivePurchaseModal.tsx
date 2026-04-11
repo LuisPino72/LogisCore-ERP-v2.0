@@ -1,7 +1,7 @@
 import { Modal } from "@/common/components/Modal";
 import { LoadingSpinner } from "@/common/components/EmptyState";
 import { Check } from "lucide-react";
-import type { PurchaseItem, Purchase } from "../../types/purchases.types";
+import type { Purchase } from "../../types/purchases.types";
 import type { Product } from "@/features/products/types/products.types";
 
 interface ReceivePurchaseModalProps {

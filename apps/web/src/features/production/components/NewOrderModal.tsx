@@ -4,7 +4,7 @@ import type { Product } from "@/features/products/types/products.types";
 import { Modal } from "@/common/components/Modal";
 import { Badge } from "@/common/components/Badge";
 import { FormField, Select, Input } from "@/common";
-import { Package, Beaker, Scale } from "lucide-react";
+import { Scale } from "lucide-react";
 
 interface NewOrderModalProps {
   isOpen: boolean;
