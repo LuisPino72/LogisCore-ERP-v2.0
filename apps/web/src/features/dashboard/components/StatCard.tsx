@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Tooltip } from "@/common";
 
 interface StatCardProps {
   title: string;
@@ -27,37 +28,65 @@ export function StatCard({ title, value, icon, trend, color = "gold", tooltip }:
       relative overflow-hidden rounded-xl border bg-white p-5 
       shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1
       ${color === "gold" ? "hover:border-brand-300" : ""}
-    `} title={tooltip}>
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
-            {title}
-          </p>
-          <h3 className="text-3xl font-bold text-content-primary tracking-tight">
-            {value}
-          </h3>
-          
-          {trend && (
-            <div className={`flex items-center gap-1 text-xs font-semibold ${
-              trend.isUp ? "text-state-success" : "text-state-error"
-            }`}>
-              <span>{trend.isUp ? "↑" : "↓"}</span>
-              <span>{Math.abs(trend.value)}%</span>
-              <span className="text-content-tertiary">vs ayer</span>
+    `}>
+      {tooltip ? (
+        <Tooltip content={tooltip} position="top">
+          <div className="flex items-start justify-between cursor-help">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
+                {title}
+              </p>
+              <h3 className="text-3xl font-bold text-content-primary tracking-tight">
+                {value}
+              </h3>
+              
+              {trend && (
+                <div className={`flex items-center gap-1 text-xs font-semibold ${
+                  trend.isUp ? "text-state-success" : "text-state-error"
+                }`}>
+                  <span>{trend.isUp ? "↑" : "↓"}</span>
+                  <span>{Math.abs(trend.value)}%</span>
+                  <span className="text-content-tertiary">vs ayer</span>
+                </div>
+              )}
             </div>
-          )}
+            
+            <div className={`
+              flex h-14 w-14 items-center justify-center rounded-lg border bg-linear-to-br font-xl
+              ${colorClasses[color]}
+            `}>
+              {icon}
+            </div>
+          </div>
+        </Tooltip>
+      ) : (
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
+              {title}
+            </p>
+            <h3 className="text-3xl font-bold text-content-primary tracking-tight">
+              {value}
+            </h3>
+            
+            {trend && (
+              <div className={`flex items-center gap-1 text-xs font-semibold ${
+                trend.isUp ? "text-state-success" : "text-state-error"
+              }`}>
+                <span>{trend.isUp ? "↑" : "↓"}</span>
+                <span>{Math.abs(trend.value)}%</span>
+                <span className="text-content-tertiary">vs ayer</span>
+              </div>
+            )}
+          </div>
+          
+          <div className={`
+            flex h-14 w-14 items-center justify-center rounded-lg border bg-linear-to-br font-xl
+            ${colorClasses[color]}
+          `}>
+            {icon}
+          </div>
         </div>
-        
-        <div className={`
-          flex h-14 w-14 items-center justify-center rounded-lg border bg-linear-to-br font-xl
-          ${colorClasses[color]}
-        `}>
-          {icon}
-        </div>
-      </div>
-      
-      {color === "gold" && (
-        <div className="absolute -right-8 -bottom-8 h-28 w-28 rounded-full bg-brand-400/10 blur-2xl" />
       )}
     </div>
   );

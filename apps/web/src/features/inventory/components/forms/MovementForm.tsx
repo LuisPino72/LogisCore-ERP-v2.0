@@ -1,6 +1,7 @@
 import type { StockMovementType } from "../../types/inventory.types";
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "../../types/inventory.types";
+import { FormField, Select } from "@/common";
 
 interface MovementFormProps {
   products: Product[];
@@ -41,47 +42,32 @@ export function MovementForm({
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="label">Producto *</label>
-        <select 
+      <FormField label="Producto" htmlFor="productLocalId" required>
+        <Select
           value={form.productLocalId}
-          onChange={(e) => onChange({ ...form, productLocalId: e.target.value })}
-          className="input"
-        >
-          <option value="">Seleccionar producto</option>
-          {products.map(p => (
-            <option key={p.localId} value={p.localId}>{p.name}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Bodega *</label>
-        <select 
+          onChange={(value) => onChange({ ...form, productLocalId: String(value) })}
+          options={products.map(p => ({ value: p.localId, label: p.name }))}
+          placeholder="Seleccionar producto"
+        />
+      </FormField>
+      <FormField label="Bodega" htmlFor="warehouseLocalId" required>
+        <Select
           value={form.warehouseLocalId}
-          onChange={(e) => onChange({ ...form, warehouseLocalId: e.target.value })}
-          className="input"
-        >
-          <option value="">Seleccionar bodega</option>
-          {warehouses.map(w => (
-            <option key={w.localId} value={w.localId}>{w.name}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Tipo de Movimiento *</label>
-        <select 
+          onChange={(value) => onChange({ ...form, warehouseLocalId: String(value) })}
+          options={warehouses.map(w => ({ value: w.localId, label: w.name }))}
+          placeholder="Seleccionar bodega"
+        />
+      </FormField>
+      <FormField label="Tipo de Movimiento" htmlFor="movementType" required>
+        <Select
           value={form.movementType}
-          onChange={(e) => onChange({ ...form, movementType: e.target.value as StockMovementType })}
-          className="input"
-        >
-          {Object.entries(movementTypeLabels).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Cantidad *</label>
+          onChange={(value) => onChange({ ...form, movementType: value as StockMovementType })}
+          options={Object.entries(movementTypeLabels).map(([value, label]) => ({ value, label }))}
+        />
+      </FormField>
+      <FormField label="Cantidad" htmlFor="quantity" required>
         <input 
+          id="quantity"
           type="number"
           step="0.0001"
           min="0.0001"
@@ -89,16 +75,16 @@ export function MovementForm({
           onChange={(e) => onChange({ ...form, quantity: Number(e.target.value) })}
           className="input"
         />
-      </div>
-      <div>
-        <label className="label">Notas (obligatorio para ajustes)</label>
+      </FormField>
+      <FormField label="Notas (obligatorio para ajustes)" htmlFor="notes">
         <textarea 
+          id="notes"
           value={form.notes}
           onChange={(e) => onChange({ ...form, notes: e.target.value })}
           placeholder="Motivo del movimiento..."
           className="input min-h-[80px]"
         />
-      </div>
+      </FormField>
       <div className="flex justify-end gap-3">
         <button 
           onClick={onCancel}

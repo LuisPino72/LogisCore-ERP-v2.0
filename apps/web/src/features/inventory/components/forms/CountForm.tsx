@@ -1,5 +1,6 @@
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "../../types/inventory.types";
+import { FormField, Select, Input } from "@/common";
 
 interface CountFormProps {
   products: Product[];
@@ -27,52 +28,41 @@ export function CountForm({
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="label">Producto *</label>
-        <select 
+      <FormField label="Producto" htmlFor="productLocalId" required>
+        <Select
           value={form.productLocalId}
-          onChange={(e) => onChange({ ...form, productLocalId: e.target.value })}
-          className="input"
-        >
-          <option value="">Seleccionar producto</option>
-          {products.map(p => (
-            <option key={p.localId} value={p.localId}>{p.name}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Bodega *</label>
-        <select 
+          onChange={(value) => onChange({ ...form, productLocalId: String(value) })}
+          options={products.map(p => ({ value: p.localId, label: p.name }))}
+          placeholder="Seleccionar producto"
+        />
+      </FormField>
+      <FormField label="Bodega" htmlFor="warehouseLocalId" required>
+        <Select
           value={form.warehouseLocalId}
-          onChange={(e) => onChange({ ...form, warehouseLocalId: e.target.value })}
-          className="input"
-        >
-          <option value="">Seleccionar bodega</option>
-          {warehouses.map(w => (
-            <option key={w.localId} value={w.localId}>{w.name}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Cantidad Contada *</label>
-        <input 
+          onChange={(value) => onChange({ ...form, warehouseLocalId: String(value) })}
+          options={warehouses.map(w => ({ value: w.localId, label: w.name }))}
+          placeholder="Seleccionar bodega"
+        />
+      </FormField>
+      <FormField label="Cantidad Contada" htmlFor="countedQty" required>
+        <Input
+          id="countedQty"
           type="number"
           step="0.0001"
           min="0"
           value={form.countedQty}
           onChange={(e) => onChange({ ...form, countedQty: Number(e.target.value) })}
-          className="input"
         />
-      </div>
-      <div>
-        <label className="label">Razón / Observación</label>
+      </FormField>
+      <FormField label="Razón / Observación" htmlFor="reason">
         <textarea 
+          id="reason"
           value={form.reason}
           onChange={(e) => onChange({ ...form, reason: e.target.value })}
           placeholder="Motivo del conteo..."
           className="input min-h-[80px]"
         />
-      </div>
+      </FormField>
       <div className="flex justify-end gap-3">
         <button 
           onClick={onCancel}

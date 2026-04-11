@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
 import { LoadingSpinner } from "@/common/components/EmptyState";
+import { FormField, Input } from "@/common";
 import type { Supplier } from "../../types/purchases.types";
 
 interface SupplierFormProps {
@@ -51,64 +52,64 @@ export function SupplierForm({
         <fieldset>
           <legend className="label mb-3">Información Básica</legend>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">Nombre *</label>
-              <input
+            <FormField label="Nombre" htmlFor="supplierName" required>
+              <Input
+                id="supplierName"
                 type="text"
                 value={form.name}
                 onChange={(e) => onChange({ ...form, name: e.target.value })}
                 placeholder="Nombre del proveedor"
-                className="input"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">RIF</label>
-              <input
+            </FormField>
+            <FormField label="RIF" htmlFor="supplierRif">
+              <Input
+                id="supplierRif"
                 type="text"
                 value={form.rif}
                 onChange={(e) => onChange({ ...form, rif: e.target.value.toUpperCase() })}
                 placeholder="J-12345678-9"
-                className="input font-mono"
+                className="font-mono"
               />
-            </div>
+            </FormField>
           </div>
         </fieldset>
 
         <fieldset>
           <legend className="label mb-3">Contacto</legend>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">Teléfono</label>
-              <input
+            <FormField label="Teléfono" htmlFor="supplierPhone">
+              <Input
+                id="supplierPhone"
                 type="tel"
                 value={form.phone}
                 onChange={(e) => onChange({ ...form, phone: e.target.value })}
                 placeholder="0412-1234567"
-                className="input"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">Persona de contacto</label>
-              <input
+            </FormField>
+            <FormField label="Persona de contacto" htmlFor="supplierContact">
+              <Input
+                id="supplierContact"
                 type="text"
                 value={form.contactPerson}
                 onChange={(e) => onChange({ ...form, contactPerson: e.target.value })}
                 placeholder="Nombre del contacto"
-                className="input"
               />
-            </div>
+            </FormField>
           </div>
         </fieldset>
 
         <fieldset>
           <legend className="label mb-3">Notas</legend>
-          <textarea
-            value={form.notes}
-            onChange={(e) => onChange({ ...form, notes: e.target.value })}
-            placeholder="Notas adicionales sobre el proveedor..."
-            className="input min-h-[80px] resize-none"
-            rows={3}
-          />
+          <FormField label="" htmlFor="supplierNotes">
+            <textarea
+              id="supplierNotes"
+              value={form.notes}
+              onChange={(e) => onChange({ ...form, notes: e.target.value })}
+              placeholder="Notas adicionales sobre el proveedor..."
+              className="input min-h-[80px] resize-none"
+              rows={3}
+            />
+          </FormField>
         </fieldset>
 
         {error && <div className="alert alert-error">{error}</div>}

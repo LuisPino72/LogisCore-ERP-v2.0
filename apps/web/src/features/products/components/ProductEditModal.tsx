@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Modal } from "@/common/components/Modal";
+import { FormField, Select, Input } from "@/common";
 import type { Product, Category } from "../types/products.types";
 import { UNITS_OF_MEASURE } from "../utils/products.utils";
 
@@ -100,46 +101,39 @@ export function ProductEditModal({
         <div>
           <h4 className="label mb-3">Información General</h4>
           <div className="space-y-4">
-            <div>
-              <label className="label">Nombre</label>
-              <input
+            <FormField label="Nombre" htmlFor="productName">
+              <Input
+                id="productName"
                 type="text"
-                className="input"
                 value={formData.name}
                 onChange={(e) => handleChange("name", e.target.value)}
               />
-            </div>
-            <div>
-              <label className="label">SKU</label>
-              <input
+            </FormField>
+            <FormField label="SKU" htmlFor="productSku">
+              <Input
+                id="productSku"
                 type="text"
-                className="input"
                 value={formData.sku}
                 onChange={(e) => handleChange("sku", e.target.value)}
               />
-            </div>
-            <div>
-              <label className="label">Descripción</label>
+            </FormField>
+            <FormField label="Descripción" htmlFor="productDescription">
               <textarea
+                id="productDescription"
                 className="input"
                 rows={3}
                 value={formData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
               />
-            </div>
-            <div>
-              <label className="label">Categoría</label>
-              <select
-                className="input"
+            </FormField>
+            <FormField label="Categoría" htmlFor="productCategory">
+              <Select
                 value={formData.categoryId}
-                onChange={(e) => handleChange("categoryId", e.target.value)}
-              >
-                <option value="">Sin categoría</option>
-                {categoryOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
+                onChange={(value) => handleChange("categoryId", String(value))}
+                options={categoryOptions}
+                placeholder="Sin categoría"
+              />
+            </FormField>
           </div>
         </div>
 
@@ -196,46 +190,42 @@ export function ProductEditModal({
         <div className="col-span-2">
           <h4 className="label mb-3">Atributos Técnicos</h4>
           <div className="grid grid-cols-4 gap-4">
-            <div>
-              <label className="label">Peso (kg)</label>
-              <input
+            <FormField label="Peso (kg)" htmlFor="productWeight">
+              <Input
+                id="productWeight"
                 type="number"
                 step="0.001"
-                className="input"
                 value={formData.weight}
                 onChange={(e) => handleChange("weight", e.target.value)}
               />
-            </div>
-            <div>
-              <label className="label">Largo (cm)</label>
-              <input
+            </FormField>
+            <FormField label="Largo (cm)" htmlFor="productLength">
+              <Input
+                id="productLength"
                 type="number"
                 step="0.01"
-                className="input"
                 value={formData.length}
                 onChange={(e) => handleChange("length", e.target.value)}
               />
-            </div>
-            <div>
-              <label className="label">Ancho (cm)</label>
-              <input
+            </FormField>
+            <FormField label="Ancho (cm)" htmlFor="productWidth">
+              <Input
+                id="productWidth"
                 type="number"
                 step="0.01"
-                className="input"
                 value={formData.width}
                 onChange={(e) => handleChange("width", e.target.value)}
               />
-            </div>
-            <div>
-              <label className="label">Alto (cm)</label>
-              <input
+            </FormField>
+            <FormField label="Alto (cm)" htmlFor="productHeight">
+              <Input
+                id="productHeight"
                 type="number"
                 step="0.01"
-                className="input"
                 value={formData.height}
                 onChange={(e) => handleChange("height", e.target.value)}
               />
-            </div>
+            </FormField>
           </div>
         </div>
       </div>

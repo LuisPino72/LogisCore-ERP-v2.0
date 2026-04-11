@@ -3,6 +3,7 @@ import type { Recipe } from "../types/production.types";
 import type { Product } from "@/features/products/types/products.types";
 import { Modal } from "@/common/components/Modal";
 import { Badge } from "@/common/components/Badge";
+import { FormField, Select, Input } from "@/common";
 import { Package, Beaker, Scale } from "lucide-react";
 
 interface NewOrderModalProps {
@@ -75,24 +76,14 @@ export function NewOrderModal({
       }
     >
       <div className="space-y-4">
-        <div>
-          <label className="label flex items-center gap-2">
-            <Beaker className="w-4 h-4" />
-            Receta (BOM)
-          </label>
-          <select
+        <FormField label="Receta (BOM)" htmlFor="recipeLocalId" required>
+          <Select
             value={recipeLocalId}
-            onChange={(e) => setRecipeLocalId(e.target.value)}
-            className="input"
-          >
-            <option value="">Seleccionar receta...</option>
-            {recipes.map((r) => (
-              <option key={r.localId} value={r.localId}>
-                {r.name} ({getProductName(r.productLocalId)})
-              </option>
-            ))}
-          </select>
-        </div>
+            onChange={(value) => setRecipeLocalId(String(value))}
+            options={recipes.map(r => ({ value: r.localId, label: `${r.name} (${getProductName(r.productLocalId)})` }))}
+            placeholder="Seleccionar receta..."
+          />
+        </FormField>
 
         {selectedRecipe && (
           <div className="bg-surface-50 p-3 rounded-lg">
@@ -119,36 +110,25 @@ export function NewOrderModal({
           </div>
         )}
 
-        <div>
-          <label className="label">Bodega</label>
-          <select
+        <FormField label="Bodega" htmlFor="warehouseLocalId" required>
+          <Select
             value={warehouseLocalId}
-            onChange={(e) => setWarehouseLocalId(e.target.value)}
-            className="input"
-          >
-            <option value="">Seleccionar bodega...</option>
-            {warehouses.map((w) => (
-              <option key={w.localId} value={w.localId}>
-                {w.name}
-              </option>
-            ))}
-          </select>
-        </div>
+            onChange={(value) => setWarehouseLocalId(String(value))}
+            options={warehouses.map(w => ({ value: w.localId, label: w.name }))}
+            placeholder="Seleccionar bodega..."
+          />
+        </FormField>
 
-        <div>
-          <label className="label flex items-center gap-2">
-            <Package className="w-4 h-4" />
-            Cantidad Planificada
-          </label>
-          <input
+        <FormField label="Cantidad Planificada" htmlFor="plannedQty" required>
+          <Input
+            id="plannedQty"
             type="number"
             min="0.0001"
             step="0.0001"
             value={plannedQty}
             onChange={(e) => setPlannedQty(e.target.value)}
-            className="input"
           />
-        </div>
+        </FormField>
       </div>
     </Modal>
   );

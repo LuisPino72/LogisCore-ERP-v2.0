@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Tooltip } from "@/common";
 
 interface ExchangeRateBannerProps {
   rate: number | null;
@@ -128,12 +129,12 @@ export function ExchangeRateBanner({ rate, isLoading, onUpdateRate, onFetchFromB
         <span className="text-sm font-bold text-emerald-800">Bs {formattedRate}</span>
       </button>
       {showFetchButton && (
-        <button
-          onClick={handleFetchFromBCV}
-          disabled={isFetching}
-          className="p-2 rounded-lg border border-surface-200 hover:bg-surface-50 text-content-tertiary hover:text-brand-600 disabled:opacity-50 transition-colors"
-          title="Actualizar desde BCV"
-        >
+        <Tooltip content="Actualizar tasa desde BCV" position="bottom">
+          <button
+            onClick={handleFetchFromBCV}
+            disabled={isFetching}
+            className="p-2 rounded-lg border border-surface-200 hover:bg-surface-50 text-content-tertiary hover:text-brand-600 disabled:opacity-50 transition-colors"
+          >
           {isFetching ? (
             <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -145,6 +146,7 @@ export function ExchangeRateBanner({ rate, isLoading, onUpdateRate, onFetchFromB
             </svg>
           )}
         </button>
+        </Tooltip>
       )}
     </div>
   );

@@ -5,6 +5,7 @@
 
 import { useState, type FormEvent } from "react";
 import type { Result, AppError } from "@logiscore/core";
+import { FormField, Input } from "@/common";
 
 interface ResetPasswordPageProps {
   onUpdatePassword: (password: string) => Promise<Result<void, AppError>>;
@@ -101,39 +102,31 @@ export function ResetPasswordPage({ onUpdatePassword, onPasswordReset }: ResetPa
                 </div>
               )}
 
-              <div>
-                <label htmlFor="newPassword" className="label">
-                  Nueva Contraseña
-                </label>
-                <input
+              <FormField label="Nueva Contraseña" htmlFor="newPassword" required>
+                <Input
                   id="newPassword"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="input"
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label htmlFor="confirmPassword" className="label">
-                  Confirmar Contraseña
-                </label>
-                <input
+              <FormField label="Confirmar Contraseña" htmlFor="confirmPassword" required>
+                <Input
                   id="confirmPassword"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="input"
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
-              </div>
+              </FormField>
 
               <button
                 type="submit"

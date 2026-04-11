@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
 import { LoadingSpinner } from "@/common/components/EmptyState";
+import { FormField, Input } from "@/common";
 
 interface CategoryFormProps {
   isOpen: boolean;
@@ -39,19 +40,18 @@ export function CategoryForm({
       }
     >
       <div className="space-y-4">
-        <div>
-          <label className="label">Nombre *</label>
-          <input
+        <FormField label="Nombre" htmlFor="categoryName" required>
+          <Input
+            id="categoryName"
             type="text"
             value={form.name}
             onChange={(e) => onChange({ name: e.target.value })}
             placeholder="Ej: Bebidas, Snacks, Lacteos"
-            className="input"
             maxLength={25}
           />
           <p className="text-xs text-content-tertiary mt-1">{form.name.length}/25 caracteres</p>
           {error && <p className="text-sm text-state-error mt-1">{error}</p>}
-        </div>
+        </FormField>
       </div>
     </Modal>
   );

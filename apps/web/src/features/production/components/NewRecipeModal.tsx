@@ -3,6 +3,7 @@ import type { Product } from "@/features/products/types/products.types";
 import type { CreateRecipeInput } from "../types/production.types";
 import { Modal } from "@/common/components/Modal";
 import { Badge } from "@/common/components/Badge";
+import { FormField, Select, Input } from "@/common";
 import { Plus, X, Beaker, Scale } from "lucide-react";
 
 interface IngredientInput {
@@ -126,43 +127,34 @@ export function NewRecipeModal({
       }
     >
       <div className="space-y-4">
-        <div>
-          <label className="label">Producto Terminado</label>
-          <select
+        <FormField label="Producto Terminado" htmlFor="productLocalId" required>
+          <Select
             value={productLocalId}
-            onChange={(e) => setProductLocalId(e.target.value)}
-            className="input"
-          >
-            <option value="">Seleccionar producto...</option>
-            {products.map((p) => (
-              <option key={p.localId} value={p.localId}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
+            onChange={(value) => setProductLocalId(String(value))}
+            options={products.map(p => ({ value: p.localId, label: p.name }))}
+            placeholder="Seleccionar producto..."
+          />
+        </FormField>
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label">Nombre de la Receta</label>
-            <input
+          <FormField label="Nombre de la Receta" htmlFor="recipeName" required>
+            <Input
+              id="recipeName"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej: Pan Francés Grande"
-              className="input"
             />
-          </div>
-          <div>
-            <label className="label">Rendimiento (qty)</label>
-            <input
+          </FormField>
+          <FormField label="Rendimiento (qty)" htmlFor="yieldQty" required>
+            <Input
+              id="yieldQty"
               type="number"
               min="0.0001"
               step="0.0001"
               value={yieldQty}
               onChange={(e) => setYieldQty(e.target.value)}
-              className="input"
             />
-          </div>
+          </FormField>
         </div>
 
         <div className="border-t border-surface-200 pt-4">

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Invoice } from "../types/invoicing.types";
 import { Modal } from "@/common/components/Modal";
+import { FormField } from "@/common";
 import { AlertTriangle } from "lucide-react";
 
 interface VoidInvoiceModalProps {
@@ -85,9 +86,9 @@ export function VoidInvoiceModal({
           </div>
         </div>
 
-        <div>
-          <label className="label">Motivo de anulación</label>
+        <FormField label="Motivo de anulación" htmlFor="voidReason">
           <textarea
+            id="voidReason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Ingrese el motivo de la anulación..."
@@ -96,7 +97,7 @@ export function VoidInvoiceModal({
           <p className="text-xs text-content-tertiary mt-1">
             El motivo será registrado en el log de auditoría.
           </p>
-        </div>
+        </FormField>
 
         <div className="text-xs text-content-tertiary">
           Solo usuarios con rol de administrador pueden anular facturas.

@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
 import { LoadingSpinner } from "@/common/components/EmptyState";
+import { FormField, Select, Input } from "@/common";
 import type { Category } from "@/features/products/types/products.types";
 import type { Supplier } from "../../types/purchases.types";
 
@@ -64,42 +65,38 @@ export function ProductForm({
         <fieldset>
           <legend className="label mb-3">Información General</legend>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">Nombre *</label>
-              <input
+            <FormField label="Nombre" htmlFor="productName" required>
+              <Input
+                id="productName"
                 type="text"
                 value={form.name}
                 onChange={(e) => onChange({ ...form, name: e.target.value })}
                 placeholder="Nombre del producto"
-                className="input"
                 maxLength={25}
               />
               <p className="text-xs text-content-tertiary mt-1">{form.name.length}/25 caracteres</p>
               {errors.name && <p className="text-sm text-state-error mt-1">{errors.name}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">SKU *</label>
-              <input
+            </FormField>
+            <FormField label="SKU" htmlFor="productSku" required>
+              <Input
+                id="productSku"
                 type="text"
                 value={form.sku}
                 onChange={(e) => onChange({ ...form, sku: e.target.value.toUpperCase() })}
                 placeholder="COD-001"
-                className="input font-mono"
+                className="font-mono"
               />
               {errors.sku && <p className="text-sm text-state-error mt-1">{errors.sku}</p>}
-            </div>
+            </FormField>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-content-secondary mb-1">Categoría</label>
-              <select
-                value={form.categoryId}
-                onChange={(e) => onChange({ ...form, categoryId: e.target.value })}
-                className="input"
-              >
-                <option value="">Sin categoría</option>
-                {categories.filter(c => !c.deletedAt).map((cat) => (
-                  <option key={cat.localId} value={cat.localId}>{cat.name}</option>
-                ))}
-              </select>
+              <FormField label="Categoría" htmlFor="productCategory">
+                <Select
+                  value={form.categoryId}
+                  onChange={(value) => onChange({ ...form, categoryId: String(value) })}
+                  options={categories.filter(c => !c.deletedAt).map((cat) => ({ value: cat.localId, label: cat.name }))}
+                  placeholder="Sin categoría"
+                />
+              </FormField>
             </div>
           </div>
         </fieldset>
@@ -130,48 +127,35 @@ export function ProductForm({
                 <p className="text-xs text-content-secondary">Para productos pesables, usa 4 decimales para precisión (ej: 0.2500 kg)</p>
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">Unidad de medida</label>
-              <select
+            <FormField label="Unidad de medida" htmlFor="productUnit">
+              <Select
                 value={form.unitOfMeasure}
-                onChange={(e) => onChange({ ...form, unitOfMeasure: e.target.value })}
-                className="input"
-                disabled={!form.isWeighted}
-              >
-                {unitOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
+                onChange={(value) => onChange({ ...form, unitOfMeasure: String(value) })}
+                options={unitOptions}
+              />
+            </FormField>
           </div>
         </fieldset>
 
         <fieldset>
           <legend className="label mb-3">Inventario</legend>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">Proveedor preferido</label>
-              <select
+            <FormField label="Proveedor preferido" htmlFor="productSupplier">
+              <Select
                 value={form.preferredSupplierLocalId}
-                onChange={(e) => onChange({ ...form, preferredSupplierLocalId: e.target.value })}
-                className="input"
-              >
-                <option value="">Sin proveedor</option>
-                {suppliers.filter(s => s.isActive).map(s => (
-                  <option key={s.localId} value={s.localId}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-content-secondary mb-1">Presentación por defecto</label>
-              <select
+                onChange={(value) => onChange({ ...form, preferredSupplierLocalId: String(value) })}
+                options={suppliers.filter(s => s.isActive).map(s => ({ value: s.localId, label: s.name }))}
+                placeholder="Sin proveedor"
+              />
+            </FormField>
+            <FormField label="Presentación por defecto" htmlFor="productPresentation">
+              <Select
                 value={form.defaultPresentationId}
-                onChange={(e) => onChange({ ...form, defaultPresentationId: e.target.value })}
-                className="input"
-              >
-                <option value="">Sin presentación</option>
-              </select>
-            </div>
+                onChange={(value) => onChange({ ...form, defaultPresentationId: String(value) })}
+                options={[]}
+                placeholder="Sin presentación"
+              />
+            </FormField>
           </div>
         </fieldset>
 

@@ -1,4 +1,5 @@
 import type { CreateWarehouseInput } from "../../types/inventory.types";
+import { FormField, Input } from "@/common";
 
 interface WarehouseFormProps {
   form: CreateWarehouseInput;
@@ -17,33 +18,30 @@ export function WarehouseForm({
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="label">Nombre *</label>
-        <input 
+      <FormField label="Nombre" htmlFor="warehouseName" required>
+        <Input
+          id="warehouseName"
           value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
           placeholder="Nombre de la bodega"
-          className="input"
         />
-      </div>
-      <div>
-        <label className="label">Código</label>
-        <input 
+      </FormField>
+      <FormField label="Código" htmlFor="warehouseCode">
+        <Input
+          id="warehouseCode"
           value={form.code}
           onChange={(e) => onChange({ ...form, code: e.target.value })}
           placeholder="Código identificador"
-          className="input"
         />
-      </div>
-      <div>
-        <label className="label">Dirección</label>
-        <input 
+      </FormField>
+      <FormField label="Dirección" htmlFor="warehouseAddress">
+        <Input
+          id="warehouseAddress"
           value={form.address}
           onChange={(e) => onChange({ ...form, address: e.target.value })}
           placeholder="Dirección de la bodega"
-          className="input"
         />
-      </div>
+      </FormField>
       <div className="flex items-center gap-2">
         <input 
           type="checkbox"

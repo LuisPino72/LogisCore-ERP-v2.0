@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, X, Grid3X3 } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
+import { FormField, Select, Input } from "@/common";
 import type { Category } from "../types/products.types";
 
 interface VariantGeneratorModalProps {
@@ -183,52 +184,44 @@ export function VariantGeneratorModal({
         <div>
           <h4 className="label mb-3">Producto Base</h4>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Nombre *</label>
-              <input
+            <FormField label="Nombre" htmlFor="variantName" required>
+              <Input
+                id="variantName"
                 type="text"
-                className="input"
                 value={productData.name}
                 onChange={(e) => setProductData({ ...productData, name: e.target.value })}
                 placeholder="Nombre del producto"
               />
-            </div>
-            <div>
-              <label className="label">SKU *</label>
-              <input
+            </FormField>
+            <FormField label="SKU" htmlFor="variantSku" required>
+              <Input
+                id="variantSku"
                 type="text"
-                className="input"
                 value={productData.sku}
                 onChange={(e) => setProductData({ ...productData, sku: e.target.value })}
                 placeholder="Código único"
               />
-            </div>
-            <div>
-              <label className="label">Categoría</label>
-              <select
-                className="input"
+            </FormField>
+            <FormField label="Categoría" htmlFor="variantCategory">
+              <Select
                 value={productData.categoryId}
-                onChange={(e) => setProductData({ ...productData, categoryId: e.target.value })}
-              >
-                <option value="">Sin categoría</option>
-                {categoryOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="label">Unidad de Medida</label>
-              <select
-                className="input"
+                onChange={(value) => setProductData({ ...productData, categoryId: String(value) })}
+                options={categoryOptions}
+                placeholder="Sin categoría"
+              />
+            </FormField>
+            <FormField label="Unidad de Medida" htmlFor="variantUnit">
+              <Select
                 value={productData.unitOfMeasure}
-                onChange={(e) => setProductData({ ...productData, unitOfMeasure: e.target.value })}
-              >
-                <option value="unidad">Unidad</option>
-                <option value="kg">Kilogramos (kg)</option>
-                <option value="lt">Litros (lt)</option>
-                <option value="m">Metros (m)</option>
-              </select>
-            </div>
+                onChange={(value) => setProductData({ ...productData, unitOfMeasure: String(value) })}
+                options={[
+                  { value: "unidad", label: "Unidad" },
+                  { value: "kg", label: "Kilogramos (kg)" },
+                  { value: "lt", label: "Litros (lt)" },
+                  { value: "m", label: "Metros (m)" }
+                ]}
+              />
+            </FormField>
           </div>
           <div className="flex gap-4 mt-4">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -354,9 +347,8 @@ export function VariantGeneratorModal({
                 ))}
               </div>
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
-                  className="input"
                   value={newSize}
                   onChange={(e) => setNewSize(e.target.value)}
                   placeholder="Agregar talla (S, M, L...)"
@@ -380,9 +372,8 @@ export function VariantGeneratorModal({
                 ))}
               </div>
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
-                  className="input"
                   value={newColor}
                   onChange={(e) => setNewColor(e.target.value)}
                   placeholder="Agregar color (Rojo, Azul...)"
