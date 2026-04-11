@@ -16,22 +16,17 @@ import { ConfirmDialog } from "../../../common/components/ConfirmDialog";
 import { adminService } from "../services/admin.service.instance";
 import { useToast } from "../../../common/stores/toastStore";
 
+import { CategoryList } from "./forms/CategoryList";
+import { CategoryForm } from "./forms/CategoryForm";
+import { ProductList } from "./forms/ProductList";
+import { ProductForm } from "./forms/ProductForm";
+
 interface GlobalCatalogPanelProps {
   businessTypes: BusinessType[];
   onRefreshBusinessTypes: () => void;
 }
 
 type Tab = "categories" | "products";
-
-const UNIT_OPTIONS = [
-  { value: "unidad", label: "Unidad" },
-  { value: "kilogramo", label: "Kilogramo (kg)" },
-  { value: "gramo", label: "Gramo (g)" },
-  { value: "litro", label: "Litro (L)" },
-  { value: "mililitro", label: "Mililitro (ml)" },
-  { value: "metro", label: "Metro (m)" },
-  { value: "centimetro", label: "Centímetro (cm)" },
-];
 
 export function GlobalCatalogPanel({ 
   businessTypes, 
@@ -41,26 +36,12 @@ export function GlobalCatalogPanel({
   const [activeTab, setActiveTab] = useState<Tab>("categories");
   const [selectedBusinessType, setSelectedBusinessType] = useState<string>("");
   
-  // Cargar businessTypes si no vienen props
   useEffect(() => {
     if (businessTypes.length === 0) {
       onRefreshBusinessTypes();
     }
   }, [businessTypes.length, onRefreshBusinessTypes]);
 
-  // Cargar categorías iniciales
-  useEffect(() => {
-    if (activeTab === "categories") {
-      loadCategories();
-    }
-  }, [activeTab]);
-
-  // Cargar categorías cuando cambia el filtro de business type
-  useEffect(() => {
-    if (activeTab === "categories") {
-      loadCategories();
-    }
-  }, [selectedBusinessType]);
   const [categories, setCategories] = useState<GlobalCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
@@ -72,7 +53,6 @@ export function GlobalCatalogPanel({
   const [deletingCategory, setDeletingCategory] = useState<GlobalCategory | null>(null);
   const [deletingCategoryLoading, setDeletingCategoryLoading] = useState(false);
 
-  // States para productos
   const [products, setProducts] = useState<GlobalProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
@@ -93,15 +73,12 @@ export function GlobalCatalogPanel({
   const [deletingProduct, setDeletingProduct] = useState<GlobalProduct | null>(null);
   const [deletingProductLoading, setDeletingProductLoading] = useState(false);
 
-  // Cargar categorías usando AdminService
   const loadCategories = async () => {
     setCategoriesLoading(true);
     try {
       const result = await adminService.listGlobalCategories(selectedBusinessType || undefined);
       if (result.ok) {
         setCategories(result.data);
-      } else {
-        console.error("Error loading categories:", result.error.message);
       }
     } catch (error) {
       console.error("Error loading categories:", error);
@@ -110,15 +87,12 @@ export function GlobalCatalogPanel({
     }
   };
 
-  // Cargar productos usando AdminService
   const loadProducts = async () => {
     setProductsLoading(true);
     try {
       const result = await adminService.listGlobalProducts(selectedBusinessType || undefined);
       if (result.ok) {
         setProducts(result.data);
-      } else {
-        console.error("Error loading products:", result.error.message);
       }
     } catch (error) {
       console.error("Error loading products:", error);
@@ -149,7 +123,6 @@ export function GlobalCatalogPanel({
       loadCategories();
     } else {
       toast.error(`Error al crear categoría: ${result.error.message}`);
-      console.error("Error creating category:", result.error.message);
     }
   };
 
@@ -170,7 +143,6 @@ export function GlobalCatalogPanel({
       loadCategories();
     } else {
       toast.error(`Error al actualizar categoría: ${result.error.message}`);
-      console.error("Error updating category:", result.error.message);
     }
   };
 
@@ -186,30 +158,13 @@ export function GlobalCatalogPanel({
       loadCategories();
     } else {
       toast.error(`Error al eliminar categoría: ${result.error.message}`);
-      console.error("Error deleting category:", result.error.message);
     }
     setDeletingCategoryLoading(false);
   };
 
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await adminService.createGlobalProduct({
-      name: productForm.name,
-      sku: productForm.sku,
-      description: productForm.description || undefined,
-      businessTypeId: productForm.businessTypeId,
-      categoryId: productForm.categoryId || undefined,
-      isWeighted: productForm.isWeighted,
-      unitOfMeasure: productForm.unitOfMeasure,
-      isTaxable: productForm.isTaxable,
-      isSerialized: productForm.isSerialized,
-      weight: productForm.weight || undefined,
-      length: productForm.length || undefined,
-      width: productForm.width || undefined,
-      height: productForm.height || undefined,
-      visible: productForm.visible,
-      presentations: productForm.presentations
-    } as CreateGlobalProductInput);
+    const result = await adminService.createGlobalProduct(productForm as CreateGlobalProductInput);
 
     if (result.ok) {
       toast.success("Producto creado exitosamente");
@@ -230,7 +185,6 @@ export function GlobalCatalogPanel({
       loadProducts();
     } else {
       toast.error(`Error al crear producto: ${result.error.message}`);
-      console.error("Error creating product:", result.error.message);
     }
   };
 
@@ -238,23 +192,7 @@ export function GlobalCatalogPanel({
     e.preventDefault();
     if (!editingProduct) return;
 
-    const result = await adminService.updateGlobalProduct(editingProduct.id, {
-      name: productForm.name,
-      sku: productForm.sku,
-      description: productForm.description || undefined,
-      businessTypeId: productForm.businessTypeId,
-      categoryId: productForm.categoryId || undefined,
-      isWeighted: productForm.isWeighted,
-      unitOfMeasure: productForm.unitOfMeasure,
-      isTaxable: productForm.isTaxable,
-      isSerialized: productForm.isSerialized,
-      weight: productForm.weight || undefined,
-      length: productForm.length || undefined,
-      width: productForm.width || undefined,
-      height: productForm.height || undefined,
-      visible: productForm.visible,
-      presentations: productForm.presentations
-    } as CreateGlobalProductInput);
+    const result = await adminService.updateGlobalProduct(editingProduct.id, productForm as CreateGlobalProductInput);
 
     if (result.ok) {
       toast.success("Producto actualizado exitosamente");
@@ -276,7 +214,6 @@ export function GlobalCatalogPanel({
       loadProducts();
     } else {
       toast.error(`Error al actualizar producto: ${result.error.message}`);
-      console.error("Error updating product:", result.error.message);
     }
   };
 
@@ -292,7 +229,6 @@ export function GlobalCatalogPanel({
       loadProducts();
     } else {
       toast.error(`Error al eliminar producto: ${result.error.message}`);
-      console.error("Error deleting product:", result.error.message);
     }
     setDeletingProductLoading(false);
   };
@@ -332,6 +268,30 @@ export function GlobalCatalogPanel({
     setShowProductForm(true);
   };
 
+  const openNewCategory = () => {
+    setEditingCategory(null);
+    setCategoryForm({ name: "", businessTypeId: selectedBusinessType || "" });
+    setShowCategoryForm(true);
+  };
+
+  const openNewProduct = () => {
+    setEditingProduct(null);
+    setProductForm({
+      name: "",
+      sku: "",
+      description: "",
+      businessTypeId: selectedBusinessType || "",
+      categoryId: "",
+      isWeighted: false,
+      unitOfMeasure: "unidad",
+      isTaxable: true,
+      isSerialized: false,
+      visible: true,
+      presentations: [{ name: "Unitario", factor: 1, price: 0, isDefault: true }]
+    });
+    setShowProductForm(true);
+  };
+
   const addPresentation = () => {
     setProductForm(prev => ({
       ...prev,
@@ -346,7 +306,7 @@ export function GlobalCatalogPanel({
     }));
   };
 
-  const updatePresentation = (index: number, field: string, value: unknown) => {
+  const updatePresentation = (index: number, field: keyof GlobalProductPresentation, value: unknown) => {
     setProductForm(prev => ({
       ...prev,
       presentations: prev.presentations.map((pres, i) => 
@@ -354,6 +314,13 @@ export function GlobalCatalogPanel({
       )
     }));
   };
+
+  const categoryData = categories.map(c => ({
+    id: c.id,
+    name: c.name,
+    businessTypeId: c.businessTypeId,
+    businessTypeName: c.businessTypeName
+  }));
 
   return (
     <div className="space-y-6">
@@ -364,7 +331,6 @@ export function GlobalCatalogPanel({
         </div>
       </div>
 
-      {/* Filtros */}
       <div className="flex gap-4 items-center">
         <label className="text-sm font-medium text-content-secondary">Tipo de Negocio:</label>
         <select
@@ -379,7 +345,6 @@ export function GlobalCatalogPanel({
         </select>
       </div>
 
-      {/* Tabs */}
       <div className="border-b border-border">
         <nav className="flex gap-8">
           <button
@@ -405,419 +370,76 @@ export function GlobalCatalogPanel({
         </nav>
       </div>
 
-      {/* Contenido según tab */}
       {activeTab === "categories" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <button
-              onClick={() => {
-                setEditingCategory(null);
-                setCategoryForm({ name: "", businessTypeId: selectedBusinessType || "" });
-                setShowCategoryForm(true);
-              }}
-              className="btn btn-primary"
-            >
+            <button onClick={openNewCategory} className="btn btn-primary">
               + Nueva Categoría
             </button>
           </div>
 
-          {/* Formulario de categoría */}
           {showCategoryForm && (
-            <div className="card">
-              <div className="card-header">
-                <h2 className="font-semibold">
-                  {editingCategory ? "Editar Categoría" : "Nueva Categoría Global"}
-                </h2>
-              </div>
-              <div className="card-body">
-                <form onSubmit={editingCategory ? handleUpdateCategory : handleCreateCategory} className="space-y-4">
-                  <div>
-                    <label className="label">Nombre</label>
-                    <input
-                      type="text"
-                      className="input"
-                      value={categoryForm.name}
-                      onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                      placeholder="Ej. Abarrotes y Víveres"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Tipo de Negocio</label>
-                    <select
-                      className="input"
-                      value={categoryForm.businessTypeId}
-                      onChange={(e) => setCategoryForm({ ...categoryForm, businessTypeId: e.target.value })}
-                      required
-                    >
-                      <option value="">Seleccionar...</option>
-                      {businessTypes.map(bt => (
-                        <option key={bt.id} value={bt.id}>{bt.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex gap-3">
-                    <button type="submit" className="btn btn-primary">
-                      {editingCategory ? "Guardar Cambios" : "Crear Categoría"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => {
-                        setShowCategoryForm(false);
-                        setEditingCategory(null);
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+            <CategoryForm
+              name={categoryForm.name}
+              businessTypeId={categoryForm.businessTypeId}
+              businessTypes={businessTypes}
+              isEditing={!!editingCategory}
+              onNameChange={(name) => setCategoryForm({ ...categoryForm, name })}
+              onBusinessTypeChange={(businessTypeId) => setCategoryForm({ ...categoryForm, businessTypeId })}
+              onSubmit={editingCategory ? handleUpdateCategory : handleCreateCategory}
+              onCancel={() => {
+                setShowCategoryForm(false);
+                setEditingCategory(null);
+              }}
+            />
           )}
 
-          {/* Lista de categorías */}
-          {categoriesLoading ? (
-            <div className="text-center py-8 text-content-secondary">Cargando...</div>
-          ) : categories.length === 0 ? (
-            <div className="text-center py-8 text-content-secondary">
-              No hay categorías globales{selectedBusinessType ? " para este tipo de negocio" : ""}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {categories.map(cat => (
-                <div key={cat.id} className="card">
-                  <div className="card-body flex justify-between items-center">
-                    <div>
-                      <h3 className="font-medium text-content-primary">{cat.name}</h3>
-                      <span className="text-sm text-content-secondary">{cat.businessTypeName}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openEditCategory(cat)}
-                        className="text-brand-600 hover:text-brand-700 text-sm"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => setDeletingCategory(cat)}
-                        className="text-state-error hover:text-red-700 text-sm"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <CategoryList
+            categories={categoryData}
+            isLoading={categoriesLoading}
+            selectedBusinessType={selectedBusinessType}
+            onEdit={openEditCategory}
+            onDelete={setDeletingCategory}
+          />
         </div>
       )}
 
       {activeTab === "products" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <button
-              onClick={() => {
-                setEditingProduct(null);
-                setProductForm({
-                  name: "",
-                  sku: "",
-                  description: "",
-                  businessTypeId: selectedBusinessType || "",
-                  categoryId: "",
-                  isWeighted: false,
-                  unitOfMeasure: "unidad",
-                  isTaxable: true,
-                  isSerialized: false,
-                  visible: true,
-                  presentations: [{ name: "Unitario", factor: 1, price: 0, isDefault: true }]
-                });
-                setShowProductForm(true);
-              }}
-              className="btn btn-primary"
-            >
+            <button onClick={openNewProduct} className="btn btn-primary">
               + Nuevo Producto
             </button>
           </div>
 
-          {/* Formulario de producto */}
           {showProductForm && (
-            <div className="card">
-              <div className="card-header">
-                <h2 className="font-semibold">
-                  {editingProduct ? "Editar Producto" : "Nuevo Producto Global"}
-                </h2>
-              </div>
-              <div className="card-body">
-                <form onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct} className="space-y-6">
-                  {/* Información Básica */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="label">Nombre del Producto</label>
-                      <input
-                        type="text"
-                        className="input"
-                        value={productForm.name}
-                        onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                        placeholder="Ej. Arroz Premium"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="label">SKU</label>
-                      <input
-                        type="text"
-                        className="input"
-                        value={productForm.sku}
-                        onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })}
-                        placeholder="Ej. ARR-001"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="label">Descripción</label>
-                    <textarea
-                      className="input min-h-[60px]"
-                      value={productForm.description}
-                      onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                      placeholder="Descripción opcional..."
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="label">Tipo de Negocio</label>
-                      <select
-                        className="input"
-                        value={productForm.businessTypeId}
-                        onChange={(e) => setProductForm({ ...productForm, businessTypeId: e.target.value })}
-                        required
-                      >
-                        <option value="">Seleccionar...</option>
-                        {businessTypes.map(bt => (
-                          <option key={bt.id} value={bt.id}>{bt.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label">Categoría</label>
-                      <select
-                        className="input"
-                        value={productForm.categoryId}
-                        onChange={(e) => setProductForm({ ...productForm, categoryId: e.target.value })}
-                      >
-                        <option value="">Seleccionar...</option>
-                        {categories
-                          .filter(c => c.businessTypeId === productForm.businessTypeId)
-                          .map(cat => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                          ))
-                        }
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Características */}
-                  <div className="border-t border-border pt-4">
-                    <h3 className="font-medium mb-4">Características</h3>
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="isWeighted"
-                          checked={productForm.isWeighted}
-                          onChange={(e) => setProductForm({ ...productForm, isWeighted: e.target.checked })}
-                          className="checkbox"
-                        />
-                        <label htmlFor="isWeighted" className="text-sm">¿Es pesable?</label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="isTaxable"
-                          checked={productForm.isTaxable}
-                          onChange={(e) => setProductForm({ ...productForm, isTaxable: e.target.checked })}
-                          className="checkbox"
-                        />
-                        <label htmlFor="isTaxable" className="text-sm">¿Es grabable?</label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="isSerialized"
-                          checked={productForm.isSerialized}
-                          onChange={(e) => setProductForm({ ...productForm, isSerialized: e.target.checked })}
-                          className="checkbox"
-                        />
-                        <label htmlFor="isSerialized" className="text-sm">¿Tiene serie?</label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="visible"
-                          checked={productForm.visible}
-                          onChange={(e) => setProductForm({ ...productForm, visible: e.target.checked })}
-                          className="checkbox"
-                        />
-                        <label htmlFor="visible" className="text-sm">Visible</label>
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <label className="label">Unidad de Medida</label>
-                      <select
-                        className="input"
-                        value={productForm.unitOfMeasure}
-                        onChange={(e) => setProductForm({ ...productForm, unitOfMeasure: e.target.value })}
-                      >
-                        {UNIT_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Presentaciones */}
-                  <div className="border-t border-border pt-4">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="font-medium">Presentaciones</h3>
-                      <button type="button" onClick={addPresentation} className="btn btn-secondary text-sm">
-                        + Agregar Presentación
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {productForm.presentations.map((pres, index) => (
-                        <div key={index} className="flex gap-3 items-end bg-surface-50 p-3 rounded">
-                          <div className="flex-1">
-                            <label className="label text-xs">Nombre</label>
-                            <input
-                              type="text"
-                              className="input"
-                              value={pres.name}
-                              onChange={(e) => updatePresentation(index, "name", e.target.value)}
-                              placeholder="Ej. 500ml, 1kg"
-                              required
-                            />
-                          </div>
-                          <div className="w-24">
-                            <label className="label text-xs">Factor</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="input"
-                              value={isNaN(pres.factor) ? "" : pres.factor}
-                              onChange={(e) => updatePresentation(index, "factor", e.target.value === "" ? 0 : parseFloat(e.target.value))}
-                              required
-                            />
-                          </div>
-                          <div className="w-32">
-                            <label className="label text-xs">Precio</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="input"
-                              value={isNaN(pres.price) ? "" : pres.price}
-                              onChange={(e) => updatePresentation(index, "price", e.target.value === "" ? 0 : parseFloat(e.target.value))}
-                              required
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={pres.isDefault}
-                              onChange={(e) => updatePresentation(index, "isDefault", e.target.checked)}
-                              className="checkbox"
-                              id={`default-${index}`}
-                            />
-                            <label htmlFor={`default-${index}`} className="text-xs">Default</label>
-                          </div>
-                          {productForm.presentations.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removePresentation(index)}
-                              className="text-state-error hover:text-red-700"
-                            >
-                              ✕
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-4">
-                    <button type="submit" className="btn btn-primary">
-                      {editingProduct ? "Guardar Cambios" : "Crear Producto"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => {
-                        setShowProductForm(false);
-                        setEditingProduct(null);
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+            <ProductForm
+              form={productForm}
+              businessTypes={businessTypes}
+              categories={categoryData}
+              isEditing={!!editingProduct}
+              onChange={(field, value) => setProductForm({ ...productForm, [field]: value })}
+              onAddPresentation={addPresentation}
+              onRemovePresentation={removePresentation}
+              onUpdatePresentation={updatePresentation}
+              onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
+              onCancel={() => {
+                setShowProductForm(false);
+                setEditingProduct(null);
+              }}
+            />
           )}
 
-          {/* Lista de productos */}
-          {productsLoading ? (
-            <div className="text-center py-8 text-content-secondary">Cargando...</div>
-          ) : products.length === 0 ? (
-            <div className="text-center py-8 text-content-secondary">
-              No hay productos globales{selectedBusinessType ? " para este tipo de negocio" : ""}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {products.map(prod => (
-                <div key={prod.id} className="card">
-                  <div className="card-body">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-content-primary">{prod.name}</h3>
-                        <p className="text-sm text-content-secondary">
-                          SKU: {prod.sku} | {prod.businessTypeName} | {prod.unitOfMeasure}
-                        </p>
-                        <div className="flex gap-2 mt-1">
-                          {prod.isWeighted && <span className="tag tag-info text-xs">Pesable</span>}
-                          {prod.isTaxable && <span className="tag tag-success text-xs">Grabable</span>}
-                          {prod.isSerialized && <span className="tag tag-warning text-xs">Con serie</span>}
-                        </div>
-                        <div className="mt-2 text-sm text-content-secondary">
-                          Presentaciones: {prod.presentations.map(p => `${p.name} ($${p.price})`).join(", ")}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => openEditProduct(prod)}
-                          className="text-brand-600 hover:text-brand-700 text-sm"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => setDeletingProduct(prod)}
-                          className="text-state-error hover:text-red-700 text-sm"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <ProductList
+            products={products}
+            isLoading={productsLoading}
+            selectedBusinessType={selectedBusinessType}
+            onEdit={openEditProduct}
+            onDelete={setDeletingProduct}
+          />
         </div>
       )}
 
-      {/* Dialogs de confirmación */}
       <ConfirmDialog
         isOpen={!!deletingCategory}
         onClose={() => setDeletingCategory(null)}

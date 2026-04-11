@@ -14,7 +14,7 @@ export function SubscriptionBlockedScreen({ tenantName, eventBus, onLogout }: Su
   };
 
   return (
-    <div className="grid min-h-screen place-items-center bg-gradient-to-br from-surface-50 via-surface-100 to-surface-50 p-4">
+    <div className="grid min-h-screen place-items-center bg-linear-to-br from-surface-50 via-surface-100 to-surface-50 p-4">
       <div className="w-full max-w-md rounded-2xl border border-state-error/20 bg-surface-0 p-8 shadow-xl shadow-state-error/5">
         {/* Icono de candado */}
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-state-error/10">

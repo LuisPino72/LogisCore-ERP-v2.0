@@ -4,6 +4,7 @@ import { BlockedAccessScreen } from "./BlockedAccessScreen";
 import { useCore } from "../hooks/useCore";
 import { coreService } from "../services/core.service.instance";
 import { eventBus } from "@/lib/core/runtime";
+import { Result, AppError } from "@logiscore/core";
 
 // Gestiona estados de bootstrap: bootstrapping, error, blocked, success
 export function CoreBootstrapGate() {
@@ -29,7 +30,9 @@ export function CoreBootstrapGate() {
   }
 
   if (state.isBlocked) {
-    return <BlockedAccessScreen tenantName={state.tenantName ?? "N/A"} eventBus={eventBus} />;
+    return <BlockedAccessScreen tenantName={state.tenantName ?? "N/A"} eventBus={eventBus} onLogout={function (): Promise<Result<void, AppError>> {
+      throw new Error("Function not implemented.");
+    } } />;
   }
 
   return (
