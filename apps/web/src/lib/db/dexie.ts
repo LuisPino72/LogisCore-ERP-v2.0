@@ -383,6 +383,11 @@ export interface InvoiceRecord {
   status: "draft" | "issued" | "voided";
   currency: "VES" | "USD";
   exchangeRate: number;
+  exchangeRateSnapshot?: {
+    rate: number;
+    capturedAt: string;
+    source: string;
+  };
   subtotal: number;
   taxTotal: number;
   discountTotal: number;
@@ -420,6 +425,20 @@ export interface ExchangeRateRecord {
   source: string;
   validFrom: string;
   validTo?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface InvoiceRangeRecord {
+  localId: string;
+  tenantId: string;
+  prefix: string;
+  startNumber: number;
+  endNumber: number;
+  currentNumber: number;
+  controlNumberPrefix: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -463,6 +482,7 @@ export class LogisCoreDexie extends Dexie {
   invoices!: EntityTable<InvoiceRecord, "localId">;
   tax_rules!: EntityTable<TaxRuleRecord, "localId">;
   exchange_rates!: EntityTable<ExchangeRateRecord, "localId">;
+  invoice_ranges!: EntityTable<InvoiceRangeRecord, "localId">;
   security_audit_log!: EntityTable<SecurityAuditLogRecord, "localId">;
 
   constructor() {
@@ -750,6 +770,8 @@ export class LogisCoreDexie extends Dexie {
         "&localId, tenantId, type, isActive, createdAt",
       exchange_rates:
         "&localId, tenantId, source, fromCurrency, toCurrency, validFrom, createdAt",
+      invoice_ranges:
+        "&localId, tenantId, isActive, createdAt",
       security_audit_log:
         "&localId, tenantId, userId, eventType, createdAt"
     });

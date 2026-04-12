@@ -8,6 +8,14 @@ import {
   type Result,
   type SyncEngine
 } from "@logiscore/core";
+import type { InvoiceRangeService } from "./invoice-range.service";
+import {
+  validateRif,
+  computeIgtf,
+  computeInvoiceTotal,
+  applyCentsRule,
+  createExchangeRateSnapshot
+} from "../utils/fiscal";
 import type {
   CreateInvoiceFromSaleInput,
   ExchangeRate,
@@ -16,7 +24,8 @@ import type {
   Invoice,
   InvoiceItem,
   TaxRule,
-  VoidInvoiceInput
+  VoidInvoiceInput,
+  IssueInvoiceInput
 } from "../types/invoicing.types";
 
 /**
@@ -53,6 +62,11 @@ export interface InvoicingService {
     actor: InvoicingActorContext,
     input: CreateInvoiceFromSaleInput
   ): Promise<Result<Invoice, AppError>>;
+  issueInvoice(
+    tenant: InvoicingTenantContext,
+    actor: InvoicingActorContext,
+    input: IssueInvoiceInput
+  ): Promise<Result<Invoice, AppError>>;
   voidInvoice(
     tenant: InvoicingTenantContext,
     actor: InvoicingActorContext,
@@ -67,6 +81,8 @@ interface CreateInvoicingServiceDependencies {
   db: InvoicingDb;
   syncEngine: SyncEngine;
   eventBus: EventBus;
+  invoiceRangeService: InvoiceRangeService;
+  getExchangeRate: () => Promise<number>;
   clock?: () => Date;
   uuid?: () => string;
 }
@@ -75,10 +91,12 @@ export const createInvoicingService = ({
   db,
   syncEngine,
   eventBus,
+  invoiceRangeService,
+  getExchangeRate,
   clock = () => new Date(),
   uuid = () => crypto.randomUUID()
 }: CreateInvoicingServiceDependencies): InvoicingService => {
-  const roundMoney = (value: number): number =>
+  const roundMoneyLocal = (value: number): number =>
     Math.round((value + Number.EPSILON) * 100) / 100;
 
   const computeTaxRateFromRules = async (
@@ -111,20 +129,20 @@ export const createInvoicingService = ({
       const taxableSubtotal = itemSubtotal - itemDiscount;
       const taxAmount = taxableSubtotal * (item.taxRate / 100);
       subtotal += taxableSubtotal;
-      taxTotal += roundMoney(taxAmount);
+      taxTotal += roundMoneyLocal(taxAmount);
     }
 
     const totalBeforeIgtf = subtotal + taxTotal;
     let igtfAmount = 0;
     if (igtfRate > 0) {
-      igtfAmount = roundMoney(totalBeforeIgtf * (igtfRate / 100));
+      igtfAmount = roundMoneyLocal(totalBeforeIgtf * (igtfRate / 100));
     }
 
     return {
-      subtotal: roundMoney(subtotal),
-      taxTotal: roundMoney(taxTotal),
+      subtotal: roundMoneyLocal(subtotal),
+      taxTotal: roundMoneyLocal(taxTotal),
       igtfAmount,
-      total: roundMoney(totalBeforeIgtf + igtfAmount)
+      total: roundMoneyLocal(totalBeforeIgtf + igtfAmount)
     };
   };
 
@@ -243,6 +261,149 @@ export const createInvoicingService = ({
     return ok(invoice);
   };
 
+  const issueInvoice: InvoicingService["issueInvoice"] = async (
+    tenant,
+    actor,
+    input
+  ) => {
+    if (!input.invoiceLocalId.trim()) {
+      return err(
+        createAppError({
+          code: "INVOICE_LOCAL_ID_REQUIRED",
+          message: "El ID de factura es obligatorio.",
+          retryable: false
+        })
+      );
+    }
+
+    const invoice = await db.getInvoiceByLocalId(
+      tenant.tenantSlug,
+      input.invoiceLocalId
+    );
+    if (!invoice) {
+      return err(
+        createAppError({
+          code: "INVOICE_NOT_FOUND",
+          message: "La factura no existe.",
+          retryable: false,
+          context: { invoiceLocalId: input.invoiceLocalId }
+        })
+      );
+    }
+
+    if (invoice.status === "issued") {
+      return err(
+        createAppError({
+          code: "INVOICE_ALREADY_ISSUED",
+          message: "La factura ya fue emitida.",
+          retryable: false,
+          context: { invoiceLocalId: input.invoiceLocalId }
+        })
+      );
+    }
+
+    if (invoice.status === "voided") {
+      return err(
+        createAppError({
+          code: "INVOICE_VOIDED",
+          message: "No se puede emitir una factura anulada.",
+          retryable: false,
+          context: { invoiceLocalId: input.invoiceLocalId }
+        })
+      );
+    }
+
+    const rifValidation = validateRif(invoice.customerRif || "");
+    if (!rifValidation.ok) {
+      return err(rifValidation.error);
+    }
+
+    const numberResult = await invoiceRangeService.reserveNextNumber(tenant.tenantSlug);
+    if (!numberResult.ok) {
+      return err(numberResult.error);
+    }
+    const { invoiceNumber, controlNumber } = numberResult.value;
+
+    const igtfRate = await computeTaxRateFromRules(tenant.tenantSlug, "igtf");
+    let igtfAmount = 0;
+    if (igtfRate > 0) {
+      igtfAmount = computeIgtf(invoice.subtotal, invoice.taxTotal, igtfRate);
+    }
+
+    const totalWithIgtf = computeInvoiceTotal(invoice.subtotal, invoice.taxTotal, igtfAmount);
+    const finalTotal = applyCentsRule(totalWithIgtf);
+
+    const exchangeRateSnapshot = createExchangeRateSnapshot(
+      await getExchangeRate(),
+      "BCV"
+    );
+
+    const now = clock().toISOString();
+    const updatedInvoice: Invoice = {
+      ...invoice,
+      invoiceNumber,
+      controlNumber,
+      pointOfSale: input.pointOfSale,
+      status: "issued",
+      exchangeRate: exchangeRateSnapshot.rate,
+      exchangeRateSnapshot,
+      igtfAmount,
+      total: finalTotal,
+      issuedAt: now,
+      updatedAt: now
+    };
+
+    const queue = await syncEngine.enqueue({
+      id: uuid(),
+      table: "invoices",
+      operation: "update",
+      payload: {
+        local_id: updatedInvoice.localId,
+        tenant_slug: tenant.tenantSlug,
+        invoice_number: invoiceNumber,
+        control_number: controlNumber,
+        point_of_sale: input.pointOfSale,
+        status: "issued",
+        exchange_rate: exchangeRateSnapshot.rate,
+        exchange_rate_snapshot: exchangeRateSnapshot,
+        igtf_amount: igtfAmount,
+        total: finalTotal,
+        issued_at: now,
+        updated_at: now
+      },
+      localId: updatedInvoice.localId,
+      tenantId: tenant.tenantSlug,
+      createdAt: now,
+      attempts: 0
+    });
+    if (!queue.ok) {
+      return err(queue.error);
+    }
+
+    await db.updateInvoice(tenant.tenantSlug, updatedInvoice.localId, {
+      invoiceNumber,
+      controlNumber,
+      pointOfSale: input.pointOfSale,
+      status: "issued",
+      exchangeRate: exchangeRateSnapshot.rate,
+      exchangeRateSnapshot,
+      igtfAmount,
+      total: finalTotal,
+      issuedAt: now,
+      updatedAt: now
+    });
+
+    eventBus.emit("INVOICE.ISSUED", {
+      tenantId: tenant.tenantSlug,
+      localId: updatedInvoice.localId,
+      invoiceNumber,
+      controlNumber,
+      total: finalTotal
+    });
+
+    return ok(updatedInvoice);
+  };
+
   const voidInvoice: InvoicingService["voidInvoice"] = async (
     tenant,
     actor,
@@ -352,6 +513,7 @@ export const createInvoicingService = ({
 
   return {
     createInvoiceFromSale,
+    issueInvoice,
     voidInvoice,
     listInvoices,
     listTaxRules,

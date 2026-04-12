@@ -1,6 +1,8 @@
 import { DefaultSyncEngine, InMemoryEventBus } from "@logiscore/core";
 import { db, DexieSyncStorageAdapter } from "@/lib/db/dexie";
 import { createEdgeFunctionSyncProcessor } from "@/lib/sync/edge-function-processor";
+import { DexieExchangeRatesDbAdapter } from "@/features/exchange-rates/services/exchange-rates.db.adapter";
+import { createExchangeRatesService } from "@/features/exchange-rates/services/exchange-rates.service";
 
 export const eventBus = new InMemoryEventBus();
 
@@ -9,4 +11,9 @@ export const syncEngine = new DefaultSyncEngine({
   eventBus,
   processor: createEdgeFunctionSyncProcessor(),
   baseDelayMs: 500
+});
+
+const exchangeRatesDbAdapter = new DexieExchangeRatesDbAdapter(db);
+export const exchangeRateService = createExchangeRatesService({
+  db: exchangeRatesDbAdapter
 });
