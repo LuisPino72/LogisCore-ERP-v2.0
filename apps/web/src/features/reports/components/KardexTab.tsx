@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { KardexEntryExtended, ReportsFilters } from "../types/reports.types";
 import { SearchInput } from "@/common/components/SearchInput";
 import { Badge } from "@/common/components/Badge";
@@ -111,6 +112,7 @@ function KardexRow({ entry, isExpanded, onToggle }: KardexRowProps) {
 }
 
 export function KardexTab({ kardex, isLoading, warehouses, onFiltersChange: _onFiltersChange }: KardexTabProps) {
+  const parentRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -129,6 +131,13 @@ export function KardexTab({ kardex, isLoading, warehouses, onFiltersChange: _onF
       return true;
     });
   }, [kardex, searchQuery, selectedWarehouse]);
+
+  const virtualizer = useVirtualizer({
+    count: filteredKardex.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => expandedRows.size > 0 ? 200 : 52,
+    overscan: 5
+  });
 
   const toggleExpanded = (productId: string) => {
     setExpandedRows((prev) => {
@@ -215,15 +224,32 @@ export function KardexTab({ kardex, isLoading, warehouses, onFiltersChange: _onF
             <span>No hay movimientos de inventario</span>
           </div>
         ) : (
-          <div className="max-h-[400px] overflow-auto">
-            {filteredKardex.map((entry) => (
-              <KardexRow
-                key={`${entry.productLocalId}-${entry.warehouseLocalId}`}
-                entry={entry}
-                isExpanded={expandedRows.has(`${entry.productLocalId}-${entry.warehouseLocalId}`)}
-                onToggle={() => toggleExpanded(`${entry.productLocalId}-${entry.warehouseLocalId}`)}
-              />
-            ))}
+          <div ref={parentRef} className="h-[400px] overflow-auto">
+            <div style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const entry = filteredKardex[virtualRow.index];
+                return (
+                  <div
+                    key={virtualRow.key}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualRow.start}px)`
+                    }}
+                  >
+                    <KardexRow
+                      entry={entry}
+                      isExpanded={expandedRows.has(`${entry.productLocalId}-${entry.warehouseLocalId}`)}
+                      onToggle={() => toggleExpanded(`${entry.productLocalId}-${entry.warehouseLocalId}`)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

@@ -9,7 +9,7 @@ import {
   validateSlug,
   validatePassword,
   VALIDATION_RULES
-} from "../../../common";
+} from "@/common";
 
 import { TenantBasicInfoForm } from "./forms/TenantBasicInfoForm";
 import { BusinessTypeSelect } from "./forms/BusinessTypeSelect";

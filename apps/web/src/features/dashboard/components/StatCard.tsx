@@ -14,13 +14,13 @@ interface StatCardProps {
 }
 
 export function StatCard({ title, value, icon, trend, color = "gold", tooltip }: StatCardProps) {
-  const colorClasses = {
+  const colorClasses: Record<string, string> = {
     gold: "from-brand-50 to-brand-100 text-brand-700 border-brand-200",
-    blue: "from-blue-50 to-blue-100 text-blue-700 border-blue-200",
-    green: "from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200",
-    red: "from-red-50 to-red-100 text-red-700 border-red-200",
+    blue: "from-state-info/10 to-state-info/5 text-state-info border-state-info/20",
+    green: "from-state-success/10 to-state-success/5 text-state-success border-state-success/20",
+    red: "from-state-error/10 to-state-error/5 text-state-error border-state-error/20",
     purple: "from-violet-50 to-violet-100 text-violet-700 border-violet-200",
-    orange: "from-amber-50 to-amber-100 text-amber-700 border-amber-200",
+    orange: "from-state-warning/10 to-state-warning/5 text-state-warning border-state-warning/20",
   };
 
   return (

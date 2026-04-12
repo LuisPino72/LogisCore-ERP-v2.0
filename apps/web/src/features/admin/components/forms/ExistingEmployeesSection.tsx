@@ -38,7 +38,7 @@ export function ExistingEmployeesSection({
               <button 
                 type="button" 
                 onClick={() => onMarkForDeletion(index)}
-                className="text-xs text-red-500 hover:text-red-700"
+                className="text-xs text-state-error hover:text-state-error/70"
               >
                 Eliminar
               </button>
@@ -48,14 +48,14 @@ export function ExistingEmployeesSection({
                 <label className="label text-xs">Nombre Completo</label>
                 <input
                   type="text"
-                  className={`input ${errors[`existing_${index}_fullName`] ? "border-red-500" : ""}`}
+                  className={`input ${errors[`existing_${index}_fullName`] ? "border-state-error" : ""}`}
                   value={employee.fullName}
                   onChange={(e) => onUpdateEmployee(index, "fullName", e.target.value)}
                   placeholder="María García"
                   maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
                 />
                 {errors[`existing_${index}_fullName`] && (
-                  <p className="text-xs text-red-500 mt-1">{errors[`existing_${index}_fullName`]}</p>
+                  <p className="text-xs text-state-error mt-1">{errors[`existing_${index}_fullName`]}</p>
                 )}
               </div>
             </div>

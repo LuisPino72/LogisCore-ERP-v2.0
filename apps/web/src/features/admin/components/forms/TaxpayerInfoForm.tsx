@@ -19,12 +19,12 @@ export function TaxpayerInfoForm({ taxpayerInfo, errors, onChange }: TaxpayerInf
           <label className="label">RIF</label>
           <input
             type="text"
-            className={`input ${errors.rif ? "border-red-500" : ""}`}
+            className={`input ${errors.rif ? "border-state-error" : ""}`}
             value={taxpayerInfo.rif}
             onChange={(e) => onChange("rif", e.target.value.toUpperCase())}
             placeholder="J-123456789"
           />
-          {errors.rif && <p className="text-xs text-red-500 mt-1">{errors.rif}</p>}
+          {errors.rif && <p className="text-xs text-state-error mt-1">{errors.rif}</p>}
         </div>
         <div>
           <label className="label">Régimen</label>

@@ -268,4 +268,193 @@ describe("inventory.service", () => {
       expect(suggestions.data[0]?.suggestedOrderQty).toBe(7);
     }
   });
+
+  describe("Productos Pesables - Precisión de 4 decimales", () => {
+    it("debe mantener precisión de 4 decimales en productos pesables", async () => {
+      const db = createInventoryDbMock();
+      const service = createInventoryService({
+        db,
+        syncEngine: createSyncEngineMock(),
+        eventBus: new InMemoryEventBus(),
+        clock: () => new Date("2026-01-01T00:00:00.000Z"),
+        uuid: () => crypto.randomUUID()
+      });
+
+      await db.createWarehouse({
+        localId: "wh-1",
+        tenantId: "tenant-demo",
+        name: "Bodega Principal",
+        isActive: true,
+        isDefault: true
+      });
+
+      const result = await service.recordStockMovement(
+        { tenantSlug: "tenant-demo" },
+        ownerActor,
+        {
+          productLocalId: "prod-pesable-1",
+          warehouseLocalId: "wh-1",
+          movementType: "purchase_in",
+          quantity: 0.1234,
+          isWeightedProduct: true
+        }
+      );
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data.quantity).toBe(0.1234);
+      }
+
+      const balance = await db.getStockBalance("tenant-demo", "prod-pesable-1", "wh-1");
+      expect(balance).toBeCloseTo(0.1234, 4);
+    });
+
+    it("NO debe truncar a 2 decimales (error común)", async () => {
+      const db = createInventoryDbMock();
+      const service = createInventoryService({
+        db,
+        syncEngine: createSyncEngineMock(),
+        eventBus: new InMemoryEventBus(),
+        clock: () => new Date("2026-01-01T00:00:00.000Z"),
+        uuid: () => crypto.randomUUID()
+      });
+
+      await db.createWarehouse({
+        localId: "wh-1",
+        tenantId: "tenant-demo",
+        name: "Bodega Principal",
+        isActive: true,
+        isDefault: true
+      });
+
+      const result = await service.recordStockMovement(
+        { tenantSlug: "tenant-demo" },
+        ownerActor,
+        {
+          productLocalId: "prod-pesable-2",
+          warehouseLocalId: "wh-1",
+          movementType: "purchase_in",
+          quantity: 0.12345,
+          isWeightedProduct: true
+        }
+      );
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const storedQty = result.data.quantity;
+        expect(storedQty).not.toBe(0.12);
+        expect(storedQty).toBeCloseTo(0.1235, 4);
+      }
+    });
+
+    it("debe rechazar cantidad 0 para productos pesables", async () => {
+      const db = createInventoryDbMock();
+      const service = createInventoryService({
+        db,
+        syncEngine: createSyncEngineMock(),
+        eventBus: new InMemoryEventBus(),
+        clock: () => new Date("2026-01-01T00:00:00.000Z"),
+        uuid: () => crypto.randomUUID()
+      });
+
+      await db.createWarehouse({
+        localId: "wh-1",
+        tenantId: "tenant-demo",
+        name: "Bodega Principal",
+        isActive: true,
+        isDefault: true
+      });
+
+      const result = await service.recordStockMovement(
+        { tenantSlug: "tenant-demo" },
+        ownerActor,
+        {
+          productLocalId: "prod-pesable-3",
+          warehouseLocalId: "wh-1",
+          movementType: "purchase_in",
+          quantity: 0,
+          isWeightedProduct: true
+        }
+      );
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("STOCK_MOVEMENT_QUANTITY_INVALID");
+      }
+    });
+  });
+
+  describe("Productos Pesables - Casos Edge", () => {
+    it("debe aceptar exactamente 4 decimales", async () => {
+      const db = createInventoryDbMock();
+      const service = createInventoryService({
+        db,
+        syncEngine: createSyncEngineMock(),
+        eventBus: new InMemoryEventBus(),
+        clock: () => new Date("2026-01-01T00:00:00.000Z"),
+        uuid: () => crypto.randomUUID()
+      });
+
+      await db.createWarehouse({
+        localId: "wh-1",
+        tenantId: "tenant-demo",
+        name: "Bodega Principal",
+        isActive: true,
+        isDefault: true
+      });
+
+      const result = await service.recordStockMovement(
+        { tenantSlug: "tenant-demo" },
+        ownerActor,
+        {
+          productLocalId: "prod-pesable-4",
+          warehouseLocalId: "wh-1",
+          movementType: "purchase_in",
+          quantity: 0.0001,
+          isWeightedProduct: true
+        }
+      );
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data.quantity).toBe(0.0001);
+      }
+    });
+
+    it("debe rechazar valores menores a 0.0001 (4 decimales minimo)", async () => {
+      const db = createInventoryDbMock();
+      const service = createInventoryService({
+        db,
+        syncEngine: createSyncEngineMock(),
+        eventBus: new InMemoryEventBus(),
+        clock: () => new Date("2026-01-01T00:00:00.000Z"),
+        uuid: () => crypto.randomUUID()
+      });
+
+      await db.createWarehouse({
+        localId: "wh-1",
+        tenantId: "tenant-demo",
+        name: "Bodega Principal",
+        isActive: true,
+        isDefault: true
+      });
+
+      const result = await service.recordStockMovement(
+        { tenantSlug: "tenant-demo" },
+        ownerActor,
+        {
+          productLocalId: "prod-pesable-5",
+          warehouseLocalId: "wh-1",
+          movementType: "purchase_in",
+          quantity: 0.00001,
+          isWeightedProduct: true
+        }
+      );
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("WEIGHTED_MOVEMENT_QUANTITY_INVALID");
+      }
+    });
+  });
 });

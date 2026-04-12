@@ -32,14 +32,14 @@ export function WarehouseForm({ formData, errors, onChangeWarehouse, onChange }:
             <label className="label">Nombre del Almacén</label>
             <input
               type="text"
-              className={`input ${errors.warehouseName ? "border-red-500" : ""}`}
+              className={`input ${errors.warehouseName ? "border-state-error" : ""}`}
               value={formData.warehouse.name}
               onChange={(e) => onChangeWarehouse("name", e.target.value)}
               placeholder="Almacén Principal"
               maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
               required
             />
-            {errors.warehouseName && <p className="text-xs text-red-500 mt-1">{errors.warehouseName}</p>}
+            {errors.warehouseName && <p className="text-xs text-state-error mt-1">{errors.warehouseName}</p>}
           </div>
           <div>
             <label className="label">Dirección</label>

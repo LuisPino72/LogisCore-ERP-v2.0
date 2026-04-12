@@ -237,7 +237,7 @@ export function TerminalView({
                       </div>
                       <button
                         onClick={() => onRemoveCartItem(index)}
-                        className="p-1 rounded text-state-error hover:bg-red-50"
+                        className="p-1 rounded text-state-error hover:bg-state-error/10"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -349,7 +349,7 @@ export function TerminalView({
                   </div>
                 )}
                 {!centsRuleValid && (
-                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-state-error">
+                  <div className="mt-2 p-2 bg-state-error/5 border border-state-error/10 rounded text-xs text-state-error">
                     ⚠️ Diferencia excede 0.01 Bs (Regla de los Céntimos)
                   </div>
                 )}

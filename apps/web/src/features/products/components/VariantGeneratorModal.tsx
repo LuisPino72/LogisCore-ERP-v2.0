@@ -311,7 +311,7 @@ export function VariantGeneratorModal({
                       {presentations.length > 1 && (
                         <button
                           onClick={() => handleRemovePresentation(index)}
-                          className="p-1 text-state-error hover:bg-red-50 rounded"
+                          className="p-1 text-state-error hover:bg-state-error/10 rounded"
                         >
                           <X className="w-4 h-4" />
                         </button>

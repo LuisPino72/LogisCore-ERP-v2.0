@@ -237,7 +237,7 @@ export function NewRecipeModal({
                     <button
                       type="button"
                       onClick={() => handleRemoveIngredient(index)}
-                      className="text-state-error hover:bg-red-50 p-1 rounded"
+                      className="text-state-error hover:bg-state-error/10 p-1 rounded"
                     >
                       <X className="w-4 h-4" />
                     </button>

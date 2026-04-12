@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import type { GlobalConfig, UpdateGlobalConfigInput } from "../types/admin.types";
-import { ConfirmDialog } from "../../../common/components/ConfirmDialog";
+import { ConfirmDialog } from "@/common/components/ConfirmDialog";
 
 interface SettingsPanelProps {
   config: GlobalConfig | null;

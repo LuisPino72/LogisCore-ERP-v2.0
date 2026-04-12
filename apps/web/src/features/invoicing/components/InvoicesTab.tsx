@@ -124,7 +124,7 @@ export function InvoicesTab({
           {row.status !== "voided" && canVoid && (
             <button
               onClick={() => onVoidInvoice(row)}
-              className="p-1.5 rounded-lg hover:bg-red-50 text-content-secondary hover:text-state-error transition-colors"
+              className="p-1.5 rounded-lg hover:bg-state-error/10 text-content-secondary hover:text-state-error transition-colors"
               title="Anular factura"
             >
               <XCircle className="w-4 h-4" />

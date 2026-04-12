@@ -37,7 +37,7 @@ export function NewTenantEmployeesForm({
                 <button 
                   type="button" 
                   onClick={() => onRemove(index)}
-                  className="text-xs text-red-500 hover:text-red-700"
+                  className="text-xs text-state-error hover:text-state-error/70"
                 >
                   Eliminar
                 </button>
@@ -54,7 +54,7 @@ export function NewTenantEmployeesForm({
                   placeholder="empleado@empresa.com"
                 />
                 {errors[`employee_${index}_email`] && (
-                  <p className="text-xs text-red-500 mt-1">{errors[`employee_${index}_email`]}</p>
+                  <p className="text-xs text-state-error mt-1">{errors[`employee_${index}_email`]}</p>
                 )}
               </div>
               <div>
@@ -68,7 +68,7 @@ export function NewTenantEmployeesForm({
                   maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
                 />
                 {errors[`employee_${index}_fullName`] && (
-                  <p className="text-xs text-red-500 mt-1">{errors[`employee_${index}_fullName`]}</p>
+                  <p className="text-xs text-state-error mt-1">{errors[`employee_${index}_fullName`]}</p>
                 )}
               </div>
               <div className="col-span-2">
@@ -81,7 +81,7 @@ export function NewTenantEmployeesForm({
                   placeholder="Mínimo 6 caracteres"
                 />
                 {errors[`employee_${index}_password`] && (
-                  <p className="text-xs text-red-500 mt-1">{errors[`employee_${index}_password`]}</p>
+                  <p className="text-xs text-state-error mt-1">{errors[`employee_${index}_password`]}</p>
                 )}
               </div>
             </div>

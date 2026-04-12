@@ -12,9 +12,9 @@ import type {
   CreateGlobalProductInput,
   BusinessType 
 } from "../types/admin.types";
-import { ConfirmDialog } from "../../../common/components/ConfirmDialog";
+import { ConfirmDialog } from "@/common/components/ConfirmDialog";
 import { adminService } from "../services/admin.service.instance";
-import { useToast } from "../../../common/stores/toastStore";
+import { useToast } from "@/common/stores/toastStore";
 
 import { CategoryList } from "./forms/CategoryList";
 import { CategoryForm } from "./forms/CategoryForm";

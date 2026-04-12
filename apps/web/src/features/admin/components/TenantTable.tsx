@@ -59,9 +59,9 @@ export function TenantTable({ tenants, securityUsers, onEdit, onDelete, onDeacti
                       <button onClick={() => onAccess(tenant)} className="text-sm text-brand-600 hover:text-brand-700 font-medium">Entrar</button>
                       <button onClick={() => onEdit(tenant)} className="text-sm text-content-secondary hover:text-content-primary">Editar</button>
                       {tenant.isActive ? (
-                        <button onClick={() => onDeactivate(tenant)} className="text-sm text-orange-600 hover:text-orange-700">Desactivar</button>
+                        <button onClick={() => onDeactivate(tenant)} className="text-sm text-state-warning hover:text-state-warning/70">Desactivar</button>
                       ) : (
-                        <button onClick={() => onDelete(tenant.id, true)} className="text-sm text-state-error hover:text-red-700">Eliminar</button>
+                        <button onClick={() => onDelete(tenant.id, true)} className="text-sm text-state-error hover:text-state-error/70">Eliminar</button>
                       )}
                    </div>
                 </td>

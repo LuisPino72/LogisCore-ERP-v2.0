@@ -550,4 +550,130 @@ describe("sales.service", () => {
     if (result.ok) return;
     expect(result.error.code).toBe("DISCOUNT_LIMIT_EXCEEDED");
   });
+
+  it("flujo completo POS: abrir caja, venta, cerrar caja", async () => {
+    const db = createSalesDbMock();
+    const service = createSalesService({
+      db,
+      syncEngine: createSyncEngineMock(),
+      eventBus: new InMemoryEventBus(),
+      supabase: createSupabaseMock()
+    });
+
+    const opened = await service.openBox(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { warehouseLocalId: "wh-1", openingAmount: 50 }
+    );
+    expect(opened.ok).toBe(true);
+
+    const sale = await service.createPosSale(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        warehouseLocalId: "wh-1",
+        currency: "VES",
+        exchangeRate: 1,
+        subtotal: 30,
+        taxTotal: 0,
+        discountTotal: 0,
+        total: 30,
+        totalPaid: 50,
+        changeAmount: 20,
+        items: [
+          { productLocalId: "prod-1", qty: 2, unitPrice: 10 },
+          { productLocalId: "prod-2", qty: 1, unitPrice: 10 }
+        ],
+        payments: [{ method: "cash", currency: "VES", amount: 50 }]
+      }
+    );
+    expect(sale.ok).toBe(true);
+
+    const closed = await service.closeBox(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { warehouseLocalId: "wh-1", countedAmount: 80 }
+    );
+    expect(closed.ok).toBe(true);
+    if (!closed.ok) return;
+    expect(closed.data.status).toBe("closed");
+  });
+
+  it("calcula cambio correctamente en pago en efectivo", async () => {
+    const service = createSalesService({
+      db: createSalesDbMock(),
+      syncEngine: createSyncEngineMock(),
+      eventBus: new InMemoryEventBus(),
+      supabase: createSupabaseMock()
+    });
+
+    await service.openBox(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { warehouseLocalId: "wh-1", openingAmount: 10 }
+    );
+
+    const result = await service.createPosSale(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        warehouseLocalId: "wh-1",
+        currency: "VES",
+        exchangeRate: 1,
+        subtotal: 75,
+        taxTotal: 0,
+        discountTotal: 0,
+        total: 75,
+        totalPaid: 100,
+        changeAmount: 25,
+        items: [{ productLocalId: "prod-1", qty: 1, unitPrice: 75 }],
+        payments: [{ method: "cash", currency: "VES", amount: 100 }]
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.totalPaid).toBe(100);
+    expect(result.data.changeAmount).toBe(25);
+  });
+
+  it("maneja pagos con tarjeta correctamente", async () => {
+    const service = createSalesService({
+      db: createSalesDbMock(),
+      syncEngine: createSyncEngineMock(),
+      eventBus: new InMemoryEventBus(),
+      supabase: createSupabaseMock()
+    });
+
+    await service.openBox(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { warehouseLocalId: "wh-1", openingAmount: 10 }
+    );
+
+    const result = await service.createPosSale(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        warehouseLocalId: "wh-1",
+        currency: "VES",
+        exchangeRate: 1,
+        subtotal: 200,
+        taxTotal: 0,
+        discountTotal: 0,
+        total: 200,
+        totalPaid: 200,
+        changeAmount: 0,
+        items: [
+          { productLocalId: "prod-1", qty: 1, unitPrice: 100 },
+          { productLocalId: "prod-2", qty: 1, unitPrice: 100 }
+        ],
+        payments: [{ method: "card", currency: "VES", amount: 200 }]
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.payments[0].method).toBe("card");
+  });
 });

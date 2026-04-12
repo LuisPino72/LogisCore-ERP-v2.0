@@ -97,14 +97,14 @@ export function ProductsDataTable({
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onPrice(product); }}
-                        className="p-1.5 rounded-lg text-content-tertiary hover:text-state-success hover:bg-green-50 transition-colors"
+                        className="p-1.5 rounded-lg text-content-tertiary hover:text-state-success hover:bg-state-success/10 transition-colors"
                         title="Precios"
                       >
                         <DollarSign className="w-4 h-4" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onDelete(product); }}
-                        className="p-1.5 rounded-lg text-content-tertiary hover:text-state-error hover:bg-red-50 transition-colors"
+                        className="p-1.5 rounded-lg text-content-tertiary hover:text-state-error hover:bg-state-error/10 transition-colors"
                         title="Eliminar"
                       >
                         <Trash2 className="w-4 h-4" />

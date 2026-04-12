@@ -43,12 +43,12 @@ export function SalesTrendChart({ data, currencySymbol }: SalesTrendChartProps) 
   }
 
   return (
-    <div ref={containerRef} className="h-full min-h-[300px] w-full bg-white dark:bg-slate-900/50 p-6 rounded-2xl border dark:border-slate-800 shadow-sm">
+    <div ref={containerRef} className="h-full min-h-[300px] w-full bg-white p-6 rounded-xl border border-surface-200 shadow-sm">
       <div className="mb-6 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-content-primary">
           Tendencia de Ventas
         </h3>
-        <span className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+        <span className="text-xs font-medium text-content-tertiary uppercase tracking-widest">
           Últimos 7 días
         </span>
       </div>

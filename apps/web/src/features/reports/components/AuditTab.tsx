@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { AuditLogWithUser } from "../types/reports.types";
 import { Badge } from "@/common/components/Badge";
 import { ShieldAlert, ShieldCheck, User, Clock, Table2 } from "lucide-react";
@@ -33,6 +34,8 @@ const eventTypeLabels: Record<string, string> = {
 };
 
 export function AuditTab({ auditLogs, isLoading }: AuditTabProps) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  
   const logsWithUser = useMemo(() => {
     return auditLogs.map((log) => ({
       ...log,
@@ -41,6 +44,13 @@ export function AuditTab({ auditLogs, isLoading }: AuditTabProps) {
       severity: getSeverity(log.eventType, log.success)
     }));
   }, [auditLogs]);
+
+  const virtualizer = useVirtualizer({
+    count: logsWithUser.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 64,
+    overscan: 5
+  });
 
   function getSeverity(eventType: string, success: boolean): "low" | "medium" | "high" | "critical" {
     if (!success) return "critical";
@@ -142,47 +152,65 @@ export function AuditTab({ auditLogs, isLoading }: AuditTabProps) {
             <span>No hay registros de auditoría</span>
           </div>
         ) : (
-          <div className="max-h-[400px] overflow-auto">
-            {logsWithUser.map((log) => (
-              <div
-                key={log.localId}
-                className="grid grid-cols-6 gap-2 px-4 py-3 border-b border-surface-100 hover:bg-surface-50 transition-colors"
-              >
-                <div className="col-span-1 text-sm text-content-secondary">
-                  {formatDate(log.createdAt)}
-                </div>
-                <div className="col-span-1 text-sm text-content-primary">
-                  <div className="flex items-center gap-1">
-                    <User className="w-3 h-3 text-content-tertiary" />
-                    {log.userName}
+          <div ref={parentRef} className="h-[400px] overflow-auto">
+            <div style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const log = logsWithUser[virtualRow.index];
+                return (
+                  <div
+                    key={virtualRow.key}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualRow.start}px)`
+                    }}
+                    className="grid grid-cols-6 gap-2 px-4 py-3 border-b border-surface-100 hover:bg-surface-50 transition-colors"
+                  >
+                    <div className="col-span-1 text-sm text-content-secondary">
+                      {formatDate(log.createdAt)}
+                    </div>
+                    <div className="col-span-1 text-sm text-content-primary">
+                      <div className="flex items-center gap-1">
+                        <User className="w-3 h-3 text-content-tertiary" />
+                        {log.userName}
+                      </div>
+                      {log.userEmail && (
+                        <div className="text-xs text-content-tertiary">{log.userEmail}</div>
+                      )}
+                    </div>
+                    <div className="col-span-2 text-sm">
+                      <Badge variant={severityColors[log.severity] || "info"}>
+                        {eventTypeLabels[log.eventType] || log.eventType}
+                      </Badge>
+                    </div>
+                    <div className="col-span-1 text-sm text-content-secondary">
+                      <div className="flex items-center gap-1">
+                        <Table2 className="w-3 h-3" />
+                        {log.tableName}
+                      </div>
+                    </div>
+                    <div className="col-span-1 text-center">
+                      {log.success ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-state-success/10 text-state-success text-xs font-medium">
+                          Éxito
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-state-error/10 text-state-error text-xs font-medium">
+                          Fallido
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {log.userEmail && (
-                    <div className="text-xs text-content-tertiary">{log.userEmail}</div>
-                  )}
-                </div>
-                <div className="col-span-2 text-sm">
-                  <Badge variant={severityColors[log.severity] || "info"}>
-                    {eventTypeLabels[log.eventType] || log.eventType}
-                  </Badge>
-                </div>
-                <div className="col-span-1 text-sm text-content-secondary">
-                  <div className="flex items-center gap-1">
-                    <Table2 className="w-3 h-3" />
-                    {log.targetTable || "—"}
-                  </div>
-                </div>
-                <div className="col-span-1 flex justify-center">
-                  <Badge variant={log.success ? "success" : "error"}>
-                    {log.success ? "Éxito" : "Fallo"}
-                  </Badge>
-                </div>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
     </div>
   );
 }
-
-export { AuditTabProps as AuditTab };

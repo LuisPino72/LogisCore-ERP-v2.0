@@ -597,4 +597,137 @@ describe("purchases.service", () => {
     if (edited.ok) return;
     expect(edited.error.code).toBe("PURCHASES_ITEMS_REQUIRED");
   });
+
+  it("recibe parcialmente múltiples productos con cantidades diferentes", async () => {
+    const service = createService();
+    const created = await service.createPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        warehouseLocalId: "wh-1",
+        items: [
+          { productLocalId: "prod-a", qty: 100, unitCost: 5 },
+          { productLocalId: "prod-b", qty: 50, unitCost: 10 },
+          { productLocalId: "prod-c", qty: 25, unitCost: 20 }
+        ]
+      }
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const received = await service.receivePurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        purchaseLocalId: created.data.localId,
+        receivedItems: [
+          { productLocalId: "prod-a", qty: 50 },
+          { productLocalId: "prod-b", qty: 25 },
+          { productLocalId: "prod-c", qty: 25 }
+        ]
+      }
+    );
+
+    expect(received.ok).toBe(true);
+    if (!received.ok) return;
+    expect(received.data.status).toBe("posted");
+
+    const purchases = await service.listPurchases({ tenantSlug: "tenant-demo" });
+    expect(purchases.ok).toBe(true);
+    if (!purchases.ok) return;
+    const purchase = purchases.data[0];
+    expect(purchase?.status).toBe("partial_received");
+  });
+
+  it("recibe parcialmente y luego otra recepcion parcial", async () => {
+    const service = createService();
+    const created = await service.createPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        warehouseLocalId: "wh-1",
+        items: [{ productLocalId: "prod-1", qty: 10, unitCost: 15 }]
+      }
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const firstReceive = await service.receivePurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        purchaseLocalId: created.data.localId,
+        receivedItems: [{ productLocalId: "prod-1", qty: 5 }]
+      }
+    );
+    expect(firstReceive.ok).toBe(true);
+
+    const purchases = await service.listPurchases({ tenantSlug: "tenant-demo" });
+    expect(purchases.ok).toBe(true);
+    if (!purchases.ok) return;
+    expect(purchases.data[0]?.status).toBe("partial_received");
+  });
+
+  it("recibe parcialmente un solo item de varios", async () => {
+    const service = createService();
+    const created = await service.createPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        warehouseLocalId: "wh-1",
+        items: [
+          { productLocalId: "prod-a", qty: 10, unitCost: 5 },
+          { productLocalId: "prod-b", qty: 10, unitCost: 5 }
+        ]
+      }
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const received = await service.receivePurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        purchaseLocalId: created.data.localId,
+        receivedItems: [{ productLocalId: "prod-a", qty: 10 }]
+      }
+    );
+
+    expect(received.ok).toBe(true);
+    if (!received.ok) return;
+
+    const lots = await service.listInventoryLots({ tenantSlug: "tenant-demo" });
+    expect(lots.ok).toBe(true);
+    if (!lots.ok) return;
+    expect(lots.data).toHaveLength(1);
+    expect(lots.data[0]?.productLocalId).toBe("prod-a");
+  });
+
+  it("recepciones parciales crean movimientos de inventario", async () => {
+    const eventBus = new InMemoryEventBus();
+    const movementSpy = vi.fn();
+    eventBus.on("INVENTORY.STOCK_MOVEMENT_RECORDED", movementSpy);
+
+    const service = createPurchasesService({
+      eventBus,
+      db: createDbMock(),
+      syncEngine: createSyncEngineMock()
+    });
+
+    const created = await service.createPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { warehouseLocalId: "wh-1", items: [{ productLocalId: "prod-1", qty: 20, unitCost: 8 }] }
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    await service.receivePurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      { purchaseLocalId: created.data.localId, receivedItems: [{ productLocalId: "prod-1", qty: 10 }] }
+    );
+
+    expect(movementSpy).toHaveBeenCalled();
+  });
 });

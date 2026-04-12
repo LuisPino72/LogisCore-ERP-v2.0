@@ -236,18 +236,6 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     return result;
   }, [service]);
 
-  const toggleUserStatus = useCallback(async (userId: string, isActive: boolean) => {
-    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
-    const result = await service.toggleUserStatus(userId, isActive);
-    if (!result.ok) {
-      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
-      return result;
-    }
-    setSecurityUsers(prev => prev.map(u => u.userId === userId ? { ...u, isActive } : u));
-    setState(prev => ({ ...prev, isLoading: false }));
-    return result;
-  }, [service]);
-
   const createSubscription = useCallback(async (input: Parameters<typeof service.createSubscription>[0]) => {
     setState(prev => ({ ...prev, isLoading: true, lastError: null }));
     const result = await service.createSubscription(input);
@@ -335,7 +323,6 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     deleteBusinessType,
     createUser,
     updateUser,
-    toggleUserStatus,
     createSubscription,
     updateSubscription,
     renewSubscription,

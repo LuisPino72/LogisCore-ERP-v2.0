@@ -402,13 +402,16 @@ export const createInventoryService = ({
     }
 
     const now = clock().toISOString();
+    const movementQuantity = input.isWeightedProduct
+      ? Number(input.quantity.toFixed(4))
+      : Number(input.quantity);
     const movement: StockMovement = {
       localId: uuid(),
       tenantId: tenant.tenantSlug,
       productLocalId: input.productLocalId,
       warehouseLocalId: input.warehouseLocalId,
       movementType: input.movementType,
-      quantity: input.quantity,
+      quantity: movementQuantity,
       createdAt: now,
       ...(input.unitCost !== undefined && { unitCost: input.unitCost }),
       ...(input.referenceType && { referenceType: input.referenceType }),

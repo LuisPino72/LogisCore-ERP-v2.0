@@ -5,7 +5,6 @@ interface SecurityPanelProps {
   users: SecurityUser[];
   isLoading: boolean;
   onRefresh: () => void;
-  onToggleUser: (userId: string, isActive: boolean) => Promise<{ ok: boolean; error?: { message: string } }>;
   auditLogs?: AuditLogEntry[];
   auditLogsTotal?: number;
   onLoadAuditLogs?: (limit?: number, offset?: number) => void;
@@ -15,7 +14,6 @@ export function SecurityPanel({
   users, 
   isLoading, 
   onRefresh, 
-  onToggleUser,
   auditLogs = [],
   auditLogsTotal = 0,
   onLoadAuditLogs
@@ -99,11 +97,8 @@ export function SecurityPanel({
 
       {activeTab === "users" && (
         <div className="card overflow-hidden">
-          <div className="card-header border-b border-border bg-surface-50 flex items-center justify-between">
+          <div className="card-header border-b border-border bg-surface-50">
             <h2 className="font-semibold text-content-primary">Lista de Usuarios del Sistema</h2>
-            <p className="text-xs text-content-secondary bg-surface-200 px-2 py-1 rounded">
-              Solo Lectura - La gestión de empleados se realiza dentro de cada Tenant.
-            </p>
           </div>
           <div className="card-body p-0 overflow-x-auto">
             <table className="w-full">
@@ -114,7 +109,6 @@ export function SecurityPanel({
                   <th className="px-4 py-3 text-sm font-medium text-content-secondary">Tenant</th>
                   <th className="px-4 py-3 text-sm font-medium text-content-secondary">Rol</th>
                   <th className="px-4 py-3 text-sm font-medium text-content-secondary">Estado</th>
-                  <th className="px-4 py-3 text-sm font-medium text-content-secondary">Acciones Clave</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -132,22 +126,8 @@ export function SecurityPanel({
                     </td>
                     <td className="px-4 py-3">
                       <span className={`badge ${user.isActive ? "badge-success" : "badge-error"}`}>
-                        {user.isActive ? "Activo" : "Bloqueado"}
+                        {user.isActive ? "Activo" : "Eliminado"}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {user.role !== 'admin' && (
-                        <button
-                          onClick={() => {
-                            if(window.confirm(`¿Seguro que deseas ${user.isActive ? 'bloquear' : 'desbloquear'} a este usuario?`)) {
-                              onToggleUser(user.userId, !user.isActive)
-                            }
-                          }}
-                          className={user.isActive ? "text-state-error font-medium hover:underline" : "text-state-success font-medium hover:underline"}
-                        >
-                          {user.isActive ? "Bloquear Acceso" : "Permitir Acceso"}
-                        </button>
-                      )}
                     </td>
                   </tr>
                 ))}

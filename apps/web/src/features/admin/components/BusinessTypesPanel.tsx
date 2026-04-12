@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import type { BusinessType, CreateBusinessTypeInput, UpdateBusinessTypeInput } from "../types/admin.types";
-import { ConfirmDialog } from "../../../common/components/ConfirmDialog";
+import { ConfirmDialog } from "@/common/components/ConfirmDialog";
 
 interface BusinessTypesPanelProps {
   businessTypes: BusinessType[];

@@ -63,7 +63,7 @@ export interface AdminService {
   listSecurityUsers(tenantId?: string): Promise<Result<SecurityUser[], AppError>>;
   createUser(input: CreateUserInput): Promise<Result<SecurityUser, AppError>>;
   updateUser(userId: string, input: UpdateUserInput): Promise<Result<SecurityUser, AppError>>;
-  toggleUserStatus(userId: string, isActive: boolean): Promise<Result<void, AppError>>;
+  deleteEmployee(tenantId: string, userId: string): Promise<Result<void, AppError>>;
   renewSubscription(subscriptionId: string): Promise<Result<void, AppError>>;
   renewSubscriptionWithPlan(subscriptionId: string, newPlanId?: string): Promise<Result<{ newPlanName: string; newEndDate: string; status: string }, AppError>>;
   getGlobalConfig(): Promise<Result<GlobalConfig, AppError>>;
@@ -81,9 +81,12 @@ export interface AdminService {
 }
 
 /** Dependencias necesarias para crear el servicio */
+import type { SyncEngine } from "@logiscore/core";
+
 interface CreateAdminServiceDependencies {
   supabase: SupabaseClient;
   eventBus: EventBus;
+  syncEngine?: SyncEngine;
 }
 
 const getEdgeAuthHeaders = (accessToken: string): Record<string, string> => {
@@ -703,9 +706,14 @@ export const createAdminService = ({
   };
 
   const listSecurityUsers: AdminService["listSecurityUsers"] = async (tenantId) => {
-    const query = tenantId 
-      ? supabase.from("user_roles").select("*, tenants(name)").eq("tenant_id", tenantId)
-      : supabase.from("user_roles").select("*, tenants(name)");
+    let query = supabase
+      .from("user_roles")
+      .select("*, tenants(name)")
+      .is("deleted_at", null);
+
+    if (tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
 
     const result = await query;
     if (result.error) {
@@ -804,17 +812,68 @@ export const createAdminService = ({
     });
   };
 
-  const toggleUserStatus: AdminService["toggleUserStatus"] = async (userId, isActive) => {
-    const result = await supabase.from("user_roles").update({ is_active: isActive }).eq("user_id", userId);
-    if (result.error) {
+  const deleteEmployee: AdminService["deleteEmployee"] = async (tenantId, userId) => {
+    try {
+      const tenantResult = await supabase.from("tenants").select("owner_user_id").eq("id", tenantId).single();
+      if (tenantResult.error) {
+        return err(createAppError({
+          code: "ADMIN_DELETE_EMPLOYEE_TENANT_NOT_FOUND",
+          message: "Tenant no encontrado",
+          retryable: false
+        }));
+      }
+
+      if (tenantResult.data.owner_user_id === userId) {
+        return err(createAppError({
+          code: "PERMISSION_DENIED",
+          message: "No se puede eliminar al propietario del tenant. El owner solo se elimina junto con el tenant.",
+          retryable: false,
+          context: { tenantId, userId }
+        }));
+      }
+
+      const userResult = await supabase.from("user_roles").select("id, tenant_id").eq("user_id", userId).single();
+      if (userResult.error || !userResult.data) {
+        return err(createAppError({
+          code: "ADMIN_DELETE_EMPLOYEE_NOT_FOUND",
+          message: "Usuario no encontrado",
+          retryable: false
+        }));
+      }
+
+      if (userResult.data.tenant_id !== tenantId) {
+        return err(createAppError({
+          code: "PERMISSION_DENIED",
+          message: "El usuario no pertenece a este tenant",
+          retryable: false,
+          context: { userTenantId: userResult.data.tenant_id, requestedTenantId: tenantId }
+        }));
+      }
+
+      const now = new Date().toISOString();
+      const updateResult = await supabase
+        .from("user_roles")
+        .update({ deleted_at: now, is_active: false })
+        .eq("user_id", userId)
+        .eq("tenant_id", tenantId);
+
+      if (updateResult.error) {
+        return err(createAppError({
+          code: "ADMIN_DELETE_EMPLOYEE_FAILED",
+          message: updateResult.error.message,
+          retryable: false
+        }));
+      }
+
+      eventBus.emit("ADMIN.USER_DELETED", { tenantId, userId });
+      return ok(undefined);
+    } catch (error) {
       return err(createAppError({
-        code: "ADMIN_TOGGLE_USER_STATUS_FAILED",
-        message: result.error.message,
+        code: "ADMIN_DELETE_EMPLOYEE_FAILED",
+        message: String(error),
         retryable: false
       }));
     }
-    eventBus.emit("ADMIN.USER_STATUS_TOGGLED", { userId, isActive });
-    return ok(undefined);
   };
 
   const getGlobalConfig: AdminService["getGlobalConfig"] = async () => {
@@ -1394,7 +1453,7 @@ export const createAdminService = ({
     listSecurityUsers,
     createUser,
     updateUser,
-    toggleUserStatus,
+    deleteEmployee,
     getGlobalConfig,
     updateGlobalConfig,
     getAuditLogs,

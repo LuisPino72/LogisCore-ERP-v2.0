@@ -233,7 +233,7 @@ export function ProductForm({
                     <button
                       type="button"
                       onClick={() => onRemovePresentation(index)}
-                      className="text-state-error hover:text-red-700"
+                      className="text-state-error hover:text-state-error/70"
                     >
                       ✕
                     </button>

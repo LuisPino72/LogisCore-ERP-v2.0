@@ -64,21 +64,21 @@ export function ExchangeRateBanner({ rate, isLoading, onUpdateRate, onFetchFromB
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-300">
-        <span className="text-xs text-emerald-700 font-medium">USD 1 =</span>
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-state-success/5 border border-state-success/20">
+        <span className="text-xs text-state-success/70 font-medium">USD 1 =</span>
         <input
           type="text"
           inputMode="decimal"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          className="w-24 px-2 py-1 text-sm font-bold text-emerald-800 bg-white border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          className="input w-24 text-sm font-bold border-state-success/20 focus:ring-state-success"
           placeholder="Bs 0.00"
           autoFocus
         />
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="p-1 text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+          className="p-1 text-state-success hover:text-state-success/70 disabled:opacity-50"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -87,7 +87,7 @@ export function ExchangeRateBanner({ rate, isLoading, onUpdateRate, onFetchFromB
         <button
           onClick={handleCancel}
           disabled={isSaving}
-          className="p-1 text-red-500 hover:text-red-700 disabled:opacity-50"
+          className="p-1 text-state-error hover:text-state-error/70 disabled:opacity-50"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -120,13 +120,13 @@ export function ExchangeRateBanner({ rate, isLoading, onUpdateRate, onFetchFromB
     <div className="flex items-center gap-1">
       <button
         onClick={handleClick}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-linear-to-r from-emerald-50 to-teal-50 border border-emerald-200 hover:from-emerald-100 hover:to-teal-100 transition-colors"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-state-success/5 border border-state-success/10 hover:bg-state-success/10 transition-colors"
       >
-        <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-4 h-4 text-state-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         </svg>
-        <span className="text-xs text-emerald-700 font-medium">USD 1 =</span>
-        <span className="text-sm font-bold text-emerald-800">Bs {formattedRate}</span>
+        <span className="text-xs text-state-success/70 font-medium">USD 1 =</span>
+        <span className="text-sm font-bold text-content-primary">Bs {formattedRate}</span>
       </button>
       {showFetchButton && (
         <Tooltip content="Actualizar tasa desde BCV" position="bottom">

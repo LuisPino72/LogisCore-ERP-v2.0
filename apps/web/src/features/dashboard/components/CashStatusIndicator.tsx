@@ -24,13 +24,13 @@ export function CashStatusIndicator({ status, className = "" }: CashStatusIndica
     ? "La caja está actualmente abierta para transacciones" 
     : "La caja está cerrada. Abre una nueva caja en ventas para poder operar";
 
-  return (
-    <Tooltip content={tooltipText} position="bottom">
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${isOpen 
-        ? "bg-emerald-50 border-emerald-200" 
-        : "bg-red-50 border-red-200"} ${className}`}>
-        <div className={`w-2 h-2 rounded-full ${isOpen ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
-        <span className={`text-xs font-medium ${isOpen ? "text-emerald-700" : "text-red-700"}`}>
+return (
+      <Tooltip content={tooltipText} position="bottom">
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${isOpen 
+          ? "bg-state-success/5 border-state-success/10" 
+          : "bg-state-error/5 border-state-error/10"} ${className}`}>
+        <div className={`w-2 h-2 rounded-full ${isOpen ? "bg-state-success animate-pulse" : "bg-state-error"}`} />
+        <span className={`text-xs font-medium ${isOpen ? "text-state-success/70" : "text-state-error/70"}`}>
           {statusText}
         </span>
       </div>

@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "../types/inventory.types";
 
@@ -17,7 +18,17 @@ function formatQty(qty: number, isWeighted: boolean | null | undefined): string 
   return isWeighted ? qty.toFixed(4) : qty.toFixed(2);
 }
 
-export function StockTable({ items, products, warehouses }: StockTableProps) {
+export const StockTable = memo(function StockTable({ items, products, warehouses }: StockTableProps) {
+  const productMap = useMemo(
+    () => new Map(products.map((p) => [p.localId, p])),
+    [products]
+  );
+
+  const warehouseMap = useMemo(
+    () => new Map(warehouses.map((w) => [w.localId, w])),
+    [warehouses]
+  );
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
@@ -39,8 +50,8 @@ export function StockTable({ items, products, warehouses }: StockTableProps) {
         </thead>
         <tbody className="divide-y divide-surface-100">
           {items.map((item, idx) => {
-            const product = products.find(p => p.localId === item.productLocalId);
-            const warehouse = warehouses.find(w => w.localId === item.warehouseLocalId);
+            const product = productMap.get(item.productLocalId);
+            const warehouse = warehouseMap.get(item.warehouseLocalId);
             return (
               <tr key={idx} className="hover:bg-surface-50">
                 <td className="px-4 py-3 text-sm">{product?.name ?? item.productLocalId}</td>
@@ -55,4 +66,4 @@ export function StockTable({ items, products, warehouses }: StockTableProps) {
       </table>
     </div>
   );
-}
+});

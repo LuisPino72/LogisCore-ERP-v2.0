@@ -48,37 +48,6 @@ const createMockSupabase = () => {
 };
 
 describe("AdminService", () => {
-  describe("toggleUserStatus", () => {
-    it("debe cambiar estado de usuario", async () => {
-      const supabase: any = {
-        from: () => ({
-          update: () => ({ eq: () => Promise.resolve({ error: null }) })
-        })
-      };
-      const eventBus = createEventBusMock();
-      const service = createAdminService({ supabase, eventBus: eventBus as any });
-
-      const result = await service.toggleUserStatus("user-123", false);
-
-      expect(result.ok).toBe(true);
-    });
-
-    it("debe manejar error al cambiar estado", async () => {
-      const supabase: any = {
-        from: () => ({ update: () => ({ eq: () => Promise.resolve({ error: { message: "Error" } }) }) })
-      };
-      const eventBus = createEventBusMock();
-      const service = createAdminService({ supabase, eventBus: eventBus as any });
-
-      const result = await service.toggleUserStatus("user-123", false);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("ADMIN_TOGGLE_USER_STATUS_FAILED");
-      }
-    });
-  });
-
   describe("deleteTenant", () => {
     it("debe eliminar tenant permanentemente (hard delete)", async () => {
       const mockFetch = vi.fn(() =>
