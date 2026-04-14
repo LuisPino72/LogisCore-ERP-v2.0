@@ -136,7 +136,7 @@ test.describe('Integration Tests - Full Business Flow', () => {
     }
     
     let testProduct: {localId: string, name: string};
-    let testWarehouse = warehouseLocalId;
+    const testWarehouse = warehouseLocalId;
     
     if (productsWithStock.length > 0) {
       testProduct = productsWithStock[0];

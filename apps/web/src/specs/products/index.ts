@@ -19,7 +19,6 @@ import {
 
 export { PRODUCT_ERROR_CODES, type ProductErrorCode, createProductError };
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG_REGEX = /^[a-z0-9-]+$/;
 const SKU_REGEX = /^[A-Z0-9-]+$/;
 

@@ -8,7 +8,7 @@
  *   npx tsx apps/web/src/specs/CLI.ts docs
  */
 
-import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { join, relative, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -189,7 +189,7 @@ function generateDocs(): boolean {
       message: string;
       retryable: boolean;
     }>)
-      .map(([name, def]) => `| ${def.code} | ${def.message} | ${def.retryable ? "Yes" : "No"} |`)
+      .map(([_name, def]) => `| ${def.code} | ${def.message} | ${def.retryable ? "Yes" : "No"} |`)
       .join("\n");
     
     const markdown = `# ${spec.entity} Specification

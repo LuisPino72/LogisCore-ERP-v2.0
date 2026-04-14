@@ -18,7 +18,6 @@ import {
   validateTenantId,
   validateTimestamp,
   validateDetails,
-  AUDIT_TARGET_TABLES,
   validateTargetTable,
 } from "./errors";
 

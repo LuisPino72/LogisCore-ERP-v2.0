@@ -12,7 +12,6 @@ import {
   createInventoryError,
   hasMoreThan4Decimals,
   canBeRoundedTo4Decimals,
-  validateWeightedQuantity,
 } from "./errors";
 
 export { INVENTORY_ERROR_CODES, createInventoryError };

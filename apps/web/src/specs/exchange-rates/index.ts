@@ -11,7 +11,6 @@ import {
   EXCHANGE_RATE_ERROR_CODES,
   type ExchangeRateErrorCode,
   createExchangeRateError,
-  validateCurrency,
   validateCurrencies,
   validateRate,
   validateRatePrecision,

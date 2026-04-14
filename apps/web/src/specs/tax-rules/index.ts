@@ -13,7 +13,6 @@ import {
   createTaxRuleError,
   validateTaxType,
   validateTaxRate,
-  validateIGTFRate,
   validateJurisdiction,
   validateIGTF,
   VALID_TAX_TYPES,

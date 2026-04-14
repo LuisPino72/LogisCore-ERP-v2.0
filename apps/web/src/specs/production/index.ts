@@ -21,7 +21,6 @@ import {
   validateTenantId,
   calculateVariance,
   isVarianceInTolerance,
-  validateIngredientQuantity,
   PRODUCTION_ORDER_STATUS,
   PRODUCTION_VARIANCE_DEFAULT_TOLERANCE,
   isValidStatusTransition,
@@ -195,7 +194,6 @@ export function validateProductionLog(input: unknown): Result<ProductionLogInput
   
   if (!result.success) {
     const issues = result.error.issues;
-    const firstIssue = issues[0];
     
     return err(createProductionOrderError(
       PRODUCTION_ORDER_ERROR_CODES.TOTALS_MISMATCH,

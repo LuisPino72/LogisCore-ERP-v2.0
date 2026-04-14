@@ -22,7 +22,6 @@ import type {
 } from "../types/products.types";
 import {
   validateProductInput,
-  validateWeightedProduct,
   validateTenantForDexie,
   validatePresentationsBulk,
   validateProductSku,

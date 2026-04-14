@@ -10,16 +10,14 @@ import {
 } from "@logiscore/core";
 import type { InvoiceRangeService } from "./invoice-range.service";
 import {
-  validateRif as validateRifFiscal,
+  validateRif,
   computeIgtf,
   computeInvoiceTotal,
   applyCentsRule,
   createExchangeRateSnapshot
 } from "../utils/fiscal";
 import {
-  validateRif,
   validateTenantForDexie,
-  validateInvoiceNotVoided,
   validateExchangeRateSnapshot,
 } from "../../../specs/invoicing";
 import type {

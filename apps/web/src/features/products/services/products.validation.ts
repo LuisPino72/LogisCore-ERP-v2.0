@@ -10,16 +10,12 @@ import {
   validateProductPresentation,
   validateWeightedProductRules,
   validateTenantIdMode,
-  validatePresentationsHaveBarcode,
-  validateSingleDefaultPresentation,
   validateQuantityPrecision,
   PRODUCT_ERROR_CODES,
   createProductError,
-  WEIGHTED_UNITS,
-  NON_WEIGHTED_UNIT,
 } from "../../../specs/products";
 
-import type { CreateProductInput, UpdateProductInput, CreateProductPresentationInput } from "../types/products.types";
+import type { CreateProductInput, CreateProductPresentationInput } from "../types/products.types";
 
 export interface ProductValidationResult {
   isValid: boolean;

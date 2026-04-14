@@ -41,7 +41,6 @@ export {
 };
 
 const SLUG_REGEX = /^[a-z0-9-]+$/;
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const purchaseItemSchema = z.object({
   product_local_id: z.string().uuid("Debe ser UUID válido"),
