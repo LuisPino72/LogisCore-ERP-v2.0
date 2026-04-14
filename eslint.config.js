@@ -10,7 +10,8 @@ export default [
       "**/coverage/**",
       "**/node_modules/**",
       ".agents/**",
-      "Memoria/**"
+      "Memoria/**",
+      "supabase/functions/**"
     ]
   },
   js.configs.recommended,
@@ -33,7 +34,7 @@ export default [
     rules: {
       ...reactHooks.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "@typescript-eslint/no-unused-directives": "off",
       "react-hooks/exhaustive-deps": "off"
     }

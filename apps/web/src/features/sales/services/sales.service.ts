@@ -440,20 +440,25 @@ export const createSalesService = ({
     };
 
     await db.createSale(sale);
-    const stockMovements: StockMovementRecord[] = input.items.map((item) => ({
-      localId: uuid(),
-      tenantId: tenant.tenantSlug,
-      productLocalId: item.productLocalId,
-      warehouseLocalId: input.warehouseLocalId,
-      movementType: "sale_out",
-      quantity: item.qty,
-      unitCost: item.unitCost ?? 0,
-      referenceType: "sale",
-      referenceLocalId: localId,
-      notes: "Salida por venta POS",
-      createdBy: actor.userId || "",
-      createdAt: now
-    }));
+    const stockMovements: StockMovementRecord[] = input.items.map((item) => {
+      const quantity = item.isWeighted 
+        ? Number(item.qty.toFixed(4)) 
+        : item.qty;
+      return {
+        localId: uuid(),
+        tenantId: tenant.tenantSlug,
+        productLocalId: item.productLocalId,
+        warehouseLocalId: input.warehouseLocalId,
+        movementType: "sale_out",
+        quantity,
+        unitCost: item.unitCost ?? 0,
+        referenceType: "sale",
+        referenceLocalId: localId,
+        notes: "Salida por venta POS",
+        createdBy: actor.userId || "",
+        createdAt: now
+      };
+    });
     if (stockMovements.length) {
       await db.createStockMovements(stockMovements);
       for (const movement of stockMovements) {

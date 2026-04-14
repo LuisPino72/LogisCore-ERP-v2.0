@@ -72,6 +72,7 @@ export interface Purchase {
 export interface ReceivingItem {
   productLocalId: string;
   qty: number;
+  isWeighted?: boolean;
   unitCost: number;
 }
 

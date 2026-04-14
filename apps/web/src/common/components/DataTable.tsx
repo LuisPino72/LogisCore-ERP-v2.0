@@ -41,16 +41,10 @@ export const DataTable = memo(function DataTable<T>({
     return value;
   };
 
-  const alignClasses = {
-    left: "text-left",
-    center: "text-center",
-    right: "text-right"
-  };
-
   const renderRow = (row: T, rowIndex: number, key: string) => (
     <tr
       key={key}
-      className={`hover:bg-surface-50 transition-colors ${onRowClick ? "cursor-pointer" : ""}`}
+      className="hover:bg-surface-50 transition-colors"
       onClick={() => onRowClick?.(row)}
     >
       {columns.map((col) => {
@@ -58,7 +52,27 @@ export const DataTable = memo(function DataTable<T>({
         return (
           <td
             key={col.key}
-            className={`px-4 py-3 text-sm text-content-primary ${alignClasses[col.align ?? "left"]}`}
+            className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-content-primary whitespace-nowrap overflow-hidden text-ellipsis"
+          >
+            {col.render ? col.render(value, row) : String(value ?? "")}
+          </td>
+        );
+      })}
+    </tr>
+  );
+
+  const _renderVirtualRow = (row: T, index: number) => (
+    <tr
+      data-index={index}
+      className="hover:bg-surface-50 transition-colors"
+      onClick={() => onRowClick?.(row)}
+    >
+      {columns.map((col) => {
+        const value = getValue(row, col.key);
+        return (
+          <td
+            key={col.key}
+            className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-content-primary whitespace-nowrap overflow-hidden text-ellipsis"
           >
             {col.render ? col.render(value, row) : String(value ?? "")}
           </td>
@@ -69,15 +83,17 @@ export const DataTable = memo(function DataTable<T>({
 
   return (
     <div className="overflow-x-auto border border-surface-200 rounded-lg">
-      <table className="w-full">
+      <table className="w-full min-w-[600px]">
         <thead className="bg-surface-50 sticky top-0 z-10">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`px-4 py-3 text-sm font-medium text-content-primary ${col.width ? `w-${col.width}` : ""} ${
+                className={`px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium text-content-primary ${
+                  col.width ? `w-${col.width}` : ""
+                } ${
                   col.sortable ? "cursor-pointer hover:bg-surface-100" : ""
-                } ${alignClasses[col.align ?? "left"]}`}
+                }`}
                 onClick={() => col.sortable && onSort?.(col.key)}
               >
                 <div className="flex items-center gap-1">
@@ -109,10 +125,10 @@ export const DataTable = memo(function DataTable<T>({
                 <div
                   ref={tableContainerRef}
                   className="overflow-auto"
-                  style={{ height: "500px" }}
+                  style={{ height: "400px" }}
                 >
                   <table className="w-full">
-                    <tbody>
+                    <tbody className="divide-y divide-surface-200">
                       {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                         const row = data[virtualRow.index];
                         if (!row) return null;
@@ -120,7 +136,7 @@ export const DataTable = memo(function DataTable<T>({
                           <tr
                             key={virtualRow.key}
                             data-index={virtualRow.index}
-                            className={`hover:bg-surface-50 transition-colors absolute w-full ${onRowClick ? "cursor-pointer" : ""}`}
+                            className="hover:bg-surface-50 transition-colors"
                             style={{
                               transform: `translateY(${virtualRow.start}px)`,
                               height: `${virtualRow.size}px`
@@ -132,7 +148,7 @@ export const DataTable = memo(function DataTable<T>({
                               return (
                                 <td
                                   key={col.key}
-                                  className={`px-4 py-3 text-sm text-content-primary ${alignClasses[col.align ?? "left"]}`}
+                                  className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-content-primary whitespace-nowrap overflow-hidden text-ellipsis"
                                 >
                                   {col.render ? col.render(value, row) : String(value ?? "")}
                                 </td>

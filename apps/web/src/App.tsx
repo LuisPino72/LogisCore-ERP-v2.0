@@ -148,9 +148,9 @@ function ModuleRenderer({
     void loadSharedData();
     void loadExchangeRate();
 
-    const offCategoryCreated = eventBus.on("CATALOG.CATEGORY_CREATED", () => void loadSharedData());
-    const offProductCreated = eventBus.on("CATALOG.PRODUCT_CREATED", () => void loadSharedData());
-    const offPresentationCreated = eventBus.on("CATALOG.PRESENTATION_CREATED", () => void loadSharedData());
+    const offCategoryCreated = eventBus.on("CATEGORY.CREATED", () => void loadSharedData());
+    const offProductCreated = eventBus.on("PRODUCT.CREATED", () => void loadSharedData());
+    const offPresentationCreated = eventBus.on("PRESENTATION.CREATED", () => void loadSharedData());
     const offWarehouseCreated = eventBus.on("INVENTORY.WAREHOUSE_CREATED", () => void loadSharedData());
     const offExchangeRateUpdated = eventBus.on("EXCHANGE_RATE.UPDATED", () => void loadExchangeRate());
 
@@ -256,7 +256,6 @@ export function App() {
                        hash.includes("type=recovery") || 
                        hash.includes("access_token");
     if (isRecovery) {
-      console.log("Password reset detected", Object.fromEntries(params));
       setIsPasswordReset(true);
     }
   }, []);

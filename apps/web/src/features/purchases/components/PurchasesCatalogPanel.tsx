@@ -200,7 +200,6 @@ export function PurchasesCatalogPanel({
     
     if (!result.ok) { setCategoryError(result.error.message); setIsSubmitting(false); return; }
     
-    eventBus.emit("CATALOG.CATEGORY_CREATED", { localId: result.data.localId, name });
     setShowCategoryModal(false);
     setCategoryForm(initialCategoryForm);
     setIsSubmitting(false);
@@ -240,7 +239,6 @@ export function PurchasesCatalogPanel({
       await purchasesService.setProductPreferredSupplier(tenant, result.data.localId, productForm.preferredSupplierLocalId);
     }
     
-    eventBus.emit("CATALOG.PRODUCT_CREATED", { localId: result.data.localId, name });
     setShowProductModal(false);
     setProductForm(initialProductForm);
     setIsSubmitting(false);
@@ -270,7 +268,7 @@ export function PurchasesCatalogPanel({
     
     if (!result.ok) { setPresentationErrors({ submit: result.error.message }); setIsSubmitting(false); return; }
     
-    eventBus.emit("CATALOG.PRESENTATION_CREATED", { productLocalId: presentationForm.productLocalId, name });
+    eventBus.emit("PRESENTATION.CREATED", { productLocalId: presentationForm.productLocalId, name });
     setShowPresentationModal(false);
     setPresentationForm(initialPresentationForm);
     setIsSubmitting(false);
@@ -323,11 +321,23 @@ export function PurchasesCatalogPanel({
   const openPresentationModal = () => { setShowPresentationModal(true); setPresentationForm(initialPresentationForm); setPresentationErrors({}); };
   const openSupplierModal = () => { setShowSupplierModal(true); setEditingSupplier(null); setSupplierForm(initialSupplierForm); setSupplierError(null); };
 
+  const handleDeleteSupplier = async (supplier: Supplier) => {
+    const confirmed = window.confirm(
+      `¿Eliminar proveedor "${supplier.name}"? Esta acción no se puede deshacer.`
+    );
+    if (!confirmed) return;
+    try {
+      await purchasesService.deleteSupplier(supplier.localId, { tenantSlug });
+    } catch {
+      // Handle error silently
+    }
+  };
+
   const tabs: TabItem[] = [
     { id: "products", label: "Productos", content: <ProductTable products={filteredProducts} categories={categories} isLoading={isLoading} onAddNew={openProductModal} /> },
     { id: "categories", label: "Categorías", content: <CategoryTable categories={filteredCategories} isLoading={isLoading} onAddNew={openCategoryModal} /> },
     { id: "presentations", label: "Presentaciones", content: <PresentationTable presentations={filteredPresentations} products={products} isLoading={isLoading} onAddNew={openPresentationModal} /> },
-    { id: "suppliers", label: "Proveedores", content: <SupplierTable suppliers={filteredSuppliers} isLoading={isLoadingSuppliers} onAddNew={openSupplierModal} onEdit={handleOpenEditSupplier} /> }
+    { id: "suppliers", label: "Proveedores", content: <SupplierTable suppliers={filteredSuppliers} isLoading={isLoadingSuppliers} onAddNew={openSupplierModal} onEdit={handleOpenEditSupplier} onDelete={handleDeleteSupplier} /> }
   ];
 
   return (

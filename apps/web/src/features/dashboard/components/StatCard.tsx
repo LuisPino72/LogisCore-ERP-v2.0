@@ -31,12 +31,12 @@ export function StatCard({ title, value, icon, trend, color = "gold", tooltip }:
     `}>
       {tooltip ? (
         <Tooltip content={tooltip} position="top">
-          <div className="flex items-start justify-between cursor-help">
-            <div className="space-y-1">
+          <div className="flex items-center justify-between cursor-help">
+            <div className="flex flex-col items-start min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
                 {title}
               </p>
-              <h3 className="text-3xl font-bold text-content-primary tracking-tight">
+              <h3 className="text-2xl sm:text-3xl font-bold text-content-primary tracking-tight truncate max-w-full">
                 {value}
               </h3>
               
@@ -52,7 +52,7 @@ export function StatCard({ title, value, icon, trend, color = "gold", tooltip }:
             </div>
             
             <div className={`
-              flex h-14 w-14 items-center justify-center rounded-lg border bg-linear-to-br font-xl
+              flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-lg border shrink-0
               ${colorClasses[color]}
             `}>
               {icon}
@@ -60,12 +60,12 @@ export function StatCard({ title, value, icon, trend, color = "gold", tooltip }:
           </div>
         </Tooltip>
       ) : (
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col items-start min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">
               {title}
             </p>
-            <h3 className="text-3xl font-bold text-content-primary tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-bold text-content-primary tracking-tight truncate max-w-full">
               {value}
             </h3>
             
@@ -81,7 +81,7 @@ export function StatCard({ title, value, icon, trend, color = "gold", tooltip }:
           </div>
           
           <div className={`
-            flex h-14 w-14 items-center justify-center rounded-lg border bg-linear-to-br font-xl
+            flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-lg border shrink-0
             ${colorClasses[color]}
           `}>
             {icon}

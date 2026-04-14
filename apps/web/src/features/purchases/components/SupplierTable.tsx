@@ -1,4 +1,4 @@
-import { Plus, Building2, Edit2 } from "lucide-react";
+import { Plus, Building2, Edit2, Trash2 } from "lucide-react";
 import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
 import { Badge } from "@/common/components/Badge";
 import type { Supplier } from "../types/purchases.types";
@@ -8,9 +8,10 @@ interface SupplierTableProps {
   isLoading: boolean;
   onAddNew: () => void;
   onEdit: (supplier: Supplier) => void;
+  onDelete: (supplier: Supplier) => void;
 }
 
-export function SupplierTable({ suppliers, isLoading, onAddNew, onEdit }: SupplierTableProps) {
+export function SupplierTable({ suppliers, isLoading, onAddNew, onEdit, onDelete }: SupplierTableProps) {
   if (isLoading) {
     return (
       <div className="card">
@@ -68,9 +69,14 @@ export function SupplierTable({ suppliers, isLoading, onAddNew, onEdit }: Suppli
                     </Badge>
                   </td>
                   <td className="px-3 py-2">
-                    <button onClick={() => onEdit(supplier)} className="p-1 hover:text-brand-500 transition-colors">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-1">
+                      <button onClick={() => onEdit(supplier)} className="p-1 hover:text-brand-500 transition-colors" title="Editar">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => onDelete(supplier)} className="p-1 hover:text-state-error transition-colors" title="Eliminar">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

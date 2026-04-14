@@ -1,10 +1,36 @@
 import { createAppError, err, ok, type Result, type AppError } from "@logiscore/core";
 import { supabase } from "@/lib/supabase/client";
 import type { SyncQueueItem } from "@logiscore/core";
+import { tenantTranslator } from "./tenant-translator";
 
 export interface SyncProcessor {
   process(item: SyncQueueItem): Promise<Result<void, AppError>>;
 }
+
+const TRANSLATIONAL_TABLES = new Set([
+  "sales",
+  "stock_movements",
+  "purchases",
+  "purchase_items",
+  "purchase_receivings",
+  "invoices",
+  "invoice_items",
+  "production_orders",
+  "production_logs",
+  "inventory_counts",
+  "inventory_movements",
+  "categories",
+  "products",
+  "product_presentations",
+  "suppliers",
+  "warehouses",
+  "users",
+  "user_roles"
+]);
+
+const isTranslationRequired = (table: string): boolean => {
+  return TRANSLATIONAL_TABLES.has(table);
+};
 
 export const createEdgeFunctionSyncProcessor = (): SyncProcessor => ({
   async process(item: SyncQueueItem): Promise<Result<void, AppError>> {
@@ -114,6 +140,34 @@ export const createEdgeFunctionSyncProcessor = (): SyncProcessor => ({
       for (let i = 0; i < functionCandidates.length; i++) {
         const functionName = functionCandidates[i]!;
         const endpoint = `${supabaseUrl.replace(/\/$/, "")}/functions/v1/${functionName}`;
+        
+        let enrichedPayload = item.payload;
+        
+        if (isTranslationRequired(item.table)) {
+          const translationResult = await tenantTranslator.translatePayloadAsync(
+            item.payload as Record<string, unknown>,
+            item.tenantId
+          );
+          
+          if (!translationResult.ok) {
+            const errorResult = translationResult.error;
+            return err(
+              createAppError({
+                code: "TENANT_TRANSLATION_FAILED",
+                message: errorResult.message,
+                retryable: false,
+                context: {
+                  table: item.table,
+                  tenantSlug: item.tenantId,
+                  localId: item.localId
+                }
+              })
+            );
+          }
+          
+          enrichedPayload = translationResult.data;
+        }
+        
         rawResponse = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -125,7 +179,7 @@ export const createEdgeFunctionSyncProcessor = (): SyncProcessor => ({
             table: item.table,
             operation: item.operation,
             localId: item.localId,
-            payload: item.payload
+            payload: enrichedPayload
           })
         });
 

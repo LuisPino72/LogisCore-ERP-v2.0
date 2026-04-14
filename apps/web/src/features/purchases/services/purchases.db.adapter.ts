@@ -98,6 +98,13 @@ export class DexiePurchasesDbAdapter implements PurchasesDb {
     await db.suppliers.put(toSupplierRecord(supplier));
   }
 
+  async softDeleteSupplier(localId: string, tenantId: string, deletedAt: string): Promise<void> {
+    const supplier = await db.suppliers.get(localId);
+    if (supplier && supplier.tenantId === tenantId) {
+      await db.suppliers.put({ ...supplier, deletedAt });
+    }
+  }
+
   async listSuppliers(tenantId: string): Promise<Supplier[]> {
     const records = await db.suppliers
       .where("tenantId")

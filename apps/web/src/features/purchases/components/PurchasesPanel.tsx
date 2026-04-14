@@ -67,7 +67,7 @@ export function PurchasesPanel({
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
   const [editItems, setEditItems] = useState<PurchaseItem[]>([]);
   const [receivingPurchaseId, setReceivingPurchaseId] = useState<string | null>(null);
-  const [receiveForm, setReceiveForm] = useState<{ productLocalId: string; qty: number }[]>([]);
+  const [receiveForm, setReceiveForm] = useState<{ productLocalId: string; qty: number; isWeighted?: boolean }[]>([]);
 
   const tenant: PurchasesTenantContext = { tenantSlug };
   
@@ -144,10 +144,15 @@ export function PurchasesPanel({
   const handleStartReceiving = (purchase: { localId: string; status: string; items: PurchaseItem[] }) => {
     if (!["draft", "confirmed", "partial_received"].includes(purchase.status)) return;
     setReceivingPurchaseId(purchase.localId);
-    setReceiveForm(purchase.items.map(item => ({
-      productLocalId: item.productLocalId,
-      qty: item.qty
-    })));
+    setReceiveForm(purchase.items.map(item => {
+      const product = products.find(p => p.localId === item.productLocalId);
+      const isWeighted = product?.isWeighted ?? false;
+      return {
+        productLocalId: item.productLocalId,
+        qty: item.qty,
+        isWeighted
+      };
+    }));
   };
 
   const handleCancelReceiving = () => {

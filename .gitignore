@@ -64,3 +64,10 @@ temp/
 .parcel-cache/
 .DS_Store
 memoria
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

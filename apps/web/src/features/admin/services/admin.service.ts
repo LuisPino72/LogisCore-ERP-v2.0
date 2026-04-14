@@ -527,7 +527,8 @@ export const createAdminService = ({
   };
 
   const deleteBusinessType: AdminService["deleteBusinessType"] = async (id) => {
-    const result = await supabase.from("business_types").delete().eq("id", id);
+    const now = new Date().toISOString();
+    const result = await supabase.from("business_types").update({ deleted_at: now }).eq("id", id).eq("deleted_at", null);
     if (result.error) {
       return err(createAppError({
         code: "ADMIN_DELETE_BUSINESS_TYPE_FAILED",

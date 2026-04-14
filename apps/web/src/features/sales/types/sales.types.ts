@@ -52,6 +52,7 @@ export interface SaleItem {
   productLocalId: string;
   qty: number;
   unitPrice: number;
+  isWeighted?: boolean;
   unitCost?: number;
   taxAmount?: number;
   discountAmount?: number;

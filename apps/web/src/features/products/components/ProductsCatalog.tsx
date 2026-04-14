@@ -43,22 +43,22 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
   }, [exchangeRateFromApp]);
 
   useEffect(() => {
-    const offCreatedCategory = eventBus.on("CATALOG.CATEGORY_CREATED", () => {
+    const offCreatedCategory = eventBus.on("CATEGORY.CREATED", () => {
       void refresh();
     });
-    const offCreatedProduct = eventBus.on("CATALOG.PRODUCT_CREATED", () => {
+    const offCreatedProduct = eventBus.on("PRODUCT.CREATED", () => {
       void refresh();
     });
     const offCreatedPresentation = eventBus.on(
-      "CATALOG.PRESENTATION_CREATED",
+      "PRESENTATION.CREATED",
       () => {
         void refresh();
       }
     );
-    const offDeletedCategory = eventBus.on("CATALOG.CATEGORY_DELETED", () => {
+    const offDeletedCategory = eventBus.on("CATEGORY.DELETED", () => {
       void refresh();
     });
-    const offDeletedProduct = eventBus.on("CATALOG.PRODUCT_DELETED", () => {
+    const offDeletedProduct = eventBus.on("PRODUCT.DELETED", () => {
       void refresh();
     });
 
@@ -101,16 +101,27 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
     return products;
   }, [state.products, filters]);
 
-  const handleEditProduct = (product: Product) => {
-    console.log("Edit product:", product.localId);
+  const handleEditProduct = async (_product: Product) => {
+    // TODO: Open edit modal
   };
 
-  const handlePriceProduct = (product: Product) => {
-    console.log("Price product:", product.localId);
+  const handlePriceProduct = async (_product: Product) => {
+    // TODO: Open price modal
   };
 
-  const handleDeleteProduct = (product: Product) => {
-    console.log("Delete product:", product.localId);
+  const handleDeleteProduct = async (product: Product) => {
+    const confirmed = window.confirm(
+      `¿Eliminar producto "${product.name}"? Esta acción no se puede deshacer.`
+    );
+    if (!confirmed) return;
+    
+    try {
+      await productsService.deleteProduct(product.localId, tenantSlug);
+      eventBus.emit("PRODUCT.DELETED", { localId: product.localId });
+      await refresh();
+    } catch {
+      // Handle error silently or show toast
+    }
   };
 
   const activeCategories = state.categories.filter(c => !c.deletedAt);

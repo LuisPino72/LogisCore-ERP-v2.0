@@ -28,6 +28,7 @@ import type {
 export interface PurchasesDb {
   createSupplier(supplier: Supplier): Promise<void>;
   updateSupplier(supplier: Supplier): Promise<void>;
+  softDeleteSupplier(localId: string, tenantId: string, deletedAt: string): Promise<void>;
   listSuppliers(tenantId: string): Promise<Supplier[]>;
   getSupplierByLocalId(tenantId: string, localId: string): Promise<Supplier | undefined>;
   createPurchase(purchase: Purchase): Promise<void>;
@@ -63,6 +64,10 @@ export interface PurchasesService {
     actor: PurchasesActorContext,
     input: UpdateSupplierInput
   ): Promise<Result<Supplier, AppError>>;
+  deleteSupplier(
+    localId: string,
+    tenant: PurchasesTenantContext
+  ): Promise<Result<void, AppError>>;
   listSuppliers(
     tenant: PurchasesTenantContext
   ): Promise<Result<Supplier[], AppError>>;
@@ -208,7 +213,7 @@ export const createPurchasesService = ({
     }
 
     await db.createSupplier(supplier);
-    eventBus.emit("PURCHASES.SUPPLIER_CREATED", {
+    eventBus.emit("SUPPLIER.CREATED", {
       tenantId: tenant.tenantSlug,
       localId: supplier.localId,
       name: supplier.name
@@ -281,12 +286,39 @@ export const createPurchasesService = ({
     }
 
     await db.updateSupplier(updated);
-    eventBus.emit("PURCHASES.SUPPLIER_UPDATED", {
+    eventBus.emit("SUPPLIER.UPDATED", {
       tenantId: tenant.tenantSlug,
       localId: updated.localId,
       name: updated.name
     });
     return ok(updated);
+  };
+
+  const _deleteSupplier: PurchasesService["deleteSupplier"] = async (localId, tenant) => {
+    const now = new Date().toISOString();
+    
+    const queueResult = await syncEngine.enqueue({
+      id: uuid(),
+      table: "suppliers",
+      operation: "delete",
+      payload: {
+        deleted_at: now
+      },
+      localId,
+      tenantId: tenant.tenantSlug,
+      createdAt: now,
+      attempts: 0
+    });
+    if (!queueResult.ok) {
+      return err(queueResult.error);
+    }
+
+    await db.softDeleteSupplier(localId, tenant.tenantSlug, now);
+    eventBus.emit("SUPPLIER.DELETED", {
+      tenantId: tenant.tenantSlug,
+      localId
+    });
+    return ok(undefined);
   };
 
   const listSuppliers: PurchasesService["listSuppliers"] = async (tenant) =>
@@ -546,34 +578,44 @@ export const createPurchasesService = ({
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {})
     };
 
-    const stockMovements: StockMovementRecord[] = receiving.items.map((item) => ({
-      localId: uuid(),
-      tenantId: tenant.tenantSlug,
-      productLocalId: item.productLocalId,
-      warehouseLocalId: purchase.warehouseLocalId,
-      movementType: "purchase_in",
-      quantity: item.qty,
-      unitCost: item.unitCost,
-      referenceType: "purchase_receiving",
-      referenceLocalId: receiving.localId,
-      notes: "Entrada por recepcion de compra",
-      createdAt: now,
-      ...(actor.userId ? { createdBy: actor.userId } : {})
-    }));
+    const stockMovements: StockMovementRecord[] = receiving.items.map((item) => {
+      const quantity = item.isWeighted 
+        ? Number(item.qty.toFixed(4)) 
+        : item.qty;
+      return {
+        localId: uuid(),
+        tenantId: tenant.tenantSlug,
+        productLocalId: item.productLocalId,
+        warehouseLocalId: purchase.warehouseLocalId,
+        movementType: "purchase_in",
+        quantity,
+        unitCost: item.unitCost,
+        referenceType: "purchase_receiving",
+        referenceLocalId: receiving.localId,
+        notes: "Entrada por recepcion de compra",
+        createdAt: now,
+        ...(actor.userId ? { createdBy: actor.userId } : {})
+      };
+    });
 
-    const inventoryLots: InventoryLot[] = receiving.items.map((item) => ({
-      localId: uuid(),
-      tenantId: tenant.tenantSlug,
-      productLocalId: item.productLocalId,
-      warehouseLocalId: purchase.warehouseLocalId,
-      sourceType: "purchase_receiving",
-      sourceLocalId: receiving.localId,
-      quantity: item.qty,
-      unitCost: item.unitCost,
-      status: "active",
-      createdAt: now,
-      updatedAt: now
-    }));
+    const inventoryLots: InventoryLot[] = receiving.items.map((item) => {
+      const quantity = item.isWeighted 
+        ? Number(item.qty.toFixed(4)) 
+        : item.qty;
+      return {
+        localId: uuid(),
+        tenantId: tenant.tenantSlug,
+        productLocalId: item.productLocalId,
+        warehouseLocalId: purchase.warehouseLocalId,
+        sourceType: "purchase_receiving",
+        sourceLocalId: receiving.localId,
+        quantity,
+        unitCost: item.unitCost,
+        status: "active",
+        createdAt: now,
+        updatedAt: now
+      };
+    });
 
     const queueReceiving = await syncEngine.enqueue({
       id: uuid(),

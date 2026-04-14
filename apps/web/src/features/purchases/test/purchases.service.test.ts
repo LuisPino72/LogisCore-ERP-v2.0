@@ -123,7 +123,7 @@ describe("purchases.service", () => {
   it("crea un proveedor", async () => {
     const eventBus = new InMemoryEventBus();
     const spy = vi.fn();
-    eventBus.on("PURCHASES.SUPPLIER_CREATED", spy);
+    eventBus.on("SUPPLIER.CREATED", spy);
     const service = createPurchasesService({
       eventBus,
       db: createDbMock(),

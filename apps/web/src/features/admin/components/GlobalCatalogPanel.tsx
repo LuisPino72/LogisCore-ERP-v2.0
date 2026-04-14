@@ -80,8 +80,6 @@ export function GlobalCatalogPanel({
       if (result.ok) {
         setCategories(result.data);
       }
-    } catch (error) {
-      console.error("Error loading categories:", error);
     } finally {
       setCategoriesLoading(false);
     }
@@ -94,8 +92,6 @@ export function GlobalCatalogPanel({
       if (result.ok) {
         setProducts(result.data);
       }
-    } catch (error) {
-      console.error("Error loading products:", error);
     } finally {
       setProductsLoading(false);
     }

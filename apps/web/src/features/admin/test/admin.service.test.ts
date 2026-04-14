@@ -138,7 +138,7 @@ describe("AdminService", () => {
   describe("deleteBusinessType", () => {
     it("debe eliminar tipo de negocio", async () => {
       const supabase: any = {
-        from: () => ({ delete: () => ({ eq: () => Promise.resolve({ error: null }) }) })
+        from: () => ({ update: () => ({ eq: () => ({ eq: () => Promise.resolve({ error: null }) }) }) })
       };
       const eventBus = createEventBusMock();
       const service = createAdminService({ supabase, eventBus: eventBus as any });
@@ -150,7 +150,7 @@ describe("AdminService", () => {
 
     it("debe manejar error al eliminar tipo de negocio", async () => {
       const supabase: any = {
-        from: () => ({ delete: () => ({ eq: () => Promise.resolve({ error: { message: "Error" } }) }) })
+        from: () => ({ update: () => ({ eq: () => ({ eq: () => Promise.resolve({ error: { message: "Error" } }) }) }) })
       };
       const eventBus = createEventBusMock();
       const service = createAdminService({ supabase, eventBus: eventBus as any });

@@ -228,7 +228,7 @@ export const createProductsService = ({
     }
 
     await db.createCategory(category);
-    eventBus.emit("CATALOG.CATEGORY_CREATED", {
+    eventBus.emit("CATEGORY.CREATED", {
       tenantId: tenant.tenantSlug,
       localId: category.localId
     });
@@ -347,7 +347,7 @@ export const createProductsService = ({
       }
 
       await db.createProduct(product);
-      eventBus.emit("CATALOG.PRODUCT_CREATED", {
+      eventBus.emit("PRODUCT.CREATED", {
         tenantId: tenant.tenantSlug,
         localId: product.localId,
         visible: product.visible
@@ -404,7 +404,7 @@ export const createProductsService = ({
     }
 
     await db.updateCategory(updated);
-    eventBus.emit("CATALOG.CATEGORY_UPDATED", {
+    eventBus.emit("CATEGORY.UPDATED", {
       tenantId: tenant.tenantSlug,
       localId: updated.localId
     });
@@ -528,7 +528,7 @@ export const createProductsService = ({
       }
 
       await db.updateProduct(updated);
-      eventBus.emit("CATALOG.PRODUCT_UPDATED", {
+      eventBus.emit("PRODUCT.UPDATED", {
         tenantId: tenant.tenantSlug,
         localId: updated.localId
       });
@@ -591,7 +591,7 @@ export const createProductsService = ({
       };
 
       await db.createPresentation(presentation);
-      eventBus.emit("CATALOG.PRESENTATION_CREATED", {
+      eventBus.emit("PRESENTATION.CREATED", {
         tenantId: tenant.tenantSlug,
         id: presentation.id,
         productLocalId: input.productLocalId
@@ -685,7 +685,7 @@ export const createProductsService = ({
 
     const now = clock().toISOString();
     await db.softDeleteCategory(categoryLocalId, tenant.tenantSlug, now);
-    eventBus.emit("CATALOG.CATEGORY_DELETED", {
+    eventBus.emit("CATEGORY.DELETED", {
       tenantId: tenant.tenantSlug,
       localId: categoryLocalId
     });
@@ -763,7 +763,7 @@ export const createProductsService = ({
 
       const now = clock().toISOString();
       await db.softDeleteProduct(productLocalId, tenant.tenantSlug, now);
-      eventBus.emit("CATALOG.PRODUCT_DELETED", {
+      eventBus.emit("PRODUCT.DELETED", {
         tenantId: tenant.tenantSlug,
         localId: productLocalId
       });
@@ -837,7 +837,7 @@ export const createProductsService = ({
       }
 
       await db.updatePresentation(updated);
-      eventBus.emit("CATALOG.PRESENTATION_UPDATED", {
+      eventBus.emit("PRESENTATION.UPDATED", {
         tenantId: tenant.tenantSlug,
         id: updated.id,
         productLocalId: updated.productLocalId
@@ -1095,7 +1095,7 @@ export const createProductsService = ({
         await db.createProductSizeColor(sc);
       }
 
-      eventBus.emit("CATALOG.PRODUCT_CREATED", {
+      eventBus.emit("PRODUCT.CREATED", {
         tenantId: tenant.tenantSlug,
         localId: productLocalId,
         visible: product.visible,

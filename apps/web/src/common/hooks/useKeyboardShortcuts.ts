@@ -32,7 +32,9 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[], enabled = tr
       if (event.ctrlKey) keys.push("ctrl");
       if (event.shiftKey) keys.push("shift");
       if (event.altKey) keys.push("alt");
-      keys.push(event.key.toLowerCase());
+      if (event.key) {
+        keys.push(event.key.toLowerCase());
+      }
 
       const combo = keys.join("+");
       const handler = handlersRef.current.get(combo);

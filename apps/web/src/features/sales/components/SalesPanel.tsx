@@ -255,10 +255,10 @@ export function SalesPanel({
   const salesTab = (
     <SalesDataTable
       sales={state.sales}
-      onView={(sale) => console.log("View sale", sale.localId)}
-      onVoid={(localId) => console.log("Void sale", localId)}
-      onRefund={(localId) => console.log("Refund sale", localId)}
-      onRestore={(localId) => console.log("Restore sale", localId)}
+      onView={() => {}}
+      onVoid={() => {}}
+      onRefund={() => {}}
+      onRestore={() => {}}
     />
   );
 
@@ -274,7 +274,7 @@ export function SalesPanel({
           setActiveTab("terminal");
         }
       }}
-      onDelete={(localId) => console.log("Delete suspended", localId)}
+      onDelete={() => {}}
     />
   );
 
