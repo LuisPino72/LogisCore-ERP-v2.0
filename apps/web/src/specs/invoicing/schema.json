@@ -1,0 +1,370 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/invoicing/v1.0.0",
+  "title": "Invoicing Entity Specification",
+  "description": "Facturación fiscal venezolana - Única Fuente de Verdad (SSoT)",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Invoicing",
+
+  "tables": {
+    "invoices": {
+      "description": "Facturas fiscales",
+      "fields": {
+        "local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "description": "SLUG del tenant (Modo Dexie)",
+          "validation": "DEXIE_MODE"
+        },
+        "sale_local_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "customer_id": {
+          "type": "string"
+        },
+        "customer_name": {
+          "type": "string",
+          "required": true
+        },
+        "customer_rif": {
+          "type": "string",
+          "pattern": "^[VJEGP]\\d{9}$",
+          "required": true,
+          "description": "RIF venezolano: V/J/G/E/P + 9 dígitos = 10 caracteres"
+        },
+        "invoice_number": {
+          "type": "string"
+        },
+        "point_of_sale": {
+          "type": "string"
+        },
+        "control_number": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "issued", "voided"],
+          "required": true
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["VES", "USD"],
+          "required": true
+        },
+        "exchange_rate": {
+          "type": "number",
+          "precision": 4,
+          "required": true
+        },
+        "exchange_rate_snapshot": {
+          "type": "object",
+          "properties": {
+            "rate": { "type": "number" },
+            "capturedAt": { "type": "string" },
+            "source": { "type": "string" }
+          },
+          "description": "Snapshot de tasa BCV para trazabilidad histórica"
+        },
+        "subtotal": {
+          "type": "number",
+          "precision": 4,
+          "required": true
+        },
+        "tax_total": {
+          "type": "number",
+          "precision": 4
+        },
+        "discount_total": {
+          "type": "number",
+          "precision": 4
+        },
+        "igtf_amount": {
+          "type": "number",
+          "precision": 4,
+          "description": "Monto IGTF (3% sobre pagos en divisas)"
+        },
+        "total": {
+          "type": "number",
+          "precision": 4,
+          "required": true
+        },
+        "items": {
+          "type": "array"
+        },
+        "payments": {
+          "type": "array"
+        },
+        "xml_seniat": {
+          "type": "string"
+        },
+        "json_seniat": {
+          "type": "object"
+        },
+        "authorization_number": {
+          "type": "string"
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "voided_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "tax_rules": {
+      "description": "Reglas fiscales configurables (IVA, ISLR, IGTF)",
+      "fields": {
+        "local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "validation": "DEXIE_MODE"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Ej: IVA 16%, IVA 12%, ISLR, IGTF"
+        },
+        "rate": {
+          "type": "number",
+          "precision": 4,
+          "required": true,
+          "description": "Tasa: 0.16, 0.12, 0.03, etc."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["iva", "islr", "igtf"],
+          "required": true
+        },
+        "is_withholding": {
+          "type": "boolean",
+          "default": false
+        },
+        "is_active": {
+          "type": "boolean",
+          "default": true
+        },
+        "jurisdiction": {
+          "type": "string"
+        },
+        "deleted_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Soft delete"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "invoice_ranges": {
+      "description": "Talonarios de facturación",
+      "fields": {
+        "local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "validation": "DEXIE_MODE"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Ej: FAC-, FACT-"
+        },
+        "start_number": {
+          "type": "integer",
+          "required": true
+        },
+        "end_number": {
+          "type": "integer",
+          "required": true
+        },
+        "current_number": {
+          "type": "integer",
+          "required": true
+        },
+        "control_number_prefix": {
+          "type": "string"
+        },
+        "is_active": {
+          "type": "boolean",
+          "default": true
+        },
+        "deleted_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Soft delete"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+
+  "business_rules": {
+    "rif_validation": {
+      "condition": "ALWAYS",
+      "rule": "customer_rif matches ^[VJEGP]\\d{9}$",
+      "error": "INVOICE_RIF_INVALID",
+      "message": "RIF inválido. Formato requerido: V012345678, J012345678, G012345678, E012345678, P012345678 (10 caracteres)",
+      "enforcement": "RUNTIME"
+    },
+    "invoice_number_sequential": {
+      "condition": "ALWAYS",
+      "rule": "current_number < end_number",
+      "error": "INVOICE_RANGE_EXHAUSTED",
+      "message": "Rango de facturas agotado. Solicite un nuevo talonario.",
+      "enforcement": "RUNTIME"
+    },
+    "igtf_calculation": {
+      "condition": "payment.currency === 'USD' && payment.method !== 'transfer'",
+      "rule": "igtf_amount = amount * exchange_rate * 0.03",
+      "error": "INVOICE_IGTF_MISMATCH",
+      "message": "IGTF calculado no coincide con el registrado",
+      "enforcement": "RUNTIME"
+    },
+    "cents_rule_applies_to_total": {
+      "condition": "ALWAYS",
+      "rule": "Math.abs(total - Math.floor(total * 100) / 100) <= 0.01",
+      "error": "INVOICE_CENTS_ADJUSTMENT_NEEDED",
+      "message": "Ajuste de céntimos necesario en el total",
+      "enforcement": "RUNTIME",
+      "note": "Solo aplica al total, no a líneas individuales"
+    },
+    "exchange_rate_snapshot_required": {
+      "condition": "ALWAYS",
+      "rule": "exchange_rate_snapshot !== null",
+      "error": "INVOICE_EXCHANGE_RATE_SNAPSHOT_MISSING",
+      "message": "Exchange rate snapshot es requerido para trazabilidad histórica",
+      "enforcement": "RUNTIME"
+    },
+    "tenant_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["all_tables"],
+      "rule": "tenant_id matches ^[a-z0-9-]+$",
+      "error": "INVOICING_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "enforcement": "SYNC_ENGINE"
+    },
+    "soft_delete_required": {
+      "condition": "ALWAYS",
+      "appliesTo": ["tax_rules", "invoice_ranges"],
+      "rule": "deleted_at IS NULL",
+      "error": "HARD_DELETE_NOT_ALLOWED",
+      "message": "Soft delete obligatorio. Usar deleted_at en lugar de Hard Delete",
+      "enforcement": "QUERY_BUILDER"
+    },
+    "invoice_not_voided": {
+      "condition": "ALWAYS",
+      "appliesTo": ["voidInvoice"],
+      "rule": "status !== 'voided'",
+      "error": "INVOICE_ALREADY_VOIDED",
+      "message": "La factura ya está anulada",
+      "enforcement": "RUNTIME"
+    }
+  },
+
+  "decimal_precision": {
+    "money": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 2
+    },
+    "tax_rate": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 2
+    },
+    "igtf": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 2,
+      "rate": 0.03
+    }
+  },
+
+  "error_codes": {
+    "INVOICE_RIF_INVALID": {
+      "code": "INVOICE_RIF_INVALID",
+      "message": "RIF inválido. Formato requerido: V012345678, J012345678, G012345678, E012345678, P012345678 (10 caracteres)",
+      "retryable": false
+    },
+    "INVOICE_RANGE_EXHAUSTED": {
+      "code": "INVOICE_RANGE_EXHAUSTED",
+      "message": "Rango de facturas agotado. Solicite un nuevo talonario.",
+      "retryable": false
+    },
+    "INVOICE_IGTF_MISMATCH": {
+      "code": "INVOICE_IGTF_MISMATCH",
+      "message": "IGTF calculado no coincide con el registrado",
+      "retryable": false
+    },
+    "INVOICE_CENTS_ADJUSTMENT_NEEDED": {
+      "code": "INVOICE_CENTS_ADJUSTMENT_NEEDED",
+      "message": "Ajuste de céntimos necesario en el total",
+      "retryable": false,
+      "auto_fix": true
+    },
+    "INVOICE_EXCHANGE_RATE_SNAPSHOT_MISSING": {
+      "code": "INVOICE_EXCHANGE_RATE_SNAPSHOT_MISSING",
+      "message": "Exchange rate snapshot es requerido para trazabilidad histórica",
+      "retryable": false
+    },
+    "INVOICING_TENANT_ID_MUST_BE_SLUG": {
+      "code": "INVOICING_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "retryable": false
+    },
+    "INVOICE_ALREADY_VOIDED": {
+      "code": "INVOICE_ALREADY_VOIDED",
+      "message": "La factura ya está anulada",
+      "retryable": false
+    },
+    "HARD_DELETE_NOT_ALLOWED": {
+      "code": "HARD_DELETE_NOT_ALLOWED",
+      "message": "Soft delete obligatorio. Usar deleted_at en lugar de eliminar el registro",
+      "retryable": false
+    },
+    "INVOICE_CONTROL_NUMBER_INVALID": {
+      "code": "INVOICE_CONTROL_NUMBER_INVALID",
+      "message": "Número de control inválido",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "4 Motor Fiscal Venezolano / 2.3.6 Facturación",
+    "version_date": "2026-04-14"
+  }
+}

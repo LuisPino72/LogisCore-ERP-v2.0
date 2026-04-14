@@ -1,0 +1,276 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/inventory/v1.0.0",
+  "title": "Inventory Entity Specification",
+  "description": "Inventario, almacenes y movimientos de stock - Única Fuente de Verdad (SSoT)",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Inventory",
+
+  "tables": {
+    "stock_movements": {
+      "description": "Movimientos de stock - entradas y salidas",
+      "fields": {
+        "local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true,
+          "description": "ID generado en cliente"
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "description": "SLUG del tenant (Modo Dexie)",
+          "validation": "DEXIE_MODE"
+        },
+        "product_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "warehouse_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "movement_type": {
+          "type": "string",
+          "enum": ["purchase_in", "sale_out", "adjustment_in", "adjustment_out", "production_in", "production_out", "transfer_in", "transfer_out", "count_adjustment"],
+          "required": true,
+          "description": "Tipo de movimiento de stock"
+        },
+        "quantity": {
+          "type": "number",
+          "required": true,
+          "precision": 4,
+          "description": "Cantidad (4 decimales si es pesable)"
+        },
+        "unit_cost": {
+          "type": "number",
+          "precision": 4,
+          "description": "Costo unitario (NUMERIC(19,4))"
+        },
+        "reference_type": {
+          "type": "string"
+        },
+        "reference_local_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "created_by": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+
+    "inventory_lots": {
+      "description": "Lotes de inventario - trazabilidad FIFO",
+      "fields": {
+        "local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "validation": "DEXIE_MODE"
+        },
+        "product_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "warehouse_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "source_type": {
+          "type": "string"
+        },
+        "source_local_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "quantity": {
+          "type": "number",
+          "required": true,
+          "precision": 4
+        },
+        "unit_cost": {
+          "type": "number",
+          "required": true,
+          "precision": 4
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "consumed"]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+
+    "inventory_counts": {
+      "description": "Conteos de inventario",
+      "fields": {
+        "local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "validation": "DEXIE_MODE"
+        },
+        "warehouse_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "product_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "expected_qty": {
+          "type": "number",
+          "precision": 4
+        },
+        "counted_qty": {
+          "type": "number",
+          "precision": 4
+        },
+        "difference_qty": {
+          "type": "number",
+          "precision": 4
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "posted", "voided"]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "counted_by": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+
+  "business_rules": {
+    "weighted_precision": {
+      "condition": "is_weighted === true",
+      "appliesTo": [
+        "stock_movements.quantity",
+        "inventory_lots.quantity",
+        "inventory_counts.counted_qty"
+      ],
+      "rule": "decimal_places <= 4",
+      "error": "WEIGHTED_MOVEMENT_QUANTITY_INVALID",
+      "message": "Producto pesable debe usar máximo 4 decimales en cantidades",
+      "enforcement": "RUNTIME"
+    },
+    "unit_cost_precision": {
+      "condition": "ALWAYS",
+      "appliesTo": [
+        "inventory_lots.unit_cost",
+        "stock_movements.unit_cost"
+      ],
+      "rule": "decimal_places <= 4",
+      "error": "UNIT_COST_PRECISION_INVALID",
+      "message": "Costo unitario debe usar máximo 4 decimales (NUMERIC(19,4))",
+      "enforcement": "RUNTIME"
+    },
+    "tenant_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["all_tables"],
+      "rule": "tenant_id matches ^[a-z0-9-]+$",
+      "error": "INVENTORY_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "enforcement": "SYNC_ENGINE"
+    },
+    "quantity_positive": {
+      "condition": "ALWAYS",
+      "appliesTo": ["stock_movements.quantity", "inventory_lots.quantity"],
+      "rule": "quantity > 0",
+      "error": "STOCK_MOVEMENT_QUANTITY_INVALID",
+      "message": "La cantidad debe ser mayor a cero",
+      "enforcement": "RUNTIME"
+    }
+  },
+
+  "decimal_precision": {
+    "money": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 2
+    },
+    "weighted_quantity": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 4,
+      "toFixed": 4
+    },
+    "non_weighted_quantity": {
+      "type": "INTEGER",
+      "calculation": 0,
+      "display": 0
+    }
+  },
+
+  "error_codes": {
+    "WEIGHTED_MOVEMENT_QUANTITY_INVALID": {
+      "code": "WEIGHTED_MOVEMENT_QUANTITY_INVALID",
+      "message": "Producto pesable debe usar máximo 4 decimales en cantidades",
+      "retryable": false
+    },
+    "UNIT_COST_PRECISION_INVALID": {
+      "code": "UNIT_COST_PRECISION_INVALID",
+      "message": "Costo unitario debe usar máximo 4 decimales (NUMERIC(19,4))",
+      "retryable": false
+    },
+    "STOCK_NEGATIVE_FORBIDDEN": {
+      "code": "STOCK_NEGATIVE_FORBIDDEN",
+      "message": "Stock negativo no permitido",
+      "retryable": false
+    },
+    "INVENTORY_TENANT_ID_MUST_BE_SLUG": {
+      "code": "INVENTORY_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "retryable": false
+    },
+    "INVENTORY_LOT_NOT_FOUND": {
+      "code": "INVENTORY_LOT_NOT_FOUND",
+      "message": "Lote de inventario no encontrado",
+      "retryable": false
+    },
+    "INVENTORY_WAREHOUSE_NOT_FOUND": {
+      "code": "INVENTORY_WAREHOUSE_NOT_FOUND",
+      "message": "Almacén no encontrado",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "2.3.2 Inventario / 5 Ciclo de Vida de Productos Pesables",
+    "version_date": "2026-04-14"
+  }
+}

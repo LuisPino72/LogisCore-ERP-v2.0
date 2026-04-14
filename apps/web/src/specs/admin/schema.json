@@ -1,0 +1,341 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/admin/v1.0.0",
+  "title": "Admin Entity Specification",
+  "description": "Entidades administrativas - Única Fuente de Verdad para tenants, usuarios y suscripciones",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Admin",
+
+  "fields": {
+    "tenant": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK - ID generado por el servidor"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255,
+        "required": true,
+        "description": "Nombre de la empresa"
+      },
+      "slug": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$",
+        "minLength": 3,
+        "maxLength": 50,
+        "required": true,
+        "unique": true,
+        "description": "Identificador único (URL-friendly)"
+      },
+      "rif": {
+        "type": "string",
+        "pattern": "^[VJEGP]\\d{9}$/",
+        "required": true,
+        "description": "RIF empresarial venezolano (10 caracteres)"
+      },
+      "isActive": {
+        "type": "boolean",
+        "required": true,
+        "description": "Estado del tenant"
+      },
+      "ownerUserId": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "FK al usuario propietario"
+      },
+      "businessTypeId": {
+        "type": ["string", "null"],
+        "description": "FK al tipo de negocio"
+      },
+      "subscriptionStatus": {
+        "type": "string",
+        "enum": ["active", "suspended", "expired", "trial"],
+        "required": true,
+        "description": "Estado de suscripción"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de creación (UTC)"
+      }
+    },
+
+    "user": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK - ID del usuario"
+      },
+      "email": {
+        "type": "string",
+        "format": "email",
+        "required": true,
+        "unique": true,
+        "description": "Email único del usuario"
+      },
+      "fullName": {
+        "type": ["string", "null"],
+        "description": "Nombre completo"
+      },
+      "role": {
+        "type": "string",
+        "enum": ["owner", "employee"],
+        "required": true,
+        "description": "Rol del usuario"
+      },
+      "tenantId": {
+        "type": "string",
+        "required": true,
+        "description": "FK al tenant (SLUG en Dexie, UUID en Supabase)"
+      },
+      "isActive": {
+        "type": "boolean",
+        "required": true,
+        "description": "Estado del usuario"
+      },
+      "lastLoginAt": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Último inicio de sesión"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de creación (UTC)"
+      }
+    },
+
+    "subscription": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK - ID de suscripción"
+      },
+      "tenantId": {
+        "type": "string",
+        "required": true,
+        "description": "FK al tenant"
+      },
+      "planId": {
+        "type": ["string", "null"],
+        "description": "FK al plan"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["active", "suspended", "expired", "trial"],
+        "required": true,
+        "description": "Estado de suscripción"
+      },
+      "startDate": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Fecha de inicio"
+      },
+      "endDate": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Fecha de fin"
+      },
+      "billingCycle": {
+        "type": ["string", "null"],
+        "enum": ["monthly", "quarterly", "annual"],
+        "description": "Ciclo de facturación"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de creación (UTC)"
+      }
+    }
+  },
+
+  "business_rules": {
+    "tenant_rif_format": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createTenant", "updateTenant"],
+      "rule": "rif matches ^[VJEGP]\\d{9}$/",
+      "error": "ADMIN_TENANT_RIF_INVALID",
+      "message": "RIF debe seguir formato venezolano: 1 letra (V,J,E,G,P) + 9 dígitos",
+      "enforcement": "RUNTIME"
+    },
+    "tenant_slug_format": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createTenant", "updateTenant"],
+      "rule": "slug matches ^[a-z0-9-]+$ AND length >= 3 AND length <= 50",
+      "error": "ADMIN_TENANT_SLUG_INVALID",
+      "message": "Slug debe tener solo minúsculas, números y guiones (3-50 caracteres)",
+      "enforcement": "RUNTIME"
+    },
+    "tenant_slug_unique": {
+      "condition": "ON_CREATE",
+      "appliesTo": ["createTenant"],
+      "rule": "slug NOT EXISTS in tenants",
+      "error": "ADMIN_TENANT_SLUG_DUPLICATE",
+      "message": "El slug ya está en uso por outro tenant",
+      "enforcement": "DATABASE"
+    },
+    "tenant_tenantid_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["dexie_persistence"],
+      "rule": "tenantId matches ^[a-z0-9-]+$",
+      "error": "ADMIN_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "enforcement": "SYNC_ENGINE"
+    },
+    "user_email_format": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createUser", "updateUser"],
+      "rule": "email is valid email format",
+      "error": "ADMIN_USER_EMAIL_INVALID",
+      "message": "Email debe ser un correo electrónico válido",
+      "enforcement": "RUNTIME"
+    },
+    "user_email_unique": {
+      "condition": "ON_CREATE",
+      "appliesTo": ["createUser"],
+      "rule": "email NOT EXISTS in users",
+      "error": "ADMIN_USER_EMAIL_DUPLICATE",
+      "message": "El email ya está registrado",
+      "enforcement": "DATABASE"
+    },
+    "user_role_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createUser", "updateUser"],
+      "rule": "role in [owner, employee]",
+      "error": "ADMIN_USER_INVALID_ROLE",
+      "message": "Rol debe ser 'owner' o 'employee'",
+      "enforcement": "RUNTIME"
+    },
+    "subscription_status_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createSubscription", "updateSubscription"],
+      "rule": "status in [active, suspended, expired, trial]",
+      "error": "ADMIN_SUBSCRIPTION_STATUS_INVALID",
+      "message": "Estado de suscripción inválido",
+      "enforcement": "RUNTIME"
+    },
+    "subscription_dates_valid": {
+      "condition": "ON_CREATE",
+      "appliesTo": ["createSubscription"],
+      "rule": "startDate <= endDate (if both provided)",
+      "error": "ADMIN_SUBSCRIPTION_DATES_INVALID",
+      "message": "Fecha de fin debe ser mayor a fecha de inicio",
+      "enforcement": "RUNTIME"
+    },
+    "subscription_not_expired": {
+      "condition": "ALWAYS",
+      "appliesTo": ["tenant_access"],
+      "rule": "subscription.status != 'expired'",
+      "error": "ADMIN_SUBSCRIPTION_EXPIRED",
+      "message": "Suscripción vencida - renew required",
+      "enforcement": "RUNTIME",
+      "triggers_event": "SUBSCRIPTION.BLOCKED"
+    }
+  },
+
+  "subscription_statuses": {
+    "_description": "Estados de suscripción disponibles",
+    "active": {
+      "description": "Suscripción activa",
+      "allows_access": true
+    },
+    "suspended": {
+      "description": "Suscripción suspendida por falta de pago",
+      "allows_access": false
+    },
+    "expired": {
+      "description": "Suscripción vencida",
+      "allows_access": false
+    },
+    "trial": {
+      "description": "Período de prueba",
+      "allows_access": true
+    }
+  },
+
+  "error_codes": {
+    "ADMIN_TENANT_RIF_INVALID": {
+      "code": "ADMIN_TENANT_RIF_INVALID",
+      "message": "RIF debe seguir formato venezolano: 1 letra (V,J,E,G,P) + 9 dígitos",
+      "retryable": false
+    },
+    "ADMIN_TENANT_SLUG_INVALID": {
+      "code": "ADMIN_TENANT_SLUG_INVALID",
+      "message": "Slug debe tener solo minúsculas, números y guiones (3-50 caracteres)",
+      "retryable": false
+    },
+    "ADMIN_TENANT_SLUG_DUPLICATE": {
+      "code": "ADMIN_TENANT_SLUG_DUPLICATE",
+      "message": "El slug ya está en uso por otro tenant",
+      "retryable": false
+    },
+    "ADMIN_TENANT_NOT_FOUND": {
+      "code": "ADMIN_TENANT_NOT_FOUND",
+      "message": "Tenant no encontrado",
+      "retryable": false
+    },
+    "ADMIN_TENANT_ALREADY_ACTIVE": {
+      "code": "ADMIN_TENANT_ALREADY_ACTIVE",
+      "message": "Tenant ya está activo",
+      "retryable": false
+    },
+    "ADMIN_TENANT_ID_MUST_BE_SLUG": {
+      "code": "ADMIN_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "retryable": false
+    },
+    "ADMIN_USER_EMAIL_INVALID": {
+      "code": "ADMIN_USER_EMAIL_INVALID",
+      "message": "Email debe ser un correo electrónico válido",
+      "retryable": false
+    },
+    "ADMIN_USER_EMAIL_DUPLICATE": {
+      "code": "ADMIN_USER_EMAIL_DUPLICATE",
+      "message": "El email ya está registrado",
+      "retryable": false
+    },
+    "ADMIN_USER_NOT_FOUND": {
+      "code": "ADMIN_USER_NOT_FOUND",
+      "message": "Usuario no encontrado",
+      "retryable": false
+    },
+    "ADMIN_USER_INVALID_ROLE": {
+      "code": "ADMIN_USER_INVALID_ROLE",
+      "message": "Rol debe ser 'owner' o 'employee'",
+      "retryable": false
+    },
+    "ADMIN_SUBSCRIPTION_STATUS_INVALID": {
+      "code": "ADMIN_SUBSCRIPTION_STATUS_INVALID",
+      "message": "Estado de suscripción inválido",
+      "retryable": false
+    },
+    "ADMIN_SUBSCRIPTION_NOT_FOUND": {
+      "code": "ADMIN_SUBSCRIPTION_NOT_FOUND",
+      "message": "Suscripción no encontrada",
+      "retryable": false
+    },
+    "ADMIN_SUBSCRIPTION_EXPIRED": {
+      "code": "ADMIN_SUBSCRIPTION_EXPIRED",
+      "message": "Suscripción vencida - renovación requerida",
+      "retryable": false
+    },
+    "ADMIN_SUBSCRIPTION_DATES_INVALID": {
+      "code": "ADMIN_SUBSCRIPTION_DATES_INVALID",
+      "message": "Fecha de fin debe ser mayor a fecha de inicio",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "1.3 Reglas de Oro / 2.1 Esquema Dual",
+    "version_date": "2026-04-14"
+  }
+}

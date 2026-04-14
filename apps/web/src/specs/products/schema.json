@@ -1,0 +1,289 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/products/v1.0.0",
+  "title": "Product Entity Specification",
+  "description": "Catálogo de productos - Única Fuente de Verdad (SSoT). Este schema valida todas las operaciones de Products incluyendo Inventory y Fiscal.",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Product",
+
+  "fields": {
+    "local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "ID generado en cliente (crypto.randomUUID())"
+    },
+    "tenant_id": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$",
+      "description": "SLUG del tenant (NUNCA UUID) - Modo Dexie",
+      "validation": "DEXIE_MODE",
+      "note": "El SyncEngine traduce a UUID antes de sincronizar a Supabase"
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Nombre del producto"
+    },
+    "sku": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[A-Z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 50,
+      "unique": true,
+      "description": "Código único del producto"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 1000,
+      "description": "Descripción del producto"
+    },
+    "category_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "FK a categories"
+    },
+    "is_weighted": {
+      "type": "boolean",
+      "required": true,
+      "default": false,
+      "description": "Producto pesable (requiere 4 decimales en cantidades)"
+    },
+    "unit_of_measure": {
+      "type": "string",
+      "enum": ["kg", "lb", "gr", "un"],
+      "required": true,
+      "default": "un",
+      "description": "Unidad de medida base"
+    },
+    "is_taxable": {
+      "type": "boolean",
+      "required": true,
+      "default": true,
+      "description": "Aplica impuestos (IVA, IGTF)"
+    },
+    "is_serialized": {
+      "type": "boolean",
+      "required": true,
+      "default": false,
+      "description": "Usa seriales"
+    },
+    "default_presentation_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "FK a presentations por defecto"
+    },
+    "visible": {
+      "type": "boolean",
+      "required": true,
+      "default": true,
+      "description": "Visible en POS"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Soft delete - timestamps o null si no eliminado"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true,
+      "description": "Fecha de creación (UTC)"
+    }
+  },
+
+  "relations": {
+    "presentations": {
+      "type": "array",
+      "description": "Presentaciones/variantes del producto",
+      "items": {
+        "type": "object",
+        "fields": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "product_local_id": {
+            "type": "string",
+            "format": "uuid",
+            "required": true
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Nombre (ej: '1kg', '500ml', '12un')"
+          },
+          "factor": {
+            "type": "number",
+            "required": true,
+            "precision": 4,
+            "minimum": 0.0001,
+            "description": "Multiplicador a unidad base (NUMERIC(19,4))"
+          },
+          "price": {
+            "type": "number",
+            "required": true,
+            "precision": 4,
+            "minimum": 0,
+            "description": "Precio en USD (NUMERIC(19,4))"
+          },
+          "barcode": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "Código de barras para POS"
+          },
+          "is_default": {
+            "type": "boolean",
+            "required": true,
+            "default": false
+          }
+        },
+        "rules": [
+          {
+            "name": "default_presentation_unique",
+            "condition": "items.filter(i => i.is_default).length === 1",
+            "error": "PRODUCT_DEFAULT_PRESENTATION_DUPLICATE",
+            "message": "Solo puede existir una presentación por defecto"
+          },
+          {
+            "name": "barcode_required_for_pos",
+            "condition": "items.length > 0",
+            "error": "PRODUCT_BARCODE_MISSING",
+            "message": "Al menos una presentación debe tener barcode para operación POS"
+          }
+        ]
+      }
+    }
+  },
+
+  "business_rules": {
+    "weighted_precision": {
+      "condition": "is_weighted === true",
+      "appliesTo": ["stock_movements", "inventory_lots", "receiving_items", "production_orders", "invoice_items"],
+      "rule": "quantity_decimal_places <= 4",
+      "error": "PRODUCT_WEIGHTED_PRECISION",
+      "message": "Producto pesable debe usar máximo 4 decimales",
+      "enforcement": "RUNTIME"
+    },
+    "unit_weighted_match": {
+      "condition": "is_weighted === true",
+      "appliesTo": ["unit_of_measure"],
+      "rule": "unit_of_measure IN ['kg', 'lb', 'gr']",
+      "error": "PRODUCT_UNIT_WEIGHTED_MISMATCH",
+      "message": "Producto pesable debe usar unidad de masa (kg, lb, gr)",
+      "enforcement": "RUNTIME"
+    },
+    "unit_non_weighted": {
+      "condition": "is_weighted === false",
+      "appliesTo": ["unit_of_measure"],
+      "rule": "unit_of_measure === 'un'",
+      "error": "PRODUCT_UNIT_NON_WEIGHTED",
+      "message": "Producto no pesable debe usar 'un'",
+      "enforcement": "RUNTIME"
+    },
+    "soft_delete": {
+      "condition": "ALWAYS",
+      "appliesTo": ["all_queries"],
+      "rule": "deleted_at IS NULL",
+      "error": "PRODUCT_SOFT_DELETE",
+      "message": "Hard delete no permitido - usar soft delete",
+      "enforcement": "QUERY_BUILDER"
+    },
+    "tenant_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["dexie_persistence"],
+      "rule": "tenant_id matches ^[a-z0-9-]+$",
+      "error": "PRODUCT_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "enforcement": "SYNC_ENGINE"
+    }
+  },
+
+  "decimal_precision": {
+    "money": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 2,
+      "fields": ["price", "cost", "subtotal", "total", "tax_total", "discount_total"]
+    },
+    "weighted_quantity": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 4,
+      "toFixed": 4,
+      "appliesWhen": "is_weighted === true",
+      "fields": ["quantity", "expected_qty", "counted_qty", "difference_qty", "planned_qty", "produced_qty", "yield_qty"]
+    },
+    "non_weighted_quantity": {
+      "type": "INTEGER",
+      "calculation": 0,
+      "display": 0,
+      "toFixed": 0,
+      "appliesWhen": "is_weighted === false",
+      "fields": ["quantity", "expected_qty", "counted_qty", "planned_qty", "produced_qty"]
+    }
+  },
+
+  "error_codes": {
+    "PRODUCT_NOT_FOUND": {
+      "code": "PRODUCT_NOT_FOUND",
+      "message": "Producto no encontrado",
+      "retryable": false
+    },
+    "PRODUCT_DUPLICATE_SKU": {
+      "code": "PRODUCT_DUPLICATE_SKU",
+      "message": "Ya existe un producto con este SKU",
+      "retryable": false
+    },
+    "PRODUCT_WEIGHTED_PRECISION": {
+      "code": "PRODUCT_WEIGHTED_PRECISION",
+      "message": "Producto pesable debe usar máximo 4 decimales en cantidades",
+      "retryable": false,
+      "context": "inventory_lots, stock_movements"
+    },
+    "PRODUCT_UNIT_WEIGHTED_MISMATCH": {
+      "code": "PRODUCT_UNIT_WEIGHTED_MISMATCH",
+      "message": "Producto pesable debe usar unidad de masa (kg, lb, gr)",
+      "retryable": false
+    },
+    "PRODUCT_UNIT_NON_WEIGHTED": {
+      "code": "PRODUCT_UNIT_NON_WEIGHTED",
+      "message": "Producto no pesable debe usar unidad 'un'",
+      "retryable": false
+    },
+    "PRODUCT_TENANT_ID_MUST_BE_SLUG": {
+      "code": "PRODUCT_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "retryable": false,
+      "context": "Use TenantTranslator para convertir slug a UUID antes de sincronizar"
+    },
+    "PRODUCT_DEFAULT_PRESENTATION_DUPLICATE": {
+      "code": "PRODUCT_DEFAULT_PRESENTATION_DUPLICATE",
+      "message": "Solo puede existir una presentación por defecto",
+      "retryable": false
+    },
+    "PRODUCT_BARCODE_MISSING": {
+      "code": "PRODUCT_BARCODE_MISSING",
+      "message": "Al menos una presentación debe tener barcode para operación POS",
+      "retryable": false
+    },
+    "PRODUCT_SOFT_DELETE": {
+      "code": "PRODUCT_SOFT_DELETE",
+      "message": "Hard delete no permitido - usar soft delete",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "2.3.1 Catálogo / 5 Ciclo de Vida de Productos Pesables",
+    "version_date": "2026-04-14"
+  }
+}

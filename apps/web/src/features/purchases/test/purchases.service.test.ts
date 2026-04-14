@@ -133,7 +133,7 @@ describe("purchases.service", () => {
     const result = await service.createSupplier(
       { tenantSlug: "tenant-demo" },
       ownerActor,
-      { name: "Proveedor Test", rif: "J-123456789", phone: "04141234567" }
+      { name: "Proveedor Test", rif: "J123456789", phone: "04141234567" }
     );
 
     expect(result.ok).toBe(true);
@@ -230,6 +230,13 @@ describe("purchases.service", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
+    const confirmed = await service.confirmPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      created.data.localId
+    );
+    expect(confirmed.ok).toBe(true);
+
     const received = await service.receivePurchase(
       { tenantSlug: "tenant-demo" },
       ownerActor,
@@ -265,6 +272,13 @@ describe("purchases.service", () => {
     );
     expect(created.ok).toBe(true);
     if (!created.ok) return;
+
+    const confirmed = await service.confirmPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      created.data.localId
+    );
+    expect(confirmed.ok).toBe(true);
 
     const received = await service.receivePurchase(
       { tenantSlug: "tenant-demo" },
@@ -318,7 +332,7 @@ describe("purchases.service", () => {
 
     expect(received.ok).toBe(false);
     if (received.ok) return;
-    expect(received.error.code).toBe("PURCHASES_CANCELLED_NOT_RECEIVABLE");
+    expect(received.error.code).toBe("PURCHASE_CANCELLED_NOT_RECEIVABLE");
   });
 
   it("bloquea recepcion para empleado sin acceso a bodega", async () => {
@@ -333,6 +347,13 @@ describe("purchases.service", () => {
     );
     expect(created.ok).toBe(true);
     if (!created.ok) return;
+
+    const confirmed = await service.confirmPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      created.data.localId
+    );
+    expect(confirmed.ok).toBe(true);
 
     const received = await service.receivePurchase(
       { tenantSlug: "tenant-demo" },
@@ -358,7 +379,7 @@ describe("purchases.service", () => {
 
     expect(received.ok).toBe(false);
     if (received.ok) return;
-    expect(received.error.code).toBe("PURCHASES_WAREHOUSE_ACCESS_DENIED");
+    expect(received.error.code).toBe("PURCHASE_WAREHOUSE_ACCESS_DENIED");
   });
 
   it("confirma una compra en estado draft", async () => {
@@ -417,7 +438,7 @@ describe("purchases.service", () => {
 
     expect(confirmed.ok).toBe(false);
     if (confirmed.ok) return;
-    expect(confirmed.error.code).toBe("PURCHASES_NOT_DRAFT");
+    expect(confirmed.error.code).toBe("PURCHASE_NOT_DRAFT");
   });
 
   it("cancela una compra en estado draft", async () => {
@@ -477,7 +498,7 @@ describe("purchases.service", () => {
 
     expect(cancelled.ok).toBe(false);
     if (cancelled.ok) return;
-    expect(cancelled.error.code).toBe("PURCHASES_RECEIVED_NOT_CANCELLABLE");
+    expect(cancelled.error.code).toBe("PURCHASE_RECEIVED_NOT_CANCELLABLE");
   });
 
   it("rechaza cancelar una compra ya cancelada", async () => {
@@ -506,7 +527,7 @@ describe("purchases.service", () => {
 
     expect(cancelled.ok).toBe(false);
     if (cancelled.ok) return;
-    expect(cancelled.error.code).toBe("PURCHASES_ALREADY_CANCELLED");
+    expect(cancelled.error.code).toBe("PURCHASE_ALREADY_CANCELLED");
   });
 
   it("edita una compra en estado draft", async () => {
@@ -574,7 +595,7 @@ describe("purchases.service", () => {
 
     expect(edited.ok).toBe(false);
     if (edited.ok) return;
-    expect(edited.error.code).toBe("PURCHASES_NOT_DRAFT_NOT_EDITABLE");
+    expect(edited.error.code).toBe("PURCHASE_NOT_DRAFT");
   });
 
   it("rechaza editar compra sin items", async () => {
@@ -595,11 +616,12 @@ describe("purchases.service", () => {
 
     expect(edited.ok).toBe(false);
     if (edited.ok) return;
-    expect(edited.error.code).toBe("PURCHASES_ITEMS_REQUIRED");
+    expect(edited.error.code).toBe("PURCHASE_ITEMS_REQUIRED");
   });
 
-  it("recibe parcialmente múltiples productos con cantidades diferentes", async () => {
-    const service = createService();
+it("recibe parcialmente múltiples productos con cantidades diferentes", async () => {
+    const db = createDbMock();
+    const service = createService(db);
     const created = await service.createPurchase(
       { tenantSlug: "tenant-demo" },
       ownerActor,
@@ -614,6 +636,13 @@ describe("purchases.service", () => {
     );
     expect(created.ok).toBe(true);
     if (!created.ok) return;
+
+    const confirmed = await service.confirmPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      created.data.localId
+    );
+    expect(confirmed.ok).toBe(true);
 
     const received = await service.receivePurchase(
       { tenantSlug: "tenant-demo" },
@@ -652,6 +681,13 @@ describe("purchases.service", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
+    const confirmed = await service.confirmPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      created.data.localId
+    );
+    expect(confirmed.ok).toBe(true);
+
     const firstReceive = await service.receivePurchase(
       { tenantSlug: "tenant-demo" },
       ownerActor,
@@ -683,6 +719,13 @@ describe("purchases.service", () => {
     );
     expect(created.ok).toBe(true);
     if (!created.ok) return;
+
+    const confirmed = await service.confirmPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      created.data.localId
+    );
+    expect(confirmed.ok).toBe(true);
 
     const received = await service.receivePurchase(
       { tenantSlug: "tenant-demo" },
@@ -721,6 +764,13 @@ describe("purchases.service", () => {
     );
     expect(created.ok).toBe(true);
     if (!created.ok) return;
+
+    const confirmed = await service.confirmPurchase(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      created.data.localId
+    );
+    expect(confirmed.ok).toBe(true);
 
     await service.receivePurchase(
       { tenantSlug: "tenant-demo" },

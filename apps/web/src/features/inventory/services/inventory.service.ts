@@ -27,6 +27,11 @@ import type {
   StockMovement,
   Warehouse
 } from "../types/inventory.types";
+import {
+  validateStockQuantity,
+  validateUnitCost,
+  validateTenantForDexie,
+} from "../../../specs/inventory";
 
 /**
  * Interfaz del adaptador de base de datos para inventario.
@@ -330,6 +335,11 @@ export const createInventoryService = ({
     actor,
     input
   ) => {
+    const tenantValidation = validateTenantForDexie(tenant.tenantSlug);
+    if (!tenantValidation.ok) {
+      return err(tenantValidation.error);
+    }
+
     if (!input.productLocalId.trim() || !input.warehouseLocalId.trim()) {
       return err(
         createAppError({
@@ -339,27 +349,19 @@ export const createInventoryService = ({
         })
       );
     }
-    if (input.quantity <= 0) {
-      return err(
-        createAppError({
-          code: "STOCK_MOVEMENT_QUANTITY_INVALID",
-          message: "La cantidad debe ser mayor a cero.",
-          retryable: false
-        })
-      );
+
+    const qtyValidation = validateStockQuantity(
+      input.quantity,
+      input.isWeightedProduct ?? false
+    );
+    if (!qtyValidation.ok) {
+      return err(qtyValidation.error);
     }
 
-    if (input.isWeightedProduct) {
-      const qty = Number(input.quantity.toFixed(4));
-      if (qty <= 0) {
-        return err(
-          createAppError({
-            code: "WEIGHTED_MOVEMENT_QUANTITY_INVALID",
-            message: "La cantidad para productos por peso debe ser mayor a 0 (max 4 decimales).",
-            retryable: false,
-            context: { quantity: input.quantity }
-          })
-        );
+    if (input.unitCost !== undefined) {
+      const costValidation = validateUnitCost(input.unitCost);
+      if (!costValidation.ok) {
+        return err(costValidation.error);
       }
     }
     const warehouseAccess = assertWarehouseAccess(actor, input.warehouseLocalId);

@@ -1,0 +1,528 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/purchases/v1.0.0",
+  "title": "Purchase Entity Specification",
+  "description": "Órdenes de compra y proveedores - Única Fuente de Verdad (SSoT). Este schema valida todas las operaciones de Purchases.",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Purchase",
+
+  "fields": {
+    "local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "ID generado en cliente (crypto.randomUUID())"
+    },
+    "tenant_id": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$",
+      "description": "SLUG del tenant (NUNCA UUID) - Modo Dexie",
+      "validation": "DEXIE_MODE",
+      "note": "El SyncEngine traduce a UUID antes de sincronizar a Supabase"
+    },
+    "warehouse_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "FK a warehouses"
+    },
+    "supplier_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "FK a suppliers (opcional)"
+    },
+    "supplier_name": {
+      "type": ["string", "null"],
+      "description": "Nombre del proveedor (denormalizado)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "confirmed", "partial_received", "received", "cancelled"],
+      "required": true,
+      "default": "draft",
+      "description": "Estado de la orden de compra"
+    },
+    "currency": {
+      "type": "string",
+      "enum": ["VES", "USD"],
+      "required": true,
+      "default": "USD",
+      "description": "Moneda de la compra"
+    },
+    "exchange_rate": {
+      "type": "number",
+      "precision": 4,
+      "required": true,
+      "minimum": 0.0001,
+      "description": "Tasa de cambio al momento (NUMERIC(19,4))"
+    },
+    "subtotal": {
+      "type": "number",
+      "precision": 4,
+      "required": true,
+      "minimum": 0,
+      "description": "Subtotal sin impuestos (NUMERIC(19,4))"
+    },
+    "total": {
+      "type": "number",
+      "precision": 4,
+      "required": true,
+      "minimum": 0,
+      "description": "Total con impuestos (NUMERIC(19,4))"
+    },
+    "items": {
+      "type": "array",
+      "required": true,
+      "minItems": 1,
+      "description": "Items de la orden de compra",
+      "items": {
+        "$ref": "#/definitions/PurchaseItem"
+      }
+    },
+    "received_items": {
+      "type": ["array", "null"],
+      "description": "Items recibidos parcialmente",
+      "items": {
+        "$ref": "#/definitions/PurchaseReceivedItem"
+      }
+    },
+    "created_by": {
+      "type": ["string", "null"],
+      "description": "ID del usuario que creó"
+    },
+    "received_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Fecha de recepción completa"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true,
+      "description": "Fecha de creación (UTC)"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true,
+      "description": "Fecha de última actualización (UTC)"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Soft delete - timestamps o null si no eliminado"
+    }
+  },
+
+  "definitions": {
+    "PurchaseItem": {
+      "type": "object",
+      "description": "Item de orden de compra",
+      "fields": {
+        "product_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true,
+          "description": "FK a products"
+        },
+        "qty": {
+          "type": "number",
+          "precision": 4,
+          "required": true,
+          "minimum": 0.0001,
+          "description": "Cantidad ordenada (NUMERIC(19,4))"
+        },
+        "unit_cost": {
+          "type": "number",
+          "precision": 4,
+          "required": true,
+          "minimum": 0,
+          "description": "Costo unitario en USD (NUMERIC(19,4))"
+        }
+      }
+    },
+    "PurchaseReceivedItem": {
+      "type": "object",
+      "description": "Item recibido",
+      "fields": {
+        "product_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "qtyOrdered": {
+          "type": "number",
+          "precision": 4,
+          "description": "Cantidad ordenada"
+        },
+        "qtyReceived": {
+          "type": "number",
+          "precision": 4,
+          "description": "Cantidad recibida"
+        }
+      }
+    }
+  },
+
+  "supplier_fields": {
+    "local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true
+    },
+    "tenant_id": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "rif": {
+      "type": ["string", "null"],
+      "pattern": "^[VJEGP]\\d{9}$",
+      "description": "RIF venezolano (10 caracteres)"
+    },
+    "phone": {
+      "type": ["string", "null"],
+      "maxLength": 20
+    },
+    "contact_person": {
+      "type": ["string", "null"],
+      "maxLength": 100
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "maxLength": 500
+    },
+    "is_active": {
+      "type": "boolean",
+      "required": true,
+      "default": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    }
+  },
+
+  "receiving_fields": {
+    "local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true
+    },
+    "tenant_id": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "purchase_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "FK a purchases"
+    },
+    "warehouse_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true
+    },
+    "status": {
+      "type": "string",
+      "enum": ["posted"],
+      "required": true
+    },
+    "items": {
+      "type": "array",
+      "required": true,
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/ReceivingItem"
+      }
+    },
+    "total_items": {
+      "type": "number",
+      "precision": 4,
+      "required": true
+    },
+    "total_cost": {
+      "type": "number",
+      "precision": 4,
+      "required": true
+    },
+    "received_by": {
+      "type": ["string", "null"]
+    },
+    "notes": {
+      "type": ["string", "null"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true
+    }
+  },
+
+  "definitions": {
+    "ReceivingItem": {
+      "type": "object",
+      "description": "Item de recepción",
+      "fields": {
+        "product_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "qty": {
+          "type": "number",
+          "precision": 4,
+          "required": true,
+          "minimum": 0.0001
+        },
+        "isWeighted": {
+          "type": "boolean",
+          "description": "Flag del producto - valida 4 decimales si true"
+        },
+        "unit_cost": {
+          "type": "number",
+          "precision": 4,
+          "required": true,
+          "minimum": 0
+        }
+      }
+    }
+  },
+
+  "business_rules": {
+    "purchase_items_required": {
+      "condition": "status === 'draft'",
+      "appliesTo": ["createPurchase", "editPurchase"],
+      "rule": "items.length >= 1",
+      "error": "PURCHASE_ITEMS_REQUIRED",
+      "message": "La compra requiere al menos un item",
+      "enforcement": "RUNTIME"
+    },
+    "purchase_item_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["items"],
+      "rule": "every(item => item.productLocalId && item.qty > 0 && item.unitCost >= 0)",
+      "error": "PURCHASE_ITEM_INVALID",
+      "message": "Todos los items deben tener producto, cantidad > 0 y costo válido",
+      "enforcement": "RUNTIME"
+    },
+    "receive_items_required": {
+      "condition": "status === 'confirmed' || status === 'partial_received'",
+      "appliesTo": ["receivePurchase"],
+      "rule": "receivedItems.length >= 1",
+      "error": "PURCHASE_RECEIVE_NO_ITEMS",
+      "message": "Debe indicar al menos un item para recibir",
+      "enforcement": "RUNTIME"
+    },
+    "weighted_quantity_precision": {
+      "condition": "item.isWeighted === true",
+      "appliesTo": ["receiving_items", "stock_movements", "inventory_lots"],
+      "rule": "quantity_decimal_places <= 4",
+      "error": "WEIGHTED_MOVEMENT_QUANTITY_INVALID",
+      "message": "Producto pesable debe usar máximo 4 decimales",
+      "enforcement": "RUNTIME"
+    },
+    "status_transition_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["confirmPurchase", "receivePurchase", "cancelPurchase"],
+      "rule": "status === 'draft' for confirm, status !== 'received' for cancel",
+      "error": "PURCHASE_NOT_DRAFT",
+      "message": "Solo se pueden confirmar/comprar compras en estado borrador",
+      "enforcement": "RUNTIME"
+    },
+    "cancel_received_forbidden": {
+      "condition": "status === 'received'",
+      "appliesTo": ["cancelPurchase"],
+      "rule": "FORBIDDEN",
+      "error": "PURCHASE_RECEIVED_NOT_CANCELLABLE",
+      "message": "No se puede anular una compra ya recibida",
+      "enforcement": "RUNTIME"
+    },
+    "receive_cancelled_forbidden": {
+      "condition": "status === 'cancelled'",
+      "appliesTo": ["receivePurchase"],
+      "rule": "FORBIDDEN",
+      "error": "PURCHASE_CANCELLED_NOT_RECEIVABLE",
+      "message": "No se puede recibir una compra anulada",
+      "enforcement": "RUNTIME"
+    },
+    "receive_status_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["receivePurchase"],
+      "rule": "purchase.status === 'confirmed' || purchase.status === 'partial_received'",
+      "error": "PURCHASE_NOT_CONFIRMED",
+      "message": "Solo órdenes confirmadas pueden recibir",
+      "enforcement": "RUNTIME"
+    },
+    "receiving_totals_match": {
+      "condition": "ALWAYS",
+      "appliesTo": ["receivePurchase"],
+      "rule": "sum(items.qty) === total_items && sum(items.qty * items.unit_cost) === total_cost",
+      "error": "PURCHASE_RECEIVING_TOTALS_MISMATCH",
+      "message": "Totales no coinciden con items",
+      "enforcement": "RUNTIME"
+    },
+    "warehouse_active": {
+      "condition": "ALWAYS",
+      "appliesTo": ["receivePurchase"],
+      "rule": "warehouse.is_active === true",
+      "error": "INVENTORY_WAREHOUSE_NOT_FOUND",
+      "message": "Bodega no existe o inactiva",
+      "enforcement": "RUNTIME"
+    },
+    "soft_delete": {
+      "condition": "ALWAYS",
+      "appliesTo": ["all_queries"],
+      "rule": "deleted_at IS NULL",
+      "error": "PURCHASE_SOFT_DELETE",
+      "message": "Hard delete no permitido",
+      "enforcement": "QUERY_BUILDER"
+    },
+    "tenant_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["dexie_persistence"],
+      "rule": "tenant_id matches ^[a-z0-9-]+$",
+      "error": "PURCHASE_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "enforcement": "SYNC_ENGINE"
+    }
+  },
+
+  "decimal_precision": {
+    "money": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 2,
+      "fields": ["exchange_rate", "subtotal", "total", "unit_cost", "total_cost"]
+    },
+    "weighted_quantity": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 4,
+      "toFixed": 4,
+      "appliesWhen": "isWeighted === true",
+      "fields": ["qty", "quantity", "total_items"]
+    },
+    "non_weighted_quantity": {
+      "type": "INTEGER",
+      "calculation": 0,
+      "display": 0,
+      "toFixed": 0,
+      "fields": ["qty", "quantity"]
+    }
+  },
+
+  "error_codes": {
+    "PURCHASE_NOT_FOUND": {
+      "code": "PURCHASE_NOT_FOUND",
+      "message": "La orden de compra no existe",
+      "retryable": false
+    },
+    "PURCHASE_ITEMS_REQUIRED": {
+      "code": "PURCHASE_ITEMS_REQUIRED",
+      "message": "La compra requiere al menos un item",
+      "retryable": false
+    },
+    "PURCHASE_ITEM_INVALID": {
+      "code": "PURCHASE_ITEM_INVALID",
+      "message": "Todos los items deben tener producto, cantidad > 0 y costo válido",
+      "retryable": false
+    },
+    "PURCHASE_NOT_DRAFT": {
+      "code": "PURCHASE_NOT_DRAFT",
+      "message": "Solo se pueden editar compras en estado borrador",
+      "retryable": false
+    },
+    "PURCHASE_CANCELLED_NOT_RECEIVABLE": {
+      "code": "PURCHASE_CANCELLED_NOT_RECEIVABLE",
+      "message": "No se puede recibir una compra anulada",
+      "retryable": false
+    },
+    "PURCHASE_ALREADY_RECEIVED": {
+      "code": "PURCHASE_ALREADY_RECEIVED",
+      "message": "La compra ya fue recibida",
+      "retryable": false
+    },
+    "PURCHASE_RECEIVED_NOT_CANCELLABLE": {
+      "code": "PURCHASE_RECEIVED_NOT_CANCELLABLE",
+      "message": "No se puede anular una compra ya recibida",
+      "retryable": false
+    },
+    "PURCHASE_ALREADY_CANCELLED": {
+      "code": "PURCHASE_ALREADY_CANCELLED",
+      "message": "La compra ya fue anulada",
+      "retryable": false
+    },
+    "PURCHASE_RECEIVE_NO_ITEMS": {
+      "code": "PURCHASE_RECEIVE_NO_ITEMS",
+      "message": "Debe indicar al menos un item para recibir",
+      "retryable": false
+    },
+    "PURCHASE_WAREHOUSE_ACCESS_DENIED": {
+      "code": "PURCHASE_WAREHOUSE_ACCESS_DENIED",
+      "message": "El usuario no tiene acceso a la bodega",
+      "retryable": false
+    },
+    "PURCHASE_TENANT_ID_MUST_BE_SLUG": {
+      "code": "PURCHASE_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "retryable": false
+    },
+    "SUPPLIER_NOT_FOUND": {
+      "code": "SUPPLIER_NOT_FOUND",
+      "message": "El proveedor no existe",
+      "retryable": false
+    },
+    "SUPPLIER_NAME_REQUIRED": {
+      "code": "SUPPLIER_NAME_REQUIRED",
+      "message": "El nombre del proveedor es obligatorio",
+      "retryable": false
+    },
+    "SUPPLIER_RIF_INVALID": {
+      "code": "SUPPLIER_RIF_INVALID",
+      "message": "RIF inválido. Formato requerido: V012345678, J012345678, G012345678, E012345678 o P012345678 (10 caracteres)",
+      "retryable": false
+    },
+    "PURCHASE_PRODUCT_NOT_FOUND": {
+      "code": "PURCHASE_PRODUCT_NOT_FOUND",
+      "message": "El producto no existe",
+      "retryable": false
+    },
+    "WEIGHTED_MOVEMENT_QUANTITY_INVALID": {
+      "code": "WEIGHTED_MOVEMENT_QUANTITY_INVALID",
+      "message": "Producto pesable debe usar máximo 4 decimales",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "2.3.4 Compras / 5 Ciclo de Vida de Productos Pesables",
+    "version_date": "2026-04-14"
+  }
+}

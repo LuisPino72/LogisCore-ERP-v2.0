@@ -10,12 +10,18 @@ import {
 } from "@logiscore/core";
 import type { InvoiceRangeService } from "./invoice-range.service";
 import {
-  validateRif,
+  validateRif as validateRifFiscal,
   computeIgtf,
   computeInvoiceTotal,
   applyCentsRule,
   createExchangeRateSnapshot
 } from "../utils/fiscal";
+import {
+  validateRif,
+  validateTenantForDexie,
+  validateInvoiceNotVoided,
+  validateExchangeRateSnapshot,
+} from "../../../specs/invoicing";
 import type {
   CreateInvoiceFromSaleInput,
   ExchangeRate,
@@ -266,6 +272,11 @@ export const createInvoicingService = ({
     actor,
     input
   ) => {
+    const tenantValidation = validateTenantForDexie(tenant.tenantSlug);
+    if (!tenantValidation.ok) {
+      return err(tenantValidation.error);
+    }
+
     if (!input.invoiceLocalId.trim()) {
       return err(
         createAppError({
@@ -338,6 +349,11 @@ export const createInvoicingService = ({
       "BCV"
     );
 
+    const snapshotValidation = validateExchangeRateSnapshot(exchangeRateSnapshot);
+    if (!snapshotValidation.ok) {
+      return err(snapshotValidation.error);
+    }
+
     const now = clock().toISOString();
     const updatedInvoice: Invoice = {
       ...invoice,
@@ -409,6 +425,11 @@ export const createInvoicingService = ({
     actor,
     input
   ) => {
+    const tenantValidation = validateTenantForDexie(tenant.tenantSlug);
+    if (!tenantValidation.ok) {
+      return err(tenantValidation.error);
+    }
+
     if (!input.invoiceLocalId.trim()) {
       return err(
         createAppError({

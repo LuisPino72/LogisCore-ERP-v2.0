@@ -192,6 +192,7 @@ describe("products.service", () => {
       ownerActor,
       {
         name: "Harina",
+        sku: "HAR-001",
         visible: true,
         sourceModule: "purchases"
       }
@@ -294,6 +295,7 @@ describe("products.service", () => {
       ownerActor,
       {
         name: "Cafe",
+        sku: "CAFE-001",
         visible: true,
         sourceModule: "purchases"
       }

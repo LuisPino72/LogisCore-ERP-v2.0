@@ -1,0 +1,282 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/sales/v1.0.0",
+  "title": "Sales Entity Specification",
+  "description": "Ventas, pagos y pos - Única Fuente de Verdad (SSoT)",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Sales",
+
+  "tables": {
+    "sales": {
+      "description": "Ventas/POS",
+      "fields": {
+        "local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "description": "SLUG del tenant (Modo Dexie)",
+          "validation": "DEXIE_MODE"
+        },
+        "sale_number": {
+          "type": "string"
+        },
+        "warehouse_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "cashier_user_id": {
+          "type": "string"
+        },
+        "sales_person_id": {
+          "type": "string"
+        },
+        "pos_terminal_id": {
+          "type": "string"
+        },
+        "customer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "completed", "voided", "refunded"],
+          "required": true
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["VES", "USD"],
+          "required": true
+        },
+        "exchange_rate": {
+          "type": "number",
+          "precision": 4,
+          "required": true
+        },
+        "exchange_rate_snapshot": {
+          "type": "object",
+          "properties": {
+            "rate": { "type": "number" },
+            "capturedAt": { "type": "string" },
+            "source": { "type": "string" }
+          },
+          "description": "Snapshot de tasa BCV para trazabilidad histórica"
+        },
+        "subtotal": {
+          "type": "number",
+          "precision": 4,
+          "required": true
+        },
+        "tax_total": {
+          "type": "number",
+          "precision": 4
+        },
+        "discount_total": {
+          "type": "number",
+          "precision": 4
+        },
+        "igtf_amount": {
+          "type": "number",
+          "precision": 4,
+          "description": "Monto IGTF (3% sobre pagos en divisas)"
+        },
+        "total": {
+          "type": "number",
+          "precision": 4,
+          "required": true
+        },
+        "total_paid": {
+          "type": "number",
+          "precision": 4
+        },
+        "change_amount": {
+          "type": "number",
+          "precision": 4
+        },
+        "items": {
+          "type": "array"
+        },
+        "payments": {
+          "type": "array"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "payments": {
+      "description": "Pagos en una venta",
+      "fields": {
+        "method": {
+          "type": "string",
+          "enum": ["cash", "card", "transfer", "zelle", "point"],
+          "required": true
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["VES", "USD"],
+          "required": true
+        },
+        "amount": {
+          "type": "number",
+          "precision": 4,
+          "required": true
+        },
+        "reference": {
+          "type": "string"
+        }
+      }
+    },
+    "suspended_sales": {
+      "description": "Ventas suspendidas (máx 10 por terminal)",
+      "fields": {
+        "local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "warehouse_local_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "cart": {
+          "type": "array"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+
+  "business_rules": {
+    "igtf_calculation": {
+      "condition": "payment.currency === 'USD' && payment.method !== 'transfer'",
+      "rule": "igtf_amount = amount * exchange_rate * 0.03",
+      "error": "SALE_IGTF_INVALID",
+      "enforcement": "RUNTIME"
+    },
+    "cents_rule": {
+      "condition": "ALWAYS",
+      "rule": "Math.abs(total - Math.floor(total * 100) / 100) <= 0.01",
+      "error": "SALE_CENTS_ADJUSTMENT_NEEDED",
+      "enforcement": "RUNTIME",
+      "auto_fix": true
+    },
+    "tenant_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["all_tables"],
+      "rule": "tenant_id matches ^[a-z0-9-]+$",
+      "error": "SALES_TENANT_ID_MUST_BE_SLUG",
+      "enforcement": "SYNC_ENGINE"
+    },
+    "stock_availability": {
+      "condition": "ALWAYS",
+      "rule": "available_stock >= requested_quantity",
+      "error": "SALE_STOCK_INSUFFICIENT",
+      "enforcement": "RUNTIME"
+    },
+    "payment_sufficient": {
+      "condition": "ALWAYS",
+      "rule": "total_paid >= total",
+      "error": "SALE_PAYMENT_INSUFFICIENT",
+      "enforcement": "RUNTIME"
+    },
+    "exchange_rate_snapshot_required": {
+      "condition": "ALWAYS",
+      "rule": "exchange_rate_snapshot !== null",
+      "error": "SALE_EXCHANGE_RATE_SNAPSHOT_MISSING",
+      "enforcement": "RUNTIME"
+    },
+    "max_suspended_sales": {
+      "condition": "ALWAYS",
+      "rule": "suspended_sales_count <= 10",
+      "error": "SALE_MAX_SUSPENDED_EXCEEDED",
+      "enforcement": "RUNTIME"
+    }
+  },
+
+  "decimal_precision": {
+    "money": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 2
+    },
+    "igtf": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 2,
+      "rate": 0.03
+    },
+    "weighted_quantity": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 4
+    }
+  },
+
+  "error_codes": {
+    "SALE_IGTF_INVALID": {
+      "code": "SALE_IGTF_INVALID",
+      "message": "IGTF calculado no coincide con el registrado",
+      "retryable": false
+    },
+    "SALE_CENTS_ADJUSTMENT_NEEDED": {
+      "code": "SALE_CENTS_ADJUSTMENT_NEEDED",
+      "message": "Ajuste de céntimos necesario para cerrar la venta",
+      "retryable": false,
+      "auto_fix": true
+    },
+    "SALES_TENANT_ID_MUST_BE_SLUG": {
+      "code": "SALES_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "retryable": false
+    },
+    "SALE_STOCK_INSUFFICIENT": {
+      "code": "SALE_STOCK_INSUFFICIENT",
+      "message": "Stock insuficiente para completar la venta",
+      "retryable": false
+    },
+    "SALE_PAYMENT_INSUFFICIENT": {
+      "code": "SALE_PAYMENT_INSUFFICIENT",
+      "message": "Monto pagado es menor al total de la venta",
+      "retryable": false
+    },
+    "SALE_CHANGE_EXCEEDS_CASH": {
+      "code": "SALE_CHANGE_EXCEEDS_CASH",
+      "message": "No hay suficiente efectivo en caja para dar cambio",
+      "retryable": false
+    },
+    "SALE_EXCHANGE_RATE_SNAPSHOT_MISSING": {
+      "code": "SALE_EXCHANGE_RATE_SNAPSHOT_MISSING",
+      "message": "Exchange rate snapshot es requerido para trazabilidad histórica",
+      "retryable": false
+    },
+    "SALE_MAX_SUSPENDED_EXCEEDED": {
+      "code": "SALE_MAX_SUSPENDED_EXCEEDED",
+      "message": "Máximo 10 ventas suspendidas por terminal",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "4 Motor Fiscal Venezolano / 6 Lógica de Negocio",
+    "version_date": "2026-04-14"
+  }
+}

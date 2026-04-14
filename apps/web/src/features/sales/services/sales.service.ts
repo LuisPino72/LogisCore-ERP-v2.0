@@ -21,6 +21,14 @@ import type {
   SalesTenantContext,
   SuspendedSale
 } from "../types/sales.types";
+import {
+  validateCentsRule,
+  validateTenantForDexie,
+  validatePaymentSufficient,
+  applyCentsAdjustment,
+  validateQuantityPrecision,
+  validateExchangeRateSnapshot,
+} from "../../../specs/sales";
 
 /**
  * Interfaz para acceder a funciones RPC de Supabase.
@@ -333,6 +341,21 @@ export const createSalesService = ({
     actor,
     input
   ) => {
+    const tenantValidation = validateTenantForDexie(tenant.tenantSlug);
+    if (!tenantValidation.ok) {
+      return err(tenantValidation.error);
+    }
+
+    const exchangeRateSnapshot = {
+      rate: input.exchangeRate,
+      capturedAt: new Date().toISOString(),
+      source: "bcv" as const,
+    };
+    const snapshotValidation = validateExchangeRateSnapshot(exchangeRateSnapshot);
+    if (!snapshotValidation.ok) {
+      return err(snapshotValidation.error);
+    }
+
     if (!input.items.length) {
       return err(
         createAppError({
@@ -341,6 +364,16 @@ export const createSalesService = ({
           retryable: false
         })
       );
+    }
+
+    for (const item of input.items) {
+      const qtyValidation = validateQuantityPrecision(
+        item.quantity,
+        item.isWeighted ?? false
+      );
+      if (!qtyValidation.ok) {
+        return err(qtyValidation.error);
+      }
     }
     const warehouseAccess = assertWarehouseAccess(actor, input.warehouseLocalId);
     if (!warehouseAccess.ok) {
@@ -372,6 +405,20 @@ export const createSalesService = ({
     const paymentTotals = computeTotalsFromPayments(input);
     if (!paymentTotals.ok) {
       return err(paymentTotals.error);
+    }
+
+    const centsValidation = validateCentsRule(input.total);
+    if (!centsValidation.ok) {
+      const adjustedTotal = applyCentsAdjustment(input.total);
+      input.total = adjustedTotal;
+    }
+
+    const paymentValidation = validatePaymentSufficient(
+      paymentTotals.data.totalPaid,
+      input.total
+    );
+    if (!paymentValidation.ok) {
+      return err(paymentValidation.error);
     }
 
     const now = clock().toISOString();

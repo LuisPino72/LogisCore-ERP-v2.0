@@ -1,0 +1,485 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/production/v1.0.0",
+  "title": "Production Entity Specification",
+  "description": "Recetas (BOM), órdenes y logs de producción - Única Fuente de Verdad (SSoT). Este schema valida todas las operaciones de Producción.",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Production",
+
+  "fields": {
+    "local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "ID generado en cliente (crypto.randomUUID())"
+    },
+    "tenant_id": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$",
+      "description": "SLUG del tenant (NUNCA UUID) - Modo Dexie",
+      "validation": "DEXIE_MODE",
+      "note": "El SyncEngine traduce a UUID antes de sincronizar a Supabase"
+    },
+    "recipe_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "FK a recipes (producto resultante)"
+    },
+    "warehouse_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "FK a warehouses"
+    },
+    "planned_qty": {
+      "type": "number",
+      "precision": 4,
+      "required": true,
+      "minimum": 0.0001,
+      "description": "Cantidad planificada a producir (NUMERIC(19,4))"
+    },
+    "produced_qty": {
+      "type": "number",
+      "precision": 4,
+      "minimum": 0,
+      "default": 0,
+      "description": "Cantidad efectivamente producida (NUMERIC(19,4))"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "in_progress", "completed", "cancelled"],
+      "required": true,
+      "default": "draft",
+      "description": "Estado de la orden de producción"
+    },
+    "variance_percent": {
+      "type": "number",
+      "precision": 4,
+      "minimum": 0,
+      "description": "Porcentaje de desviación (producido vs planificado)"
+    },
+    "created_by": {
+      "type": ["string", "null"],
+      "description": "ID del usuario que creó"
+    },
+    "started_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Fecha de inicio de producción"
+    },
+    "completed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Fecha de completion"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true,
+      "description": "Fecha de creación (UTC)"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true,
+      "description": "Fecha de última actualización (UTC)"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Soft delete - timestamps o null si no eliminado"
+    }
+  },
+
+  "recipe_fields": {
+    "local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true
+    },
+    "tenant_id": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "product_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "Producto resultante (FK a products)"
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Nombre de la receta"
+    },
+    "yield_qty": {
+      "type": "number",
+      "precision": 4,
+      "required": true,
+      "minimum": 0.0001,
+      "description": "Cantidad que produce esta receta"
+    },
+    "bom_version": {
+      "type": "string",
+      "maxLength": 20,
+      "default": "1.0"
+    },
+    "ingredients": {
+      "type": "array",
+      "required": true,
+      "minItems": 1,
+      "description": "Ingredientes de la receta (BOM)",
+      "items": {
+        "$ref": "#/definitions/RecipeIngredient"
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true
+    },
+    "deleted_at": {
+      "type": "string", "null",
+      "format": "date-time"
+    }
+  },
+
+  "production_log_fields": {
+    "local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true
+    },
+    "tenant_id": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "production_order_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "FK a production_orders"
+    },
+    "recipe_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true
+    },
+    "warehouse_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true
+    },
+    "planned_qty": {
+      "type": "number",
+      "precision": 4,
+      "required": true
+    },
+    "produced_qty": {
+      "type": "number",
+      "precision": 4,
+      "required": true
+    },
+    "ingredients_used": {
+      "type": "array",
+      "required": true,
+      "description": "Ingredientes utilizados con cantidades reales",
+      "items": {
+        "$ref": "#/definitions/IngredientUsage"
+      }
+    },
+    "variance_percent": {
+      "type": "number",
+      "precision": 4,
+      "required": true,
+      "description": "% de desviación"
+    },
+    "created_by": {
+      "type": ["string", "null"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true
+    }
+  },
+
+  "definitions": {
+    "RecipeIngredient": {
+      "type": "object",
+      "description": "Ingrediente en receta (BOM)",
+      "fields": {
+        "product_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true,
+          "description": "FK a products (ingrediente)"
+        },
+        "qty": {
+          "type": "number",
+          "precision": 4,
+          "required": true,
+          "minimum": 0.0001,
+          "description": "Cantidad requerida (NUMERIC(19,4))"
+        },
+        "isWeighted": {
+          "type": "boolean",
+          "description": "Flag del producto - valida 4 decimales si true"
+        }
+      }
+    },
+    "IngredientUsage": {
+      "type": "object",
+      "description": "Ingrediente utilizado en producción",
+      "fields": {
+        "product_local_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "qtyPlanned": {
+          "type": "number",
+          "precision": 4,
+          "required": true,
+          "description": "Cantidad planificada"
+        },
+        "qtyUsed": {
+          "type": "number",
+          "precision": 4,
+          "required": true,
+          "description": "Cantidad realmente usada"
+        },
+        "isWeighted": {
+          "type": "boolean"
+        },
+        "costPerUnit": {
+          "type": "number",
+          "precision": 4,
+          "description": "Costo por unidad del lote FIFO usado"
+        }
+      }
+    }
+  },
+
+  "business_rules": {
+    "recipe_ingredients_required": {
+      "condition": "status === 'draft'",
+      "appliesTo": ["createRecipe", "editRecipe"],
+      "rule": "ingredients.length >= 1",
+      "error": "PRODUCTION_INGREDIENTS_REQUIRED",
+      "message": "La receta requiere al menos un ingrediente",
+      "enforcement": "RUNTIME"
+    },
+    "recipe_ingredient_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["ingredients"],
+      "rule": "every(ing => ing.productLocalId && ing.qty > 0)",
+      "error": "PRODUCTION_INGREDIENT_INVALID",
+      "message": "Todos los ingredientes deben tener producto y cantidad > 0",
+      "enforcement": "RUNTIME"
+    },
+    "recipe_weighted_precision": {
+      "condition": "ing.isWeighted === true",
+      "appliesTo": ["ingredients"],
+      "rule": "qty_decimal_places <= 4",
+      "error": "PRODUCTION_INGREDIENT_WEIGHTED_PRECISION",
+      "message": "Ingrediente pesable debe usar máximo 4 decimales",
+      "enforcement": "RUNTIME"
+    },
+    "production_order_status_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["startProduction", "completeProduction"],
+      "rule": "status === 'draft' for start, status === 'in_progress' for complete",
+      "error": "PRODUCTION_STATUS_INVALID",
+      "message": "Estado inválido para esta operación",
+      "enforcement": "RUNTIME"
+    },
+    "ingredient_stock_available": {
+      "condition": "status === 'draft'",
+      "appliesTo": ["startProduction"],
+      "rule": "FIFO_STOCK_AVAILABLE for all ingredients",
+      "error": "PRODUCTION_INGREDIENT_STOCK_INSUFFICIENT",
+      "message": "Stock insuficiente de ingredientes",
+      "enforcement": "RUNTIME"
+    },
+    "production_totals_match": {
+      "condition": "ALWAYS",
+      "appliesTo": ["completeProduction"],
+      "rule": "sum(ing.qtyUsed) calculated matches records",
+      "error": "PRODUCTION_TOTALS_MISMATCH",
+      "message": "Totales no coinciden con ingredientes",
+      "enforcement": "RUNTIME"
+    },
+    "variance_calculation": {
+      "condition": "status === 'completed'",
+      "appliesTo": ["completeProduction"],
+      "rule": "variance_percent = ((producedQty - plannedQty) / plannedQty) * 100",
+      "error": "PRODUCTION_VARIANCE_EXCEEDED",
+      "message": "Variación excede el tolerance configurado",
+      "enforcement": "RUNTIME"
+    },
+    "warehouse_active": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createOrder", "startProduction"],
+      "rule": "warehouse.is_active === true",
+      "error": "WAREHOUSE_INACTIVE",
+      "message": "Bodega no existe o inactiva",
+      "enforcement": "RUNTIME"
+    },
+    "recipe_not_deleted": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createOrder"],
+      "rule": "recipe.deleted_at IS NULL",
+      "error": "PRODUCTION_RECIPE_DELETED",
+      "message": "Receta eliminada no puede usar",
+      "enforcement": "RUNTIME"
+    },
+    "soft_delete": {
+      "condition": "ALWAYS",
+      "appliesTo": ["all_queries"],
+      "rule": "deleted_at IS NULL",
+      "error": "PRODUCTION_SOFT_DELETE",
+      "message": "Hard delete no permitido",
+      "enforcement": "QUERY_BUILDER"
+    },
+    "tenant_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["dexie_persistence"],
+      "rule": "tenant_id matches ^[a-z0-9-]+$",
+      "error": "PRODUCTION_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "enforcement": "SYNC_ENGINE"
+    }
+  },
+
+  "decimal_precision": {
+    "money": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 2,
+      "fields": ["costPerUnit"]
+    },
+    "weighted_quantity": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 4,
+      "toFixed": 4,
+      "appliesWhen": "isWeighted === true",
+      "fields": ["qty", "planned_qty", "produced_qty", "yield_qty", "qtyPlanned", "qtyUsed"]
+    },
+    "non_weighted_quantity": {
+      "type": "INTEGER",
+      "calculation": 0,
+      "display": 0,
+      "toFixed": 0,
+      "fields": ["qty", "planned_qty", "produced_qty"]
+    },
+    "variance_percent": {
+      "type": "NUMERIC(19,4)",
+      "calculation": 4,
+      "display": 2,
+      "fields": ["variance_percent"]
+    }
+  },
+
+  "error_codes": {
+    "PRODUCTION_RECIPE_NOT_FOUND": {
+      "code": "PRODUCTION_RECIPE_NOT_FOUND",
+      "message": "La receta no existe",
+      "retryable": false
+    },
+    "PRODUCTION_INGREDIENTS_REQUIRED": {
+      "code": "PRODUCTION_INGREDIENTS_REQUIRED",
+      "message": "La receta requiere al menos un ingrediente",
+      "retryable": false
+    },
+    "PRODUCTION_INGREDIENT_INVALID": {
+      "code": "PRODUCTION_INGREDIENT_INVALID",
+      "message": "Todos los ingredientes deben tener producto y cantidad > 0",
+      "retryable": false
+    },
+    "PRODUCTION_INGREDIENT_WEIGHTED_PRECISION": {
+      "code": "PRODUCTION_INGREDIENT_WEIGHTED_PRECISION",
+      "message": "Ingrediente pesable debe usar máximo 4 decimales",
+      "retryable": false
+    },
+    "PRODUCTION_NOT_DRAFT": {
+      "code": "PRODUCTION_NOT_DRAFT",
+      "message": "Solo se pueden editar órdenes en estado borrador",
+      "retryable": false
+    },
+    "PRODUCTION_NOT_IN_PROGRESS": {
+      "code": "PRODUCTION_NOT_IN_PROGRESS",
+      "message": "Solo se pueden completar órdenes en progreso",
+      "retryable": false
+    },
+    "PRODUCTION_ALREADY_COMPLETED": {
+      "code": "PRODUCTION_ALREADY_COMPLETED",
+      "message": "La orden ya fue completada",
+      "retryable": false
+    },
+    "PRODUCTION_ALREADY_CANCELLED": {
+      "code": "PRODUCTION_ALREADY_CANCELLED",
+      "message": "La orden ya fue cancelada",
+      "retryable": false
+    },
+    "PRODUCTION_INGREDIENT_STOCK_INSUFFICIENT": {
+      "code": "PRODUCTION_INGREDIENT_STOCK_INSUFFICIENT",
+      "message": "Stock insuficiente de ingredientes para iniciar producción",
+      "retryable": false
+    },
+    "PRODUCTION_VARIANCE_EXCEEDED": {
+      "code": "PRODUCTION_VARIANCE_EXCEEDED",
+      "message": "Variación excede el tolerance configurado",
+      "retryable": false
+    },
+    "PRODUCTION_TOTALS_MISMATCH": {
+      "code": "PRODUCTION_TOTALS_MISMATCH",
+      "message": "Totales no coinciden con ingredientes utilizados",
+      "retryable": false
+    },
+    "PRODUCTION_STATUS_INVALID": {
+      "code": "PRODUCTION_STATUS_INVALID",
+      "message": "Estado inválido para esta operación",
+      "retryable": false
+    },
+    "PRODUCTION_RECIPE_DELETED": {
+      "code": "PRODUCTION_RECIPE_DELETED",
+      "message": "Receta eliminada no puede usarse",
+      "retryable": false
+    },
+    "PRODUCTION_TENANT_ID_MUST_BE_SLUG": {
+      "code": "PRODUCTION_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "retryable": false
+    },
+    "WAREHOUSE_NOT_FOUND": {
+      "code": "WAREHOUSE_NOT_FOUND",
+      "message": "La bodega no existe",
+      "retryable": false
+    },
+    "WAREHOUSE_INACTIVE": {
+      "code": "WAREHOUSE_INACTIVE",
+      "message": "Bodega inactiva",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "2.3.5 Producción",
+    "version_date": "2026-04-14"
+  }
+}

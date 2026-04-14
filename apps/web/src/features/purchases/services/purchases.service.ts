@@ -24,6 +24,16 @@ import type {
   Supplier,
   UpdateSupplierInput
 } from "../types/purchases.types";
+import {
+  validatePurchaseStatusTransition,
+  validateQuantityPrecision,
+  validateTenantIdMode,
+  validateSupplierRif,
+  PURCHASE_ERROR_CODES,
+  SUPPLIER_ERROR_CODES,
+  createPurchaseError,
+  createSupplierError,
+} from "@/specs/purchases";
 
 export interface PurchasesDb {
   createSupplier(supplier: Supplier): Promise<void>;
@@ -147,7 +157,7 @@ export const createPurchasesService = ({
     if (!allowed?.includes(warehouseLocalId)) {
       return err(
         createAppError({
-          code: "PURCHASES_WAREHOUSE_ACCESS_DENIED",
+          code: "PURCHASE_WAREHOUSE_ACCESS_DENIED",
           message: "El usuario no tiene acceso a la bodega seleccionada.",
           retryable: false,
           context: { warehouseLocalId }
@@ -162,14 +172,20 @@ export const createPurchasesService = ({
     actor,
     input
   ) => {
+    const tenantIdValidation = validateTenantIdMode(tenant.tenantSlug);
+    if (!tenantIdValidation.ok) {
+      return err(tenantIdValidation.error);
+    }
+
     if (!input.name.trim()) {
-      return err(
-        createAppError({
-          code: "PURCHASES_SUPPLIER_NAME_REQUIRED",
-          message: "El nombre del proveedor es obligatorio.",
-          retryable: false
-        })
-      );
+      return err(createSupplierError(SUPPLIER_ERROR_CODES.NAME_REQUIRED));
+    }
+
+    if (input.rif) {
+      const rifValidation = validateSupplierRif(input.rif);
+      if (!rifValidation.ok) {
+        return err(createSupplierError(SUPPLIER_ERROR_CODES.RIF_INVALID, { providedRif: input.rif }));
+      }
     }
 
     const now = clock().toISOString();
@@ -230,7 +246,7 @@ export const createPurchasesService = ({
     if (!existing) {
       return err(
         createAppError({
-          code: "PURCHASES_SUPPLIER_NOT_FOUND",
+          code: "PURCHASE_SUPPLIER_NOT_FOUND",
           message: "El proveedor no existe.",
           retryable: false
         })
@@ -330,7 +346,7 @@ export const createPurchasesService = ({
     if (!input.name.trim()) {
       return err(
         createAppError({
-          code: "PURCHASES_CATEGORY_NAME_REQUIRED",
+          code: "PURCHASE_CATEGORY_NAME_REQUIRED",
           message: "Debe indicar nombre para la categoria.",
           retryable: false
         })
@@ -347,7 +363,7 @@ export const createPurchasesService = ({
     if (!input.name.trim()) {
       return err(
         createAppError({
-          code: "PURCHASES_PRODUCT_NAME_REQUIRED",
+          code: "PURCHASE_PRODUCT_NAME_REQUIRED",
           message: "Debe indicar nombre para el producto.",
           retryable: false
         })
@@ -364,7 +380,7 @@ export const createPurchasesService = ({
     if (!input.productLocalId.trim()) {
       return err(
         createAppError({
-          code: "PURCHASES_PRESENTATION_PRODUCT_REQUIRED",
+          code: "PURCHASE_PRESENTATION_PRODUCT_REQUIRED",
           message: "Debe seleccionar un producto para la presentacion.",
           retryable: false
         })
@@ -373,7 +389,7 @@ export const createPurchasesService = ({
     if (!input.name.trim() || input.factor <= 0) {
       return err(
         createAppError({
-          code: "PURCHASES_PRESENTATION_INVALID",
+          code: "PURCHASE_PRESENTATION_INVALID",
           message: "Presentacion invalida.",
           retryable: false
         })
@@ -389,15 +405,15 @@ export const createPurchasesService = ({
     actor,
     input
   ) => {
-    if (!input.items.length) {
-      return err(
-        createAppError({
-          code: "PURCHASES_ITEMS_REQUIRED",
-          message: "La compra requiere al menos un item.",
-          retryable: false
-        })
-      );
+    const tenantIdValidation = validateTenantIdMode(tenant.tenantSlug);
+    if (!tenantIdValidation.ok) {
+      return err(tenantIdValidation.error);
     }
+
+    if (!input.items.length) {
+      return err(createPurchaseError(PURCHASE_ERROR_CODES.ITEMS_REQUIRED));
+    }
+
     const warehouseAccess = assertWarehouseAccess(actor, input.warehouseLocalId);
     if (!warehouseAccess.ok) {
       return err(warehouseAccess.error);
@@ -408,13 +424,7 @@ export const createPurchasesService = ({
         !item.productLocalId.trim() || item.qty <= 0 || item.unitCost < 0
     );
     if (hasInvalidItem) {
-      return err(
-        createAppError({
-          code: "PURCHASES_ITEM_INVALID",
-          message: "Todos los items de compra deben tener producto, cantidad y costo valido.",
-          retryable: false
-        })
-      );
+      return err(createPurchaseError(PURCHASE_ERROR_CODES.ITEM_INVALID));
     }
 
     const now = clock().toISOString();
@@ -485,36 +495,19 @@ export const createPurchasesService = ({
     actor,
     input
   ) => {
+    const tenantIdValidation = validateTenantIdMode(tenant.tenantSlug);
+    if (!tenantIdValidation.ok) {
+      return err(tenantIdValidation.error);
+    }
+
     const purchase = await db.getPurchaseByLocalId(tenant.tenantSlug, input.purchaseLocalId);
     if (!purchase) {
-      return err(
-        createAppError({
-          code: "PURCHASES_NOT_FOUND",
-          message: "La compra no existe para este tenant.",
-          retryable: false,
-          context: { purchaseLocalId: input.purchaseLocalId }
-        })
-      );
+      return err(createPurchaseError(PURCHASE_ERROR_CODES.NOT_FOUND, { purchaseLocalId: input.purchaseLocalId }));
     }
-    if (purchase.status === "cancelled") {
-      return err(
-        createAppError({
-          code: "PURCHASES_CANCELLED_NOT_RECEIVABLE",
-          message: "No se puede recibir una compra anulada.",
-          retryable: false,
-          context: { purchaseLocalId: input.purchaseLocalId }
-        })
-      );
-    }
-    if (purchase.status === "received") {
-      return err(
-        createAppError({
-          code: "PURCHASES_ALREADY_RECEIVED",
-          message: "La compra ya fue recibida previamente.",
-          retryable: false,
-          context: { purchaseLocalId: input.purchaseLocalId }
-        })
-      );
+
+    const statusValidation = validatePurchaseStatusTransition(purchase.status, "receive");
+    if (!statusValidation.ok) {
+      return err(statusValidation.error);
     }
 
     const warehouseAccess = assertWarehouseAccess(actor, purchase.warehouseLocalId);
@@ -523,13 +516,7 @@ export const createPurchasesService = ({
     }
 
     if (!input.receivedItems.length) {
-      return err(
-        createAppError({
-          code: "PURCHASES_RECEIVE_NO_ITEMS",
-          message: "Debe indicar al menos un item para recibir.",
-          retryable: false
-        })
-      );
+      return err(createPurchaseError(PURCHASE_ERROR_CODES.RECEIVE_NO_ITEMS));
     }
 
     const now = clock().toISOString();
@@ -554,11 +541,12 @@ export const createPurchasesService = ({
       ...receivedItemsDetail
     ];
 
-    const receivingItems = input.receivedItems.map((ri) => {
+    const receivingItemsWithWeight: { productLocalId: string; qty: number; isWeighted?: boolean; unitCost: number }[] = input.receivedItems.map((ri) => {
       const orderedItem = purchase.items.find((i) => i.productLocalId === ri.productLocalId);
       return {
         productLocalId: ri.productLocalId,
         qty: ri.qty,
+        isWeighted: orderedItem ? false : undefined,
         unitCost: orderedItem?.unitCost ?? 0
       };
     });
@@ -569,18 +557,27 @@ export const createPurchasesService = ({
       purchaseLocalId: purchase.localId,
       warehouseLocalId: purchase.warehouseLocalId,
       status: "posted",
-      items: receivingItems,
-      totalItems: receivingItems.reduce((acc, item) => acc + item.qty, 0),
-      totalCost: receivingItems.reduce((acc, item) => acc + item.qty * item.unitCost, 0),
+      items: receivingItemsWithWeight.map(item => ({
+        productLocalId: item.productLocalId,
+        qty: item.qty,
+        unitCost: item.unitCost,
+      })),
+      totalItems: receivingItemsWithWeight.reduce((acc, item) => acc + item.qty, 0),
+      totalCost: receivingItemsWithWeight.reduce((acc, item) => acc + item.qty * item.unitCost, 0),
       createdAt: now,
       updatedAt: now,
       ...(actor.userId ? { receivedBy: actor.userId } : {}),
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {})
     };
 
-    const stockMovements: StockMovementRecord[] = receiving.items.map((item) => {
-      const quantity = item.isWeighted 
-        ? Number(item.qty.toFixed(4)) 
+    const stockMovements: StockMovementRecord[] = receiving.items.map((item, index) => {
+      const isWeighted = receivingItemsWithWeight[index]?.isWeighted ?? false;
+      const qtyValidation = validateQuantityPrecision(item.qty, isWeighted);
+      if (!qtyValidation.ok) {
+        return null;
+      }
+      const quantity = isWeighted 
+        ? Number(item.qty.toFixed(4))
         : item.qty;
       return {
         localId: uuid(),
@@ -596,11 +593,16 @@ export const createPurchasesService = ({
         createdAt: now,
         ...(actor.userId ? { createdBy: actor.userId } : {})
       };
-    });
+    }).filter(Boolean) as StockMovementRecord[];
 
-    const inventoryLots: InventoryLot[] = receiving.items.map((item) => {
-      const quantity = item.isWeighted 
-        ? Number(item.qty.toFixed(4)) 
+    if (stockMovements.length !== receiving.items.length) {
+      return err(createPurchaseError(PURCHASE_ERROR_CODES.ITEM_INVALID));
+    }
+
+    const inventoryLots: InventoryLot[] = receiving.items.map((item, index) => {
+      const isWeighted = receivingItemsWithWeight[index]?.isWeighted ?? false;
+      const quantity = isWeighted 
+        ? Number(item.qty.toFixed(4))
         : item.qty;
       return {
         localId: uuid(),
@@ -748,7 +750,7 @@ export const createPurchasesService = ({
     if (!purchase) {
       return err(
         createAppError({
-          code: "PURCHASES_NOT_FOUND",
+          code: "PURCHASE_NOT_FOUND",
           message: "La compra no existe para este tenant.",
           retryable: false,
           context: { purchaseLocalId }
@@ -758,7 +760,7 @@ export const createPurchasesService = ({
     if (purchase.status !== "draft") {
       return err(
         createAppError({
-          code: "PURCHASES_NOT_DRAFT",
+          code: "PURCHASE_NOT_DRAFT",
           message: "Solo se pueden confirmar compras en estado borrador.",
           retryable: false,
           context: { purchaseLocalId, currentStatus: purchase.status }
@@ -808,7 +810,7 @@ export const createPurchasesService = ({
     if (!purchase) {
       return err(
         createAppError({
-          code: "PURCHASES_NOT_FOUND",
+          code: "PURCHASE_NOT_FOUND",
           message: "La compra no existe para este tenant.",
           retryable: false,
           context: { purchaseLocalId }
@@ -818,7 +820,7 @@ export const createPurchasesService = ({
     if (purchase.status === "received") {
       return err(
         createAppError({
-          code: "PURCHASES_RECEIVED_NOT_CANCELLABLE",
+          code: "PURCHASE_RECEIVED_NOT_CANCELLABLE",
           message: "No se puede anular una compra ya recibida.",
           retryable: false,
           context: { purchaseLocalId }
@@ -828,7 +830,7 @@ export const createPurchasesService = ({
     if (purchase.status === "cancelled") {
       return err(
         createAppError({
-          code: "PURCHASES_ALREADY_CANCELLED",
+          code: "PURCHASE_ALREADY_CANCELLED",
           message: "La compra ya fue anulada previamente.",
           retryable: false,
           context: { purchaseLocalId }
@@ -878,7 +880,7 @@ export const createPurchasesService = ({
     if (!purchase) {
       return err(
         createAppError({
-          code: "PURCHASES_NOT_FOUND",
+          code: "PURCHASE_NOT_FOUND",
           message: "La compra no existe para este tenant.",
           retryable: false,
           context: { purchaseLocalId: input.purchaseLocalId }
@@ -888,7 +890,7 @@ export const createPurchasesService = ({
     if (purchase.status !== "draft") {
       return err(
         createAppError({
-          code: "PURCHASES_NOT_DRAFT_NOT_EDITABLE",
+          code: "PURCHASE_NOT_DRAFT",
           message: "Solo se pueden editar compras en estado borrador.",
           retryable: false,
           context: { purchaseLocalId: input.purchaseLocalId, currentStatus: purchase.status }
@@ -898,7 +900,7 @@ export const createPurchasesService = ({
     if (!input.items.length) {
       return err(
         createAppError({
-          code: "PURCHASES_ITEMS_REQUIRED",
+          code: "PURCHASE_ITEMS_REQUIRED",
           message: "La compra requiere al menos un item.",
           retryable: false
         })
@@ -917,7 +919,7 @@ export const createPurchasesService = ({
     if (hasInvalidItem) {
       return err(
         createAppError({
-          code: "PURCHASES_ITEM_INVALID",
+          code: "PURCHASE_ITEM_INVALID",
           message: "Todos los items de compra deben tener producto, cantidad y costo valido.",
           retryable: false
         })
@@ -975,7 +977,7 @@ export const createPurchasesService = ({
       if (!supplier) {
         return err(
           createAppError({
-            code: "PURCHASES_SUPPLIER_NOT_FOUND",
+            code: "PURCHASE_SUPPLIER_NOT_FOUND",
             message: "El proveedor no existe.",
             retryable: false
           })
@@ -987,7 +989,7 @@ export const createPurchasesService = ({
     if (!product) {
       return err(
         createAppError({
-          code: "PURCHASES_PRODUCT_NOT_FOUND",
+          code: "PURCHASE_PRODUCT_NOT_FOUND",
           message: "El producto no existe.",
           retryable: false
         })

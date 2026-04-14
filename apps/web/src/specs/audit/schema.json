@@ -1,0 +1,281 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/audit/v1.0.0",
+  "title": "Audit Entity Specification",
+  "description": "Logs de auditoría - Única Fuente de Verdad (SSoT). Este schema valida la inmutabilidad y trazabilidad del sistema.",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Audit",
+
+  "fields": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "PK - ID generado por el servidor"
+    },
+    "tenant_id": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$",
+      "description": "SLUG del tenant (NUNCA UUID) - Modo Dexie",
+      "validation": "DEXIE_MODE",
+      "note": "El SyncEngine traduce a UUID antes de sincronizar a Supabase"
+    },
+    "user_id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "FK a users"
+    },
+    "event_type": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[A-Z]+\\.[A-Z]+$",
+      "description": "Tipo de evento (formato: MODULO.ACCION)"
+    },
+    "target_table": {
+      "type": "string",
+      "required": true,
+      "description": "Tabla afectada"
+    },
+    "target_local_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID del registro afectado"
+    },
+    "ip_address": {
+      "type": ["string", "null"],
+      "description": "IP del cliente"
+    },
+    "user_agent": {
+      "type": ["string", "null"],
+      "description": "Navegador del cliente"
+    },
+    "success": {
+      "type": "boolean",
+      "required": true,
+      "description": "Éxito de la operación"
+    },
+    "details": {
+      "type": "object",
+      "description": "Detalles adicionales (JSONB)"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "required": true,
+      "description": "Fecha de creación (UTC)"
+    }
+  },
+
+  "business_rules": {
+    "audit_immutable": {
+      "condition": "ALWAYS",
+      "appliesTo": ["updateAudit", "deleteAudit"],
+      "rule": "FORBIDDEN",
+      "error": "AUDIT_IMMUTABLE_VIOLATION",
+      "message": "Los logs de auditoría son inmutables - UPDATE/DELETE prohibido",
+      "enforcement": "RUNTIME"
+    },
+    "event_type_format": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createAudit"],
+      "rule": "event_type matches ^[A-Z]+\\.[A-Z]+$",
+      "error": "AUDIT_EVENT_INVALID",
+      "message": "event_type debe seguir formato MODULO.ACCION",
+      "enforcement": "RUNTIME"
+    },
+    "event_type_whitelist": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createAudit"],
+      "rule": "event_type in APPROVED_EVENTS",
+      "error": "AUDIT_EVENT_NOT_WHITELISTED",
+      "message": "Evento no permitido - debe estar en lista de eventos aprobados",
+      "enforcement": "RUNTIME"
+    },
+    "tenant_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["dexie_persistence"],
+      "rule": "tenant_id matches ^[a-z0-9-]+$",
+      "error": "AUDIT_SCHEMA_DUAL_VIOLATION",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "enforcement": "SYNC_ENGINE"
+    },
+    "success_required": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createAudit"],
+      "rule": "success is boolean",
+      "error": "AUDIT_MISSING_REQUIRED_FIELDS",
+      "message": "Campo 'success' es obligatorio",
+      "enforcement": "RUNTIME"
+    },
+    "target_table_required": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createAudit"],
+      "rule": "target_table is not empty",
+      "error": "AUDIT_MISSING_REQUIRED_FIELDS",
+      "message": "Campo 'target_table' es obligatorio",
+      "enforcement": "RUNTIME"
+    },
+    "timestamp_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createAudit"],
+      "rule": "created_at is valid ISO 8601 UTC",
+      "error": "AUDIT_TIMESTAMP_INVALID",
+      "message": "created_at debe ser timestamp UTC válido",
+      "enforcement": "RUNTIME"
+    },
+    "details_json": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createAudit"],
+      "rule": "details is object or null",
+      "error": "AUDIT_DETAILS_INVALID",
+      "message": "details debe ser un objeto JSON válido o null",
+      "enforcement": "RUNTIME"
+    }
+  },
+
+  "approved_events": {
+    "_description": "Lista blanca de eventos permitidos - basada en ARCHITECTURE.md",
+    "products": [
+      "PRODUCT.CREATED",
+      "PRODUCT.UPDATED",
+      "PRODUCT.DELETED"
+    ],
+    "sales": [
+      "SALE.COMPLETED",
+      "SALE.VOIDED",
+      "SALE.SUSPENDED",
+      "SALE.SUSPENDED_RESTORED"
+    ],
+    "inventory": [
+      "INVENTORY.WAREHOUSE_CREATED",
+      "INVENTORY.SIZE_COLOR_CREATED",
+      "INVENTORY.STOCK_MOVEMENT_RECORDED",
+      "INVENTORY.COUNT_CREATED",
+      "INVENTORY.COUNT_POSTED",
+      "INVENTORY.REORDER_EVALUATED",
+      "INVENTORY.REORDER_SUGGESTED"
+    ],
+    "purchases": [
+      "PURCHASES.CREATED",
+      "PURCHASES.RECEIVED",
+      "PURCHASES.CONFIRMED",
+      "PURCHASES.CANCELLED",
+      "PURCHASES.UPDATED",
+      "PURCHASES.SUPPLIER_CREATED",
+      "PURCHASES.SUPPLIER_UPDATED",
+      "PURCHASES.CATEGORY_CREATE_REQUESTED",
+      "PURCHASES.PRODUCT_CREATE_REQUESTED",
+      "PURCHASES.PRESENTATION_CREATE_REQUESTED"
+    ],
+    "invoicing": [
+      "INVOICE.CREATED",
+      "INVOICE.ISSUED",
+      "INVOICE.VOIDED"
+    ],
+    "production": [
+      "PRODUCTION.RECIPE_CREATED",
+      "PRODUCTION.ORDER_CREATED",
+      "PRODUCTION.STARTED",
+      "PRODUCTION.COMPLETED"
+    ],
+    "admin": [
+      "ADMIN.TENANT_CREATED",
+      "ADMIN.TENANT_UPDATED",
+      "ADMIN.TENANT_DELETED",
+      "ADMIN.TENANT_DEACTIVATED",
+      "ADMIN.SUBSCRIPTION_RENEWED",
+      "ADMIN.USER_STATUS_TOGGLED",
+      "ADMIN.USER_DELETED"
+    ],
+    "auth": [
+      "AUTH.SESSION_RESOLVED",
+      "AUTH.SESSION_MISSING",
+      "AUTH.SIGNED_OUT",
+      "AUTH.SIGNIN_SUCCESS",
+      "AUTH.SIGNIN_FAILED",
+      "AUTH.RESET_PASSWORD_SENT",
+      "AUTH.PASSWORD_UPDATED",
+      "AUTH.WAREHOUSE_ACCESS_RESOLVED",
+      "AUTH.ROLE_DETECTED"
+    ],
+    "core": [
+      "CORE.BOOTSTRAP_STARTED",
+      "CORE.BOOTSTRAP_COMPLETED",
+      "CORE.BOOTSTRAP_FAILED",
+      "CORE.CATALOGS_PULLED",
+      "CATALOG.GLOBAL_PRODUCTS_HYDRATED"
+    ],
+    "sync": [
+      "SYNC.CONFLICT_DETECTED",
+      "SYNC.CATALOG_CONFLICT_LWW"
+    ],
+    "security": [
+      "SECURITY.AUDIT_LOG_REQUESTED",
+      "SECURITY.AUDIT_LOG_CREATED"
+    ],
+    "exchange": [
+      "EXCHANGE_RATE.UPDATED"
+    ],
+    "dashboard": [
+      "DASHBOARD.READY"
+    ],
+    "tenant": [
+      "TENANT.RESOLVED"
+    ],
+    "subscription": [
+      "SUBSCRIPTION.BLOCKED"
+    ]
+  },
+
+  "error_codes": {
+    "AUDIT_IMMUTABLE_VIOLATION": {
+      "code": "AUDIT_IMMUTABLE_VIOLATION",
+      "message": "Los logs de auditoría son inmutables - UPDATE/DELETE prohibido",
+      "retryable": false
+    },
+    "AUDIT_EVENT_INVALID": {
+      "code": "AUDIT_EVENT_INVALID",
+      "message": "event_type debe seguir formato MODULO.ACCION (ej: PRODUCT.CREATED)",
+      "retryable": false
+    },
+    "AUDIT_EVENT_NOT_WHITELISTED": {
+      "code": "AUDIT_EVENT_NOT_WHITELISTED",
+      "message": "Evento no permitido - debe estar en lista blanca de eventos aprobados",
+      "retryable": false
+    },
+    "AUDIT_MISSING_REQUIRED_FIELDS": {
+      "code": "AUDIT_MISSING_REQUIRED_FIELDS",
+      "message": "Campos obligatorios (event_type, target_table, success) no proporcionados",
+      "retryable": false
+    },
+    "AUDIT_TIMESTAMP_INVALID": {
+      "code": "AUDIT_TIMESTAMP_INVALID",
+      "message": "created_at debe ser timestamp UTC válido (ISO 8601)",
+      "retryable": false
+    },
+    "AUDIT_DETAILS_INVALID": {
+      "code": "AUDIT_DETAILS_INVALID",
+      "message": "details debe ser un objeto JSON válido o null",
+      "retryable": false
+    },
+    "AUDIT_SCHEMA_DUAL_VIOLATION": {
+      "code": "AUDIT_SCHEMA_DUAL_VIOLATION",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "retryable": false
+    },
+    "AUDIT_TENANT_ID_MUST_BE_SLUG": {
+      "code": "AUDIT_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug, nunca UUID",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "2.3.7 Auditoría / 8 Seguridad y Auditoría",
+    "version_date": "2026-04-14"
+  }
+}

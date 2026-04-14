@@ -20,6 +20,13 @@ import type {
   ProductSizeColor,
   ProductsTenantContext
 } from "../types/products.types";
+import {
+  validateProductInput,
+  validateWeightedProduct,
+  validateTenantForDexie,
+  validatePresentationsBulk,
+  validateProductSku,
+} from "./products.validation";
 
 interface RpcResultRow {
   success: boolean;
@@ -243,6 +250,32 @@ export const createProductsService = ({
       const permissionResult = assertCatalogPermissions(actor);
       if (!permissionResult.ok) {
         return err(permissionResult.error);
+      }
+
+      const tenantValidation = validateTenantForDexie(tenant.tenantSlug);
+      if (!tenantValidation.ok) {
+        return err(tenantValidation.error);
+      }
+
+      if (input.sourceModule !== "purchases") {
+        return err(
+          createAppError({
+            code: "PRODUCT_CREATION_FORBIDDEN_MODULE",
+            message:
+              "Los productos solo se crean desde el modulo Compras (regla 7.5).",
+            retryable: false
+          })
+        );
+      }
+
+      const validationResult = validateProductInput(input);
+      if (!validationResult.ok) {
+        return err(validationResult.error);
+      }
+
+      const skuValidation = validateProductSku(input.sku);
+      if (!skuValidation.ok) {
+        return err(skuValidation.error);
       }
 
       if (!input.name.trim()) {
@@ -853,6 +886,28 @@ export const createProductsService = ({
       const permissionResult = assertCatalogPermissions(actor);
       if (!permissionResult.ok) {
         return err(permissionResult.error);
+      }
+
+      const tenantValidation = validateTenantForDexie(tenant.tenantSlug);
+      if (!tenantValidation.ok) {
+        return err(tenantValidation.error);
+      }
+
+      const validationResult = validateProductInput(input);
+      if (!validationResult.ok) {
+        return err(validationResult.error);
+      }
+
+      const skuValidation = validateProductSku(input.sku);
+      if (!skuValidation.ok) {
+        return err(skuValidation.error);
+      }
+
+      if (input.presentations && input.presentations.length > 0) {
+        const presentationsValidation = validatePresentationsBulk(input.presentations);
+        if (!presentationsValidation.ok) {
+          return err(presentationsValidation.error);
+        }
       }
 
       if (!input.name.trim()) {

@@ -108,7 +108,7 @@ describe("usePurchases", () => {
     const service = createServiceMock();
     vi.mocked(service.createPurchase).mockResolvedValueOnce(
       err({
-        code: "PURCHASES_ITEMS_REQUIRED",
+        code: "PURCHASE_ITEMS_REQUIRED",
         message: "La compra requiere al menos un item.",
         retryable: false,
         timestamp: new Date().toISOString()
@@ -141,6 +141,6 @@ describe("usePurchases", () => {
       });
     });
 
-    expect(result.current.state.lastError?.code).toBe("PURCHASES_ITEMS_REQUIRED");
+    expect(result.current.state.lastError?.code).toBe("PURCHASE_ITEMS_REQUIRED");
   });
 });
