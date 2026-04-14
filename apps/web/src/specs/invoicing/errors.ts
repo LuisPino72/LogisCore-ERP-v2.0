@@ -10,6 +10,10 @@ export const INVOICING_ERROR_CODES = {
   ALREADY_VOIDED: "INVOICE_ALREADY_VOIDED",
   HARD_DELETE_NOT_ALLOWED: "HARD_DELETE_NOT_ALLOWED",
   CONTROL_NUMBER_INVALID: "INVOICE_CONTROL_NUMBER_INVALID",
+  RANGE_NUMBERS_INVALID: "INVOICE_RANGE_NUMBERS_INVALID",
+  RANGE_CURRENT_INVALID: "INVOICE_RANGE_CURRENT_INVALID",
+  RANGE_DUPLICATE: "INVOICE_RANGE_DUPLICATE",
+  RANGE_PREFIX_INVALID: "INVOICE_RANGE_PREFIX_INVALID",
 } as const;
 
 export type InvoicingErrorCode = keyof typeof INVOICING_ERROR_CODES;
@@ -39,6 +43,10 @@ export function createInvoicingError(
     INVOICE_ALREADY_VOIDED: "La factura ya está anulada",
     HARD_DELETE_NOT_ALLOWED: "Soft delete obligatorio. Usar deleted_at en lugar de eliminar el registro",
     INVOICE_CONTROL_NUMBER_INVALID: "Número de control inválido",
+    INVOICE_RANGE_NUMBERS_INVALID: "start_number debe ser menor o igual a end_number",
+    INVOICE_RANGE_CURRENT_INVALID: "current_number debe estar entre start_number y end_number",
+    INVOICE_RANGE_DUPLICATE: "Ya existe un talonario con ese prefijo para este tenant",
+    INVOICE_RANGE_PREFIX_INVALID: "El prefijo debe contener solo caracteres alfanuméricos",
   };
 
   return {

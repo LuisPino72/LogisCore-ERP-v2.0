@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/exchange-rates/v1.0.0",
+  "title": "Exchange Rates Entity Specification",
+  "description": "Tasas de cambio - Gestión Multimoneda",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "ExchangeRates",
+
+  "fields": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "PK - ID generado por el servidor"
+    },
+    "tenant_id": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$",
+      "description": "SLUG del tenant - Catálogo LWW"
+    },
+    "from_currency": {
+      "type": "string",
+      "enum": ["USD", "VES"],
+      "required": true,
+      "description": "Moneda origen"
+    },
+    "to_currency": {
+      "type": "string",
+      "enum": ["USD", "VES"],
+      "required": true,
+      "description": "Moneda destino"
+    },
+    "rate": {
+      "type": "number",
+      "minimum": 0.0001,
+      "required": true,
+      "description": "Tasa de cambio (precision 4 decimales)"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["bcv", "manual", "parallel"],
+      "required": true,
+      "description": "Fuente de la tasa"
+    },
+    "jurisdiction": {
+      "type": "string",
+      "enum": ["national", "regional"],
+      "description": "Jurisdicción"
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date-time",
+      "required": true,
+      "description": "Válido desde"
+    },
+    "valid_to": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Válido hasta"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de creación (UTC)"
+    }
+  },
+
+  "business_rules": {
+    "currencies_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createExchangeRate", "updateExchangeRate"],
+      "rule": "from_currency != to_currency AND from_currency in [USD, VES] AND to_currency in [USD, VES]",
+      "error": "EXCHANGE_RATE_CURRENCY_INVALID",
+      "message": "Monedas inválidas - solo USD/VES permitidas",
+      "enforcement": "RUNTIME"
+    },
+    "rate_positive": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createExchangeRate", "updateExchangeRate"],
+      "rule": "rate > 0",
+      "error": "EXCHANGE_RATE_INVALID",
+      "message": "La tasa debe ser mayor a 0",
+      "enforcement": "RUNTIME"
+    },
+    "rate_precision": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createExchangeRate", "updateExchangeRate"],
+      "rule": "rate has maximum 4 decimal places",
+      "error": "EXCHANGE_RATE_PRECISION_INVALID",
+      "message": "La tasa debe tener máximo 4 decimales",
+      "enforcement": "RUNTIME"
+    },
+    "source_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createExchangeRate", "updateExchangeRate"],
+      "rule": "source in [bcv, manual, parallel]",
+      "error": "EXCHANGE_RATE_SOURCE_INVALID",
+      "message": "Fuente de tasa inválida",
+      "enforcement": "RUNTIME"
+    },
+    "dates_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createExchangeRate", "updateExchangeRate"],
+      "rule": "valid_from <= valid_to (if valid_to is not null)",
+      "error": "EXCHANGE_RATE_DATES_INVALID",
+      "message": "Fecha de fin debe ser mayor a fecha de inicio",
+      "enforcement": "RUNTIME"
+    },
+    "tenant_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["dexie_persistence"],
+      "rule": "tenantId matches ^[a-z0-9-]+$",
+      "error": "EXCHANGE_RATE_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug",
+      "enforcement": "SYNC_ENGINE"
+    }
+  },
+
+  "error_codes": {
+    "EXCHANGE_RATE_CURRENCY_INVALID": {
+      "code": "EXCHANGE_RATE_CURRENCY_INVALID",
+      "message": "Monedas inválidas - solo USD/VES permitidas",
+      "retryable": false
+    },
+    "EXCHANGE_RATE_INVALID": {
+      "code": "EXCHANGE_RATE_INVALID",
+      "message": "La tasa debe ser mayor a 0",
+      "retryable": false
+    },
+    "EXCHANGE_RATE_PRECISION_INVALID": {
+      "code": "EXCHANGE_RATE_PRECISION_INVALID",
+      "message": "La tasa debe tener máximo 4 decimales",
+      "retryable": false
+    },
+    "EXCHANGE_RATE_SOURCE_INVALID": {
+      "code": "EXCHANGE_RATE_SOURCE_INVALID",
+      "message": "Fuente de tasa inválida",
+      "retryable": false
+    },
+    "EXCHANGE_RATE_DATES_INVALID": {
+      "code": "EXCHANGE_RATE_DATES_INVALID",
+      "message": "Fecha de fin debe ser mayor a fecha de inicio",
+      "retryable": false
+    },
+    "EXCHANGE_RATE_TENANT_ID_MUST_BE_SLUG": {
+      "code": "EXCHANGE_RATE_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug",
+      "retryable": false
+    },
+    "EXCHANGE_RATE_NOT_FOUND": {
+      "code": "EXCHANGE_RATE_NOT_FOUND",
+      "message": "Tasa de cambio no encontrada",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "4.1 Gestión Multimoneda",
+    "version_date": "2026-04-14"
+  }
+}

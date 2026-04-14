@@ -1,0 +1,171 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/tax-rules/v1.0.0",
+  "title": "Tax Rules Entity Specification",
+  "description": "Reglas fiscales - Base para cálculo de impuestos (IVA, IGTF, ISLR)",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "TaxRules",
+
+  "fields": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "required": true,
+      "description": "PK - ID generado por el servidor"
+    },
+    "tenant_id": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$",
+      "description": "SLUG del tenant - Catálogo LWW"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "required": true,
+      "description": "Nombre de la regla (ej: IVA 16%)"
+    },
+    "rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "required": true,
+      "description": "Tasa del impuesto (0.16 = 16%)"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["iva", "islr", "igtf"],
+      "required": true,
+      "description": "Tipo de impuesto"
+    },
+    "is_withholding": {
+      "type": "boolean",
+      "required": true,
+      "description": "Es retención"
+    },
+    "is_active": {
+      "type": "boolean",
+      "required": true,
+      "description": "Regla activa"
+    },
+    "jurisdiction": {
+      "type": "string",
+      "enum": ["national", "regional"],
+      "required": true,
+      "description": "Jurisdicción aplicable"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de creación (UTC)"
+    }
+  },
+
+  "business_rules": {
+    "name_required": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createTaxRule", "updateTaxRule"],
+      "rule": "name is not empty",
+      "error": "TAX_RULE_NAME_REQUIRED",
+      "message": "El nombre de la regla fiscal es obligatorio",
+      "enforcement": "RUNTIME"
+    },
+    "rate_range": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createTaxRule", "updateTaxRule"],
+      "rule": "0 <= rate <= 1",
+      "error": "TAX_RULE_RATE_INVALID",
+      "message": "La tasa debe estar entre 0 y 1 (0-100%)",
+      "enforcement": "RUNTIME"
+    },
+    "igtf_fixed_rate": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createTaxRule", "updateTaxRule"],
+      "rule": "type === 'igtf' → rate === 0.03",
+      "error": "TAX_RULE_IGTF_MUST_BE_3_PERCENT",
+      "message": "IGTF debe ser exactamente 3%",
+      "enforcement": "RUNTIME"
+    },
+    "type_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createTaxRule", "updateTaxRule"],
+      "rule": "type in [iva, islr, igtf]",
+      "error": "TAX_RULE_TYPE_INVALID",
+      "message": "Tipo de impuesto inválido",
+      "enforcement": "RUNTIME"
+    },
+    "jurisdiction_valid": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createTaxRule", "updateTaxRule"],
+      "rule": "jurisdiction in [national, regional]",
+      "error": "TAX_RULE_JURISDICTION_INVALID",
+      "message": "Jurisdicción inválida",
+      "enforcement": "RUNTIME"
+    },
+    "tenant_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["dexie_persistence"],
+      "rule": "tenantId matches ^[a-z0-9-]+$",
+      "error": "TAX_RULE_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug",
+      "enforcement": "SYNC_ENGINE"
+    }
+  },
+
+  "approved_types": {
+    "iva": {
+      "description": "Impuesto al Valor Agregado",
+      "common_rates": [0.16, 0.12, 0.08]
+    },
+    "islr": {
+      "description": "Impuesto sobre la Renta",
+      "common_rates": [0.10, 0.15, 0.20, 0.34]
+    },
+    "igtf": {
+      "description": "Impuesto a las Grandes Transacciones Financieras",
+      "fixed_rate": 0.03,
+      "note": "Tasa fija del 3%"
+    }
+  },
+
+  "error_codes": {
+    "TAX_RULE_NAME_REQUIRED": {
+      "code": "TAX_RULE_NAME_REQUIRED",
+      "message": "El nombre de la regla fiscal es obligatorio",
+      "retryable": false
+    },
+    "TAX_RULE_RATE_INVALID": {
+      "code": "TAX_RULE_RATE_INVALID",
+      "message": "La tasa debe estar entre 0 y 1 (0-100%)",
+      "retryable": false
+    },
+    "TAX_RULE_IGTF_MUST_BE_3_PERCENT": {
+      "code": "TAX_RULE_IGTF_MUST_BE_3_PERCENT",
+      "message": "IGTF debe ser exactamente 3%",
+      "retryable": false
+    },
+    "TAX_RULE_TYPE_INVALID": {
+      "code": "TAX_RULE_TYPE_INVALID",
+      "message": "Tipo de impuesto inválido",
+      "retryable": false
+    },
+    "TAX_RULE_JURISDICTION_INVALID": {
+      "code": "TAX_RULE_JURISDICTION_INVALID",
+      "message": "Jurisdicción inválida",
+      "retryable": false
+    },
+    "TAX_RULE_TENANT_ID_MUST_BE_SLUG": {
+      "code": "TAX_RULE_TENANT_ID_MUST_BE_SLUG",
+      "message": "En Dexie, tenant_id debe ser slug",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "4. Motor Fiscal Venezolano",
+    "version_date": "2026-04-14"
+  }
+}
