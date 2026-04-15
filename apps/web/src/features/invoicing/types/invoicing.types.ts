@@ -6,6 +6,8 @@ import type { AppError } from "@logiscore/core";
  */
 export interface InvoicingTenantContext {
   tenantSlug: string;
+  maxInvoices?: number | undefined;
+  features?: Record<string, boolean> | undefined;
 }
 
 /**

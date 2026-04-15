@@ -40,6 +40,7 @@ import type {
 export interface InvoicingDb {
   createInvoice(invoice: Invoice): Promise<void>;
   listInvoices(tenantId: string): Promise<Invoice[]>;
+  listIssuedInvoicesThisMonth(tenantId: string): Promise<Invoice[]>;
   getInvoiceByLocalId(tenantId: string, invoiceLocalId: string): Promise<Invoice | undefined>;
   updateInvoice(
     tenantId: string,
@@ -178,6 +179,31 @@ export const createInvoicingService = ({
       );
     }
 
+    const maxInvoices = tenant.maxInvoices;
+    if (maxInvoices && maxInvoices > 0) {
+      const issuedInvoices = await db.listIssuedInvoicesThisMonth(tenant.tenantSlug);
+      if (issuedInvoices.length >= maxInvoices) {
+        eventBus.emit("SECURITY.AUDIT_LOG_CREATED", {
+          eventType: "PLAN_INVOICE_LIMIT_EXCEEDED",
+          tenantId: tenant.tenantSlug,
+          details: {
+            currentInvoices: issuedInvoices.length,
+            maxInvoices,
+            action: "createInvoiceFromSale"
+          }
+        });
+
+        return err(
+          createAppError({
+            code: "ADMIN_PLAN_INVOICE_LIMIT_EXCEEDED",
+            message: `Ha alcanzado el límite de facturas de su plan (${maxInvoices} por mes). Para crear más facturas, actualice a un plan superior.`,
+            retryable: false,
+            context: { current: issuedInvoices.length, limit: maxInvoices }
+          })
+        );
+      }
+    }
+
     const ivaRate = await computeTaxRateFromRules(tenant.tenantSlug, "iva");
     const igtfRate = await computeTaxRateFromRules(tenant.tenantSlug, "igtf");
 
@@ -276,6 +302,31 @@ export const createInvoicingService = ({
     const tenantValidation = validateTenantForDexie(tenant.tenantSlug);
     if (!tenantValidation.ok) {
       return err(tenantValidation.error);
+    }
+
+    const maxInvoices = tenant.maxInvoices;
+    if (maxInvoices && maxInvoices > 0) {
+      const issuedInvoices = await db.listIssuedInvoicesThisMonth(tenant.tenantSlug);
+      if (issuedInvoices.length >= maxInvoices) {
+        eventBus.emit("SECURITY.AUDIT_LOG_CREATED", {
+          eventType: "PLAN_INVOICE_LIMIT_EXCEEDED",
+          tenantId: tenant.tenantSlug,
+          details: {
+            currentInvoices: issuedInvoices.length,
+            maxInvoices,
+            action: "issueInvoice"
+          }
+        });
+
+        return err(
+          createAppError({
+            code: "ADMIN_PLAN_INVOICE_LIMIT_EXCEEDED",
+            message: `Ha alcanzado el límite de facturas de su plan (${maxInvoices} por mes).`,
+            retryable: false,
+            context: { current: issuedInvoices.length, limit: maxInvoices }
+          })
+        );
+      }
     }
 
     if (!input.invoiceLocalId.trim()) {

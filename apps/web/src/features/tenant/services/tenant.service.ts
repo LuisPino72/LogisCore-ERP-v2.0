@@ -48,7 +48,7 @@ interface TenantSupabaseLike {
 export interface TenantService {
   resolveTenantContext(userId: string): Promise<Result<TenantContext, AppError>>;
   resolveUserRole(userId: string): Promise<Result<UserRole, AppError>>;
-  checkSubscription(tenantSlug: string): Promise<Result<{ isActive: boolean; endDate: string | null; isLastDay: boolean }, AppError>>;
+  checkSubscription(tenantSlug: string): Promise<Result<{ isActive: boolean; endDate: string | null; isLastDay: boolean; maxUsers: number; features: Record<string, boolean> }, AppError>>;
   bootstrapTenant(userId: string): Promise<Result<TenantBootstrapResult, AppError>>;
 }
 
@@ -205,10 +205,15 @@ export const createTenantService = ({
         status?: string;
         end_date?: string;
         is_last_day?: boolean;
+        max_users?: number;
+        features?: Record<string, boolean>;
       }[]
     >("check_subscriptions", {
       p_tenant_slug: tenantSlug
     });
+
+    const defaultMaxUsers = 3;
+    const defaultFeatures: Record<string, boolean> = {};
 
     if (subscriptionQuery.error || !subscriptionQuery.data) {
       const tenantLookup = await supabase
@@ -248,7 +253,9 @@ export const createTenantService = ({
         return ok({
           isActive: false,
           endDate: endDate ?? null,
-          isLastDay
+          isLastDay,
+          maxUsers: defaultMaxUsers,
+          features: defaultFeatures
         });
       }
 
@@ -258,7 +265,9 @@ export const createTenantService = ({
       return ok({
         isActive,
         endDate: endDate ?? null,
-        isLastDay
+        isLastDay,
+        maxUsers: defaultMaxUsers,
+        features: defaultFeatures
       });
     }
 
@@ -267,7 +276,9 @@ export const createTenantService = ({
       return ok({
         isActive: false,
         endDate: null,
-        isLastDay: false
+        isLastDay: false,
+        maxUsers: defaultMaxUsers,
+        features: defaultFeatures
       });
     }
 
@@ -276,7 +287,9 @@ export const createTenantService = ({
       return ok({
         isActive: false,
         endDate: null,
-        isLastDay: false
+        isLastDay: false,
+        maxUsers: defaultMaxUsers,
+        features: defaultFeatures
       });
     }
 
@@ -289,7 +302,9 @@ export const createTenantService = ({
     return ok({
       isActive,
       endDate: data.end_date ?? null,
-      isLastDay: data.is_last_day ?? false
+      isLastDay: data.is_last_day ?? false,
+      maxUsers: data.max_users ?? defaultMaxUsers,
+      features: data.features ?? defaultFeatures
     });
   };
 
@@ -376,12 +391,21 @@ export const createTenantService = ({
       return err(subscriptionResult.error);
     }
 
+    const enrichedTenant: TenantContext = {
+      ...tenant,
+      maxUsers: subscriptionResult.data.maxUsers,
+      features: subscriptionResult.data.features
+    };
+    eventBus.emit("TENANT.RESOLVED", enrichedTenant);
+
     return ok({
-      tenant,
+      tenant: enrichedTenant,
       userRole: roleResult.data,
       subscriptionActive: subscriptionResult.data.isActive,
       subscriptionEndDate: subscriptionResult.data.endDate || null,
-      isLastDay: !!subscriptionResult.data.isLastDay
+      isLastDay: !!subscriptionResult.data.isLastDay,
+      maxUsers: subscriptionResult.data.maxUsers,
+      features: subscriptionResult.data.features
     });
   };
 

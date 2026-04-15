@@ -142,4 +142,21 @@ export class DexieProductsDbAdapter implements ProductsDb {
     }
     return presentation;
   }
+
+  async countActiveProducts(tenantId: string): Promise<number> {
+    const products = await db.products
+      .where("tenantId")
+      .equals(tenantId)
+      .and((item) => !item.deletedAt)
+      .toArray();
+    return products.length;
+  }
+
+  async listActiveProducts(tenantId: string): Promise<ProductRecord[]> {
+    return db.products
+      .where("tenantId")
+      .equals(tenantId)
+      .and((item) => !item.deletedAt)
+      .sortBy("createdAt");
+  }
 }

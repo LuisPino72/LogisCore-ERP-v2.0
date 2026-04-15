@@ -4,10 +4,11 @@
  * Utiliza el patrón Result<T, AppError> para manejo de errores.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import type { AppError, Result } from "@logiscore/core";
 import type { TenantUiState } from "../types/tenant.types";
 import type { TenantService } from "../services/tenant.service";
+import { eventBus } from "@/lib/core/runtime";
 
 const initialState: TenantUiState = {
   isLoading: false,
@@ -67,4 +68,24 @@ export const useTenantData = ({
   }, [auth, tenant]);
 
   return { state, bootstrapTenantData };
+};
+
+/**
+ * Hook que refresca el estado del tenant cuando el admin actualiza el plan.
+ * Escucha el evento ADMIN.TENANT_UPDATED y vuelve a ejecutar bootstrap.
+ */
+export const useTenantDataSync = (
+  auth: { getActiveSession: () => Promise<Result<{ userId: string }, AppError>> },
+  tenant: TenantService,
+  bootstrapTenantData: () => Promise<void>
+) => {
+  useEffect(() => {
+    const offTenantUpdated = eventBus.on("ADMIN.TENANT_UPDATED", () => {
+      void bootstrapTenantData();
+    });
+
+    return () => {
+      offTenantUpdated();
+    };
+  }, [bootstrapTenantData]);
 };

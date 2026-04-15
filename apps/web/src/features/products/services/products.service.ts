@@ -61,6 +61,7 @@ export interface ProductsDb {
   updatePresentation(presentation: ProductPresentation): Promise<void>;
   listCategories(tenantId: string): Promise<Category[]>;
   listProducts(tenantId: string): Promise<Product[]>;
+  listActiveProducts(tenantId: string): Promise<Product[]>;
   listPresentations(tenantId: string): Promise<ProductPresentation[]>;
   listProductSizeColors(tenantId: string): Promise<ProductSizeColor[]>;
   softDeleteCategory(
@@ -78,6 +79,7 @@ export interface ProductsDb {
     productLocalId: string,
     tenantId: string
   ): Promise<number>;
+  countActiveProducts(tenantId: string): Promise<number>;
   getProductById(localId: string, tenantId: string): Promise<Product | null>;
   getCategoryById(localId: string, tenantId: string): Promise<Category | null>;
   getPresentationById(
@@ -195,6 +197,43 @@ export const createProductsService = ({
     return ok<void>(undefined);
   };
 
+  const checkProductQuota = async (
+    tenant: ProductsTenantContext,
+    additionalProducts: number = 1
+  ): Promise<Result<number, AppError>> => {
+    const maxProducts = tenant.maxProducts;
+    if (!maxProducts || maxProducts <= 0) {
+      return ok(0);
+    }
+
+    const currentCount = await db.countActiveProducts(tenant.tenantSlug);
+    const newCount = currentCount + additionalProducts;
+
+    if (newCount > maxProducts) {
+      eventBus.emit("SECURITY.AUDIT_LOG_CREATED", {
+        eventType: "PLAN_PRODUCT_LIMIT_EXCEEDED",
+        tenantId: tenant.tenantSlug,
+        details: {
+          currentCount,
+          maxProducts,
+          additionalProducts,
+          action: "createProduct"
+        }
+      });
+
+      return err(
+        createAppError({
+          code: "ADMIN_PLAN_PRODUCT_LIMIT_EXCEEDED",
+          message: `Ha alcanzado el límite de productos de su plan (${maxProducts}). Para crear más productos, actualice a un plan superior.`,
+          retryable: false,
+          context: { current: currentCount, limit: maxProducts }
+        })
+      );
+    }
+
+    return ok(maxProducts - newCount);
+  };
+
   const createCategory: ProductsService["createCategory"] = async (
     tenant,
     actor,
@@ -307,6 +346,11 @@ export const createProductsService = ({
             retryable: false
           })
         );
+      }
+
+      const quotaResult = await checkProductQuota(tenant, 1);
+      if (!quotaResult.ok) {
+        return err(quotaResult.error);
       }
 
       if (input.sourceModule !== "purchases") {
@@ -941,6 +985,11 @@ export const createProductsService = ({
         );
       }
 
+      const quotaResult = await checkProductQuota(tenant, 1);
+      if (!quotaResult.ok) {
+        return err(quotaResult.error);
+      }
+
       if (input.sourceModule !== "purchases") {
         return err(
           createAppError({
@@ -1192,6 +1241,23 @@ export const createProductsService = ({
       const validation = validateTenantForDexie(tenant.tenantSlug);
       if (!validation.ok) return err(validation.error);
 
+      const maxProducts = tenant.maxProducts;
+      if (maxProducts && maxProducts > 0) {
+        const currentCount = await db.countActiveProducts(tenant.tenantSlug);
+        const productsToImport = globalProducts.length;
+        
+        if (currentCount + productsToImport > maxProducts) {
+          return err(
+            createAppError({
+              code: "ADMIN_PLAN_PRODUCT_LIMIT_EXCEEDED",
+              message: `La importación de ${productsToImport} productos excedería el límite de su plan (${maxProducts}). Actualmente tiene ${currentCount} productos.`,
+              retryable: false,
+              context: { current: currentCount, limit: maxProducts, importing: productsToImport }
+            })
+          );
+        }
+      }
+
       const now = clock().toISOString();
 
       let importedProducts = 0;
@@ -1229,7 +1295,6 @@ export const createProductsService = ({
           defaultPresentationId: null,
           createdAt: now,
           updatedAt: now,
-          deletedAt: undefined,
           globalProductId: gp.id
         };
 
@@ -1248,11 +1313,10 @@ export const createProductsService = ({
             name: gpPres.name,
             factor: gpPres.factor,
             price: gpPres.price,
-            barcode: gpPres.barcode,
+            ...(gpPres.barcode ? { barcode: gpPres.barcode } : {}),
             isDefault: gpPres.isDefault,
             createdAt: now,
-            updatedAt: now,
-            deletedAt: undefined
+            updatedAt: now
           };
 
           await db.createPresentation(presentation);

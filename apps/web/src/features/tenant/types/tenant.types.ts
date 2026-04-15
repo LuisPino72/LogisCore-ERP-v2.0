@@ -18,6 +18,8 @@ export interface TenantContext {
   taxpayerInfo?: Record<string, unknown>;
   timezone?: string;
   currency?: string;
+  maxUsers?: number;
+  features?: Record<string, boolean>;
 }
 
 /**
@@ -78,6 +80,8 @@ export interface TenantBootstrapResult {
   subscriptionActive: boolean;
   subscriptionEndDate: string | null;
   isLastDay: boolean;
+  maxUsers?: number;
+  features?: Record<string, boolean>;
 }
 
 /**

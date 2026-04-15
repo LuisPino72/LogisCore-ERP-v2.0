@@ -85,12 +85,15 @@ interface ProductsCatalogProps {
   actor: ProductsActorContext;
   exchangeRate?: number;
   businessTypeId?: string;
+  maxProducts?: number | undefined;
+  features?: Record<string, boolean> | undefined;
 }
 
-export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateFromApp, businessTypeId }: ProductsCatalogProps) {
+export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateFromApp, businessTypeId, maxProducts, features }: ProductsCatalogProps) {
+  const tenantContext = useMemo(() => ({ tenantSlug, maxProducts, features }), [tenantSlug, maxProducts, features]);
   const { state, refresh } = useProducts({
     service: productsService,
-    tenant: { tenantSlug },
+    tenant: tenantContext,
     actor
   });
   const [exchangeRate, setExchangeRate] = useState(DEFAULT_EXCHANGE_RATE);

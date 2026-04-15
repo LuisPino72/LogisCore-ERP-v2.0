@@ -39,6 +39,8 @@ interface SharedOperationalData {
   lastError: string | null;
   exchangeRate: number;
   businessTypeId?: string;
+  maxProducts?: number | undefined;
+  features?: Record<string, boolean> | undefined;
 }
 
 function DashboardHome({ 
@@ -75,7 +77,9 @@ function ModuleRenderer({
   onNavigate,
   onUpdateExchangeRate,
   onFetchExchangeRates,
-  businessTypeId
+  businessTypeId,
+  maxProducts,
+  features
 }: { 
   moduleId: ModuleId, 
   tenantSlug: string, 
@@ -83,7 +87,9 @@ function ModuleRenderer({
   onNavigate: (module: ModuleId) => void,
   onUpdateExchangeRate: (rate: number) => Promise<void>,
   onFetchExchangeRates: () => Promise<void>,
-  businessTypeId?: string
+  businessTypeId?: string,
+  maxProducts?: number | undefined,
+  features?: Record<string, boolean> | undefined
 }) {
   const [sharedData, setSharedData] = useState<SharedOperationalData>({
     products: [],
@@ -137,14 +143,16 @@ function ModuleRenderer({
         warehousesResult.ok ? null : warehousesResult.error.message
       ].find(Boolean) ?? null;
 
-      setSharedData((previous) => ({
+      setSharedData((previous): SharedOperationalData => ({
         ...previous,
         products: productsResult.ok ? productsResult.data : [],
         categories: categoriesResult.ok ? categoriesResult.data : [],
         presentations: presentationsResult.ok ? presentationsResult.data : [],
         warehouses: warehousesResult.ok ? warehousesResult.data : [],
         isLoading: false,
-        lastError: nextError
+        lastError: nextError,
+        maxProducts: maxProducts !== undefined ? maxProducts : previous.maxProducts,
+        features: features !== undefined ? features : previous.features
       }));
     };
 
@@ -156,6 +164,7 @@ function ModuleRenderer({
     const offPresentationCreated = eventBus.on("PRESENTATION.CREATED", () => void loadSharedData());
     const offWarehouseCreated = eventBus.on("INVENTORY.WAREHOUSE_CREATED", () => void loadSharedData());
     const offExchangeRateUpdated = eventBus.on("EXCHANGE_RATE.UPDATED", () => void loadExchangeRate());
+    const offTenantUpdated = eventBus.on("ADMIN.TENANT_UPDATED", () => void loadSharedData());
 
     return () => {
       cancelled = true;
@@ -164,6 +173,7 @@ function ModuleRenderer({
       offPresentationCreated();
       offWarehouseCreated();
       offExchangeRateUpdated();
+      offTenantUpdated();
     };
   }, [tenantSlug, loadExchangeRate]);
 
@@ -179,6 +189,8 @@ function ModuleRenderer({
             tenantSlug={tenantSlug}
             actor={actor as never}
             exchangeRate={sharedData.exchangeRate}
+            maxProducts={sharedData.maxProducts}
+            features={sharedData.features}
             {...(businessTypeId ? { businessTypeId } : {})}
           />
         );
@@ -204,9 +216,9 @@ function ModuleRenderer({
           />
         );
       case "production":
-        return <ProductionPanel tenantSlug={tenantSlug} actor={actor as never} products={sharedData.products} warehouses={sharedData.warehouses} />;
+        return <ProductionPanel tenantSlug={tenantSlug} actor={actor as never} products={sharedData.products} warehouses={sharedData.warehouses} features={sharedData.features} />;
       case "invoicing":
-        return <InvoicingPanel tenantSlug={tenantSlug} actor={actor as never} />;
+        return <InvoicingPanel tenantSlug={tenantSlug} actor={actor as never} features={sharedData.features} />;
       case "reports":
         return <ReportsPanel tenantSlug={tenantSlug} actor={actor as never} />;
       default:
@@ -283,7 +295,9 @@ export function App() {
       tenantService={tenantService}
       coreService={coreService}
       renderApp={(tenantSlug, actor, signOut, tenantContext) => {
-          const businessTypeId = tenantContext?.businessTypeId;
+          const computedMaxProducts = (tenantContext?.features?.products as number | undefined) ?? undefined;
+          const computedFeatures = tenantContext?.features;
+          const computedBusinessTypeId = tenantContext?.businessTypeId;
           return (
             <AppLayout activeModule={activeModule} onModuleChange={setActiveModule} onLogout={signOut}>
               <ModuleRenderer 
@@ -293,7 +307,9 @@ export function App() {
                 onNavigate={setActiveModule}
                 onUpdateExchangeRate={handleUpdateExchangeRate}
                 onFetchExchangeRates={handleFetchExchangeRates}
-                {...(businessTypeId ? { businessTypeId } : {})}
+                {...(computedBusinessTypeId ? { businessTypeId: computedBusinessTypeId } : {})}
+                maxProducts={computedMaxProducts}
+                features={computedFeatures}
               />
             </AppLayout>
           );

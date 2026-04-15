@@ -18,19 +18,23 @@ import { NewOrderModal } from "./NewOrderModal";
 import { CompleteOrderModal } from "./CompleteOrderModal";
 import { Tabs } from "@/common/components/Tabs";
 import { AlertCircle } from "lucide-react";
+import { ModuleLockedOverlay } from "@/common/components/ModuleLockedOverlay";
 
 interface ProductionPanelProps {
   tenantSlug: string;
   actor: ProductionActorContext;
   products: Product[];
   warehouses?: { localId: string; name: string }[];
+  features?: Record<string, boolean> | undefined;
 }
 
 const defaultWarehouses = [
   { localId: "default-warehouse", name: "Bodega Principal" },
 ];
 
-export function ProductionPanel({ tenantSlug, actor, products, warehouses = defaultWarehouses }: ProductionPanelProps) {
+export function ProductionPanel({ tenantSlug, actor, products, warehouses = defaultWarehouses, features }: ProductionPanelProps) {
+  const productionEnabled = features?.production === true;
+  
   const [, setActiveTab] = useState("orders");
   const [showNewRecipeModal, setShowNewRecipeModal] = useState(false);
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
@@ -143,6 +147,16 @@ export function ProductionPanel({ tenantSlug, actor, products, warehouses = defa
       ),
     },
   ], [state, products, warehouses]);
+
+  if (!productionEnabled) {
+    return (
+      <ModuleLockedOverlay
+        moduleName="Producción (MRP)"
+        planRequired="Pro"
+        currentPlan="Basic"
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

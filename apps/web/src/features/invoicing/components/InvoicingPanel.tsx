@@ -21,6 +21,7 @@ import { AlertCircle } from "lucide-react";
 interface InvoicingPanelProps {
   tenantSlug: string;
   actor: InvoicingActorContext;
+  features?: Record<string, boolean> | undefined;
 }
 
 interface SaleForInvoice {
@@ -36,7 +37,8 @@ interface SaleForInvoice {
   createdAt: string;
 }
 
-export function InvoicingPanel({ tenantSlug, actor }: InvoicingPanelProps) {
+export function InvoicingPanel({ tenantSlug, actor, features }: InvoicingPanelProps) {
+  const maxInvoices = features?.invoices as number | undefined;
   const [, setActiveTab] = useState("invoices");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -51,7 +53,7 @@ export function InvoicingPanel({ tenantSlug, actor }: InvoicingPanelProps) {
     voidInvoice
   } = useInvoicing({
     service: invoicingService,
-    tenant: { tenantSlug },
+    tenant: { tenantSlug, maxInvoices, features },
     actor
   });
 

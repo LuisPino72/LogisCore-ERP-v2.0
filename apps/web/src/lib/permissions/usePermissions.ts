@@ -1,9 +1,20 @@
 import { useCallback, useMemo } from "react";
-import { useTenantData } from "@/features/tenant/hooks/useTenantData";
 import { DEFAULT_EMPLOYEE_PERMISSIONS } from "./rbac-constants";
+import type { UserRole, TenantContext } from "@/features/tenant/types/tenant.types";
+
+let globalUserRole: UserRole | null = null;
+let globalTenantContext: TenantContext | null = null;
+
+export const setGlobalTenantContext = (tenant: TenantContext | null) => {
+  globalTenantContext = tenant;
+};
+
+export const setGlobalUserRole = (role: UserRole | null) => {
+  globalUserRole = role;
+};
 
 export const usePermissions = () => {
-  const { userRole } = useTenantData();
+  const userRole = globalUserRole;
 
   const hasPermission = useCallback(
     (permission: string): boolean => {
@@ -73,3 +84,18 @@ export const usePermissions = () => {
 };
 
 export type UsePermissions = ReturnType<typeof usePermissions>;
+
+export const useModuleAccess = (_moduleName: string): { hasAccess: boolean; isLoading: boolean } => {
+  const tenant = globalTenantContext;
+
+  const hasAccess = useMemo(() => {
+    if (!tenant?.features) return true;
+    if (tenant.features[_moduleName] === undefined) return true;
+    return tenant.features[_moduleName] === true;
+  }, [tenant?.features, _moduleName]);
+
+  return {
+    hasAccess,
+    isLoading: false
+  };
+};

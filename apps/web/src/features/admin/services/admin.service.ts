@@ -39,6 +39,7 @@ import type {
   CreateGlobalProductInput,
   GlobalProductPresentation
 } from "../types/admin.types";
+import { SUBSCRIPTION_ERROR_CODES } from "../../../specs/admin/errors";
 
 /**
  * Contrato del servicio de admin.
@@ -741,6 +742,46 @@ export const createAdminService = ({
   };
 
   const createUser: AdminService["createUser"] = async (input) => {
+    const subscriptionQuery = await supabase.rpc(
+      "check_subscriptions",
+      { p_tenant_slug: input.tenantId }
+    );
+
+    const maxUsers = (subscriptionQuery.data as { max_users: number }[])?.[0]?.max_users ?? 3;
+
+    const usersCountQuery = await supabase
+      .from("user_roles")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", input.tenantId)
+      .is("deleted_at", null)
+      .neq("role", "admin");
+
+    const currentUsers = usersCountQuery.count ?? 0;
+
+    if (currentUsers >= maxUsers) {
+      eventBus.emit("SECURITY.AUDIT_LOG_CREATED", {
+        eventType: "PLAN_USER_LIMIT_EXCEEDED",
+        tenantId: input.tenantId,
+        details: {
+          attemptedEmail: input.email,
+          currentUsers,
+          maxUsers,
+          action: "createUser"
+        }
+      });
+
+      return err(createAppError({
+        code: SUBSCRIPTION_ERROR_CODES.PLAN_USER_LIMIT_EXCEEDED,
+        message: `Límite de usuarios alcanzado (${maxUsers}). Upgrade requerido para agregar más usuarios.`,
+        retryable: false,
+        context: {
+          currentUsers,
+          maxUsers,
+          tenantId: input.tenantId
+        }
+      }));
+    }
+
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: input.email,
       password: input.password || Math.random().toString(36).slice(-8),

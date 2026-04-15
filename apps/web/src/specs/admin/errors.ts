@@ -21,6 +21,7 @@ export const SUBSCRIPTION_ERROR_CODES = {
   NOT_FOUND: "ADMIN_SUBSCRIPTION_NOT_FOUND",
   EXPIRED: "ADMIN_SUBSCRIPTION_EXPIRED",
   DATES_INVALID: "ADMIN_SUBSCRIPTION_DATES_INVALID",
+  PLAN_USER_LIMIT_EXCEEDED: "ADMIN_PLAN_USER_LIMIT_EXCEEDED",
 } as const;
 
 export const PERMISSION_ERROR_CODES = {
@@ -111,6 +112,7 @@ export function createSubscriptionError(
     [SUBSCRIPTION_ERROR_CODES.NOT_FOUND]: "Suscripción no encontrada",
     [SUBSCRIPTION_ERROR_CODES.EXPIRED]: "Suscripción vencida - renovación requerida",
     [SUBSCRIPTION_ERROR_CODES.DATES_INVALID]: "Fecha de fin debe ser mayor a fecha de inicio",
+    [SUBSCRIPTION_ERROR_CODES.PLAN_USER_LIMIT_EXCEEDED]: "Límite de usuarios del plan alcanzado. Upgrade requerido para agregar más usuarios.",
   };
 
   return {

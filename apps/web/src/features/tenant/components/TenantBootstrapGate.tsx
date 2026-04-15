@@ -12,6 +12,7 @@ import { type AdminModule, type Tenant } from "@/features/admin/types/admin.type
 import type { TenantContext } from "../types/tenant.types";
 import { type ActorContext, type ActorPermissions } from "@/lib/permissions/permissions.types";
 import { eventBus } from "@/lib/core/runtime";
+import { useTenantDataSync } from "../hooks/useTenantData";
 
 export function SubscriptionExpirationBanner() {
   return (
@@ -39,6 +40,9 @@ export function TenantBootstrapGate({
     auth: authService,
     tenant: tenantService
   });
+  
+  useTenantDataSync(authService, tenantService, bootstrapTenantData);
+  
   const admin = useAdmin({ service: adminService });
   const [activeAdminModule, setActiveAdminModule] = useState<AdminModule>("dashboard");
   const [impersonatedTenantSlug, setImpersonatedTenantSlug] = useState<string | null>(null);

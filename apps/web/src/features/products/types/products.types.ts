@@ -8,6 +8,8 @@ import type { AppError } from "@logiscore/core";
 /** Contexto del tenant para el módulo de productos */
 export interface ProductsTenantContext {
   tenantSlug: string;
+  maxProducts?: number | undefined;
+  features?: Record<string, boolean> | undefined;
 }
 
 /**

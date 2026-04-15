@@ -84,4 +84,22 @@ export class DexieInvoicingDbAdapter implements InvoicingDb {
       .toArray();
     return rates[0];
   }
+
+  async listIssuedInvoicesThisMonth(tenantId: string): Promise<InvoiceRecord[]> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    
+    return db.invoices
+      .where("tenantId")
+      .equals(tenantId)
+      .and((item) => 
+        !item.deletedAt && 
+        item.status === "issued" &&
+        item.issuedAt &&
+        new Date(item.issuedAt) >= startOfMonth &&
+        new Date(item.issuedAt) <= endOfMonth
+      )
+      .toArray();
+  }
 }
