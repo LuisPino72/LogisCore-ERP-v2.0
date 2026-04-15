@@ -130,12 +130,73 @@ export interface LotLayer {
 export interface FinanceReport {
   period: string;
   totalSales: number;
+  subtotal: number;
+  taxTotal: number;
+  discountTotal: number;
   totalCost: number;
+  cogs: number;
+  purchasesConfirmed: number;
+  purchasesReceived: number;
   grossProfit: number;
+  operatingProfit: number;
   profitMarginPercent: number;
   ivaCollected: number;
   igtfCollected: number;
   exchangeRateUsed: number;
+  totalTransactions: number;
+  totalItems: number;
+}
+
+export interface FinanceReportEntry {
+  id: string;
+  type: "sale" | "purchase" | "inventory";
+  reference: string;
+  date: string;
+  amount: number;
+  cost: number;
+  profit: number;
+  exchangeRate: number;
+  itemsCount: number;
+}
+
+export interface BalanceSheetReport {
+  period: string;
+  assets: {
+    inventory: number;
+    cash: number;
+    accountsReceivable: number;
+    total: number;
+  };
+  liabilities: {
+    accountsPayable: number;
+    taxObligations: number;
+    total: number;
+  };
+  equity: {
+    retainedEarnings: number;
+    total: number;
+  };
+  balanceCheck: boolean;
+  liquidityIndex: number;
+  exchangeRateUsed: number;
+}
+
+export interface BalanceSheetAsset {
+  type: "inventory" | "cash" | "receivable";
+  reference: string;
+  date: string;
+  amount: number;
+  isWeighted: boolean;
+  unitCost?: number;
+  quantity?: number;
+}
+
+export interface BalanceSheetLiability {
+  type: "payable" | "tax";
+  reference: string;
+  date: string;
+  amount: number;
+  status: string;
 }
 
 export interface SaleWithDetails {

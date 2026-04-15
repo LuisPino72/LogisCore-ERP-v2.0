@@ -1,8 +1,10 @@
 // Reports - Adaptador de base de datos para consultas de reportes
-import { db, type SecurityAuditLogRecord } from "@/lib/db/dexie";
+import { db, type SecurityAuditLogRecord, type InventoryLotRecord } from "@/lib/db/dexie";
 import type { ReportsDb } from "./reports.service";
 import type {
   BoxClosingSummary,
+  BalanceSheetReport,
+  FinanceReport,
   GrossProfit,
   KardexEntry,
   SalesByDay,
@@ -189,13 +191,236 @@ export class DexieReportsDbAdapter implements ReportsDb {
       .toArray();
 
     if (eventType) {
-      return logs.filter((logEntry) => logEntry.eventType === eventType).sort((a, b) => 
+      return logs.filter((logEntry) => logEntry.eventType === eventType).sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
     }
 
-    return logs.sort((a, b) => 
+    return logs.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+  }
+
+  async getFinanceReport(tenantId: string, startDate?: string, endDate?: string): Promise<FinanceReport[]> {
+    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    const sales = await db.sales
+      .where("tenantId")
+      .equals(tenantId)
+      .and((s) => !s.deletedAt && s.status === "completed")
+      .toArray();
+
+    const periodSales = sales.filter((s) => {
+      const saleDate = new Date(s.createdAt ?? "");
+      return saleDate >= start && saleDate <= end;
+    });
+
+    const purchases = await db.purchases
+      .where("tenantId")
+      .equals(tenantId)
+      .and((p) => !p.deletedAt && (p.status === "confirmed" || p.status === "received" || p.status === "partial_received"))
+      .toArray();
+
+    const periodPurchases = purchases.filter((p) => {
+      const purchaseDate = new Date(p.createdAt ?? "");
+      return purchaseDate >= start && purchaseDate <= end;
+    });
+
+    const lotsMap = new Map<string, InventoryLotRecord>();
+    const allLots = await db.inventory_lots.where("tenantId").equals(tenantId).toArray();
+    for (const lot of allLots) {
+      lotsMap.set(lot.localId, lot);
+    }
+
+    let totalSales = 0;
+    let subtotal = 0;
+    let taxTotal = 0;
+    let discountTotal = 0;
+    let ivaCollected = 0;
+    let igtfCollected = 0;
+    let cogs = 0;
+    let purchasesConfirmed = 0;
+    let purchasesReceived = 0;
+    let totalTransactions = 0;
+    let totalItems = 0;
+
+    for (const sale of periodSales) {
+      totalTransactions += 1;
+      totalItems += sale.items?.length ?? 0;
+
+      const netAmount = sale.subtotal - sale.discountTotal;
+      subtotal += sale.subtotal;
+      discountTotal += sale.discountTotal;
+      taxTotal += sale.taxTotal;
+      ivaCollected += sale.taxTotal;
+      igtfCollected += sale.totalPaid - sale.total >= 0 ? (sale.totalPaid - sale.total) : 0;
+
+      let saleCost = 0;
+      for (const item of sale.items ?? []) {
+        saleCost += (item.unitCost ?? 0) * item.qty;
+      }
+
+      totalSales += netAmount;
+      cogs += saleCost;
+    }
+
+    for (const purchase of periodPurchases) {
+      const purchaseTotal = purchase.total;
+      if (purchase.status === "confirmed") {
+        purchasesConfirmed += purchaseTotal;
+      } else {
+        purchasesReceived += purchaseTotal;
+      }
+    }
+
+    const totalCost = cogs;
+    const grossProfit = totalSales - totalCost;
+    const operatingProfit = totalSales - totalCost - purchasesConfirmed;
+    const profitMarginPercent = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
+
+    const avgExchangeRate = periodSales.length > 0
+      ? periodSales.reduce((sum, s) => sum + (s.exchangeRate ?? 0), 0) / periodSales.length
+      : 36.0;
+
+    const periodKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
+
+    return [{
+      period: periodKey,
+      totalSales,
+      subtotal,
+      taxTotal,
+      discountTotal,
+      totalCost,
+      cogs,
+      purchasesConfirmed,
+      purchasesReceived,
+      grossProfit,
+      operatingProfit,
+      profitMarginPercent,
+      ivaCollected,
+      igtfCollected,
+      exchangeRateUsed: avgExchangeRate || 36.0,
+      totalTransactions,
+      totalItems
+    }];
+  }
+
+  async getBalanceSheet(tenantId: string, startDate?: string, endDate?: string): Promise<BalanceSheetReport[]> {
+    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
+
+    const lots = await db.inventory_lots
+      .where("tenantId")
+      .equals(tenantId)
+      .and((l) => !l.deletedAt && l.status === "active")
+      .toArray();
+
+    let inventoryValue = 0;
+    for (const lot of lots) {
+      const qty = Number(lot.quantity);
+      const cost = Number(lot.unitCost);
+      const isWeighted = false;
+      inventoryValue += isWeighted ? Number((qty * cost).toFixed(4)) : qty * cost;
+    }
+
+    const closings = await db.box_closings
+      .where("tenantId")
+      .equals(tenantId)
+      .and((b) => !b.deletedAt && b.status === "closed")
+      .sortBy("closedAt");
+
+    let cash = 0;
+    let lastClosingDate = "";
+    if (closings.length > 0) {
+const lastClosing = closings[closings.length - 1]!;
+    lastClosingDate = lastClosing.closedAt ?? "";
+    cash = Number(lastClosing.countedAmount ?? 0);
+    }
+
+    const salesSinceClosing = await db.sales
+      .where("tenantId")
+      .equals(tenantId)
+      .and((s) => !s.deletedAt && s.status === "completed")
+      .toArray();
+
+    const salesAfterClosing = salesSinceClosing.filter((s) => {
+      if (!lastClosingDate) return true;
+      const saleDate = new Date(s.createdAt ?? "");
+      const closingDate = new Date(lastClosingDate);
+      return saleDate > closingDate;
+    });
+
+    for (const sale of salesAfterClosing) {
+      cash += Number(sale.totalPaid);
+    }
+
+    const invoices = await db.invoices
+      .where("tenantId")
+      .equals(tenantId)
+      .and((i) => !i.deletedAt && i.status === "issued")
+      .toArray();
+
+    let accountsReceivable = 0;
+    let totalIvaCollected = 0;
+    let totalIgtfCollected = 0;
+
+    for (const invoice of invoices) {
+      const payments = invoice.payments ?? [];
+      const totalPaid = payments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
+      if (totalPaid < invoice.total) {
+        accountsReceivable += invoice.total - totalPaid;
+      }
+      totalIvaCollected += Number(invoice.taxTotal ?? 0);
+      totalIgtfCollected += Number(invoice.igtfAmount ?? 0);
+    }
+
+    const purchases = await db.purchases
+      .where("tenantId")
+      .equals(tenantId)
+      .and((p) => !p.deletedAt && (p.status === "received" || p.status === "confirmed"))
+      .toArray();
+
+    let accountsPayable = 0;
+    for (const purchase of purchases) {
+      accountsPayable += Number(purchase.total);
+    }
+
+    const taxObligations = totalIvaCollected + totalIgtfCollected;
+
+    const financeReports = await this.getFinanceReport(tenantId, startDate, endDate);
+    let retainedEarnings = 0;
+    if (financeReports.length > 0 && financeReports[0]) {
+      retainedEarnings = financeReports[0].operatingProfit;
+    }
+
+    const totalAssets = inventoryValue + cash + accountsReceivable;
+    const totalLiabilities = accountsPayable + taxObligations;
+    const totalEquity = retainedEarnings;
+    const balanceCheck = Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01;
+    const liquidityIndex = totalLiabilities > 0 ? totalAssets / totalLiabilities : totalAssets > 0 ? 999 : 0;
+
+    const periodKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
+
+    return [{
+      period: periodKey,
+      assets: {
+        inventory: inventoryValue,
+        cash: cash,
+        accountsReceivable: accountsReceivable,
+        total: totalAssets
+      },
+      liabilities: {
+        accountsPayable: accountsPayable,
+        taxObligations: taxObligations,
+        total: totalLiabilities
+      },
+      equity: {
+        retainedEarnings: retainedEarnings,
+        total: totalEquity
+      },
+      balanceCheck: balanceCheck,
+      liquidityIndex: liquidityIndex,
+      exchangeRateUsed: 36.0
+    }];
   }
 }

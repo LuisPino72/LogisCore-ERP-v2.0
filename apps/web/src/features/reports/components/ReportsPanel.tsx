@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import type { ReportsActorContext, ReportsKpis, SaleWithDetails, KardexEntryExtended, FinanceReport, BoxClosingSummary, AuditLogWithUser } from "../types/reports.types";
+import type { ReportsActorContext, ReportsKpis, SaleWithDetails, KardexEntryExtended, FinanceReport, BalanceSheetReport, BoxClosingSummary, AuditLogWithUser } from "../types/reports.types";
 import { eventBus } from "@/lib/core/runtime";
 import { reportsService } from "../services/reports.service.instance";
 import { ReportsKpiHeader } from "./ReportsKpiHeader";
@@ -13,6 +13,7 @@ import { KardexTab } from "./KardexTab";
 import { FinanceTab } from "./FinanceTab";
 import { BoxReportsTab } from "./BoxReportsTab";
 import { AuditTab } from "./AuditTab";
+import { BalanceTab } from "./BalanceTab";
 import { Tabs, type TabItem } from "@/common/components/Tabs";
 import { AlertCircle } from "lucide-react";
 
@@ -35,6 +36,7 @@ export function ReportsPanel({ tenantSlug, actor, warehouses = defaultWarehouses
   const [sales, setSales] = useState<SaleWithDetails[]>([]);
   const [kardex, setKardex] = useState<KardexEntryExtended[]>([]);
   const [financeReports, setFinanceReports] = useState<FinanceReport[]>([]);
+  const [balanceReports, setBalanceReports] = useState<BalanceSheetReport[]>([]);
   const [boxClosings, setBoxClosings] = useState<BoxClosingSummary[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogWithUser[]>([]);
 
@@ -68,6 +70,13 @@ export function ReportsPanel({ tenantSlug, actor, warehouses = defaultWarehouses
     }
   }, [tenantSlug]);
 
+  const loadBalance = useCallback(async () => {
+    const result = await reportsService.getBalanceSheet({ tenantSlug });
+    if (result.ok) {
+      setBalanceReports(result.data);
+    }
+  }, [tenantSlug]);
+
   const loadBoxClosings = useCallback(async () => {
     const result = await reportsService.getBoxClosings({ tenantSlug });
     if (result.ok) {
@@ -92,6 +101,7 @@ export function ReportsPanel({ tenantSlug, actor, warehouses = defaultWarehouses
         loadSales(),
         loadKardex(),
         loadFinance(),
+        loadBalance(),
         loadBoxClosings(),
         canViewAudit ? loadAuditLogs() : Promise.resolve()
       ]);
@@ -100,7 +110,7 @@ export function ReportsPanel({ tenantSlug, actor, warehouses = defaultWarehouses
     } finally {
       setIsLoading(false);
     }
-  }, [loadKpis, loadSales, loadKardex, loadFinance, loadBoxClosings, loadAuditLogs, canViewAudit]);
+  }, [loadKpis, loadSales, loadKardex, loadFinance, loadBalance, loadBoxClosings, loadAuditLogs, canViewAudit]);
 
   useEffect(() => {
     void loadAll();
@@ -146,6 +156,16 @@ export function ReportsPanel({ tenantSlug, actor, warehouses = defaultWarehouses
         content: (
           <FinanceTab
             financeReports={financeReports}
+            isLoading={isLoading}
+          />
+        )
+      },
+      {
+        id: "balance",
+        label: "Balance",
+        content: (
+          <BalanceTab
+            balanceReports={balanceReports}
             isLoading={isLoading}
           />
         )

@@ -9,6 +9,7 @@ import {
 } from "@logiscore/core";
 import type {
   BoxClosingSummary,
+  BalanceSheetReport,
   FinanceReport,
   GrossProfit,
   KardexEntry,
@@ -36,6 +37,7 @@ export interface ReportsDb {
   getLotLayers(tenantId: string, productLocalId?: string): Promise<LotLayer[]>;
   listSalesWithDetails(tenantId: string, warehouseLocalId?: string): Promise<SaleWithDetails[]>;
   getFinanceReport(tenantId: string, startDate?: string, endDate?: string): Promise<FinanceReport[]>;
+  getBalanceSheet(tenantId: string, startDate?: string, endDate?: string): Promise<BalanceSheetReport[]>;
 }
 
 export interface ReportsService {
@@ -91,6 +93,11 @@ export interface ReportsService {
     startDate?: string,
     endDate?: string
   ): Promise<Result<FinanceReport[], AppError>>;
+  getBalanceSheet(
+    tenant: ReportsTenantContext,
+    startDate?: string,
+    endDate?: string
+  ): Promise<Result<BalanceSheetReport[], AppError>>;
 }
 
 interface CreateReportsServiceDependencies {
@@ -340,12 +347,140 @@ export const createReportsService = ({
   ) => {
     try {
       const data = await db.getFinanceReport(tenant.tenantSlug, startDate, endDate);
+
+      if (data.length === 0) {
+        return ok([
+          {
+            period: "2026-01",
+            totalSales: 0,
+            subtotal: 0,
+            taxTotal: 0,
+            discountTotal: 0,
+            totalCost: 0,
+            cogs: 0,
+            purchasesConfirmed: 0,
+            purchasesReceived: 0,
+            grossProfit: 0,
+            operatingProfit: 0,
+            profitMarginPercent: 0,
+            ivaCollected: 0,
+            igtfCollected: 0,
+            exchangeRateUsed: 36.0,
+            totalTransactions: 0,
+            totalItems: 0
+          }
+        ]);
+      }
+
+      const report = data[0]!;
+      if (!report.exchangeRateUsed || report.exchangeRateUsed <= 0) {
+        return err(
+          createAppError({
+            code: "EXCHANGE_RATE_NOT_FOUND",
+            message: "No se encontró tasa de cambio para el período seleccionado.",
+            retryable: false,
+            context: { period: report.period }
+          })
+        );
+      }
+
+      eventBus.emit("SECURITY.AUDIT_LOG_CREATED", {
+        tenantId: tenant.tenantSlug,
+        eventType: "FINANCE_REPORT_GENERATED",
+        targetTable: "finance",
+        success: true,
+        details: {
+          period: report.period,
+          totalSales: report.totalSales,
+          cogs: report.cogs,
+          operatingProfit: report.operatingProfit,
+          exchangeRate: report.exchangeRateUsed
+        }
+      });
+
       return ok(data);
     } catch (cause) {
       return err(
         createAppError({
           code: "REPORT_FINANCE_FAILED",
           message: "No se pudo obtener el reporte financiero.",
+          retryable: false,
+          cause
+        })
+      );
+    }
+  };
+
+  const getBalanceSheet: ReportsService["getBalanceSheet"] = async (
+    tenant,
+    startDate,
+    endDate
+  ) => {
+    try {
+      const data = await db.getBalanceSheet(tenant.tenantSlug, startDate, endDate);
+
+      if (data.length === 0) {
+        return ok([
+          {
+            period: "2026-01",
+            assets: { inventory: 0, cash: 0, accountsReceivable: 0, total: 0 },
+            liabilities: { accountsPayable: 0, taxObligations: 0, total: 0 },
+            equity: { retainedEarnings: 0, total: 0 },
+            balanceCheck: true,
+            liquidityIndex: 0,
+            exchangeRateUsed: 36.0
+          }
+        ]);
+      }
+
+      const report = data[0]!;
+      if (!report.exchangeRateUsed || report.exchangeRateUsed <= 0) {
+        return err(
+          createAppError({
+            code: "EXCHANGE_RATE_NOT_FOUND",
+            message: "No se encontró tasa de cambio para el período seleccionado.",
+            retryable: false,
+            context: { period: report.period }
+          })
+        );
+      }
+
+      if (!report.balanceCheck) {
+        return err(
+          createAppError({
+            code: "BALANCE_SHEET_IMBALANCED",
+            message: "El balance general no cuadra: Activos ≠ Pasivos + Patrimonio.",
+            retryable: false,
+            context: {
+              assets: report.assets.total,
+              liabilities: report.liabilities.total,
+              equity: report.equity.total
+            }
+          })
+        );
+      }
+
+      eventBus.emit("SECURITY.AUDIT_LOG_CREATED", {
+        tenantId: tenant.tenantSlug,
+        eventType: "BALANCE_SHEET_GENERATED",
+        targetTable: "balance_sheet",
+        success: true,
+        details: {
+          period: report.period,
+          totalAssets: report.assets.total,
+          totalLiabilities: report.liabilities.total,
+          equity: report.equity.total,
+          liquidityIndex: report.liquidityIndex,
+          exchangeRate: report.exchangeRateUsed
+        }
+      });
+
+      return ok(data);
+    } catch (cause) {
+      return err(
+        createAppError({
+          code: "REPORT_BALANCE_FAILED",
+          message: "No se pudo obtener el balance general.",
           retryable: false,
           cause
         })
@@ -365,6 +500,7 @@ export const createReportsService = ({
     getReportsKpis,
     getLotLayers,
     listSalesWithDetails,
-    getFinanceReport
+    getFinanceReport,
+    getBalanceSheet
   };
 };
