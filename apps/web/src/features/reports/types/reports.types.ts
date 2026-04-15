@@ -223,3 +223,55 @@ export interface ReportsFilters {
   warehouseLocalId?: string;
   searchQuery?: string;
 }
+
+// ============================================
+// P16 - Cash Flow (Flujo de Caja) - 2026-04-15
+// ============================================
+
+export interface CashFlowInflows {
+  sales: number;
+  igtf: number;
+  others: number;
+  total: number;
+}
+
+export interface CashFlowOutflows {
+  purchases: number;
+  igtfPaid: number;
+  expenses: number;
+  total: number;
+}
+
+export interface CashFlowReport {
+  period: string;
+  initialBalance: number;
+  inflows: CashFlowInflows;
+  outflows: CashFlowOutflows;
+  netFlow: number;
+  finalBalance: number;
+  exchangeRateUsed: number;
+}
+
+export interface CashFlowEntry {
+  id: string;
+  type: "inflow" | "outflow";
+  source: "sale" | "invoice" | "purchase" | "box_open" | "adjustment" | "igtf";
+  reference: string;
+  date: string;
+  amount: number;
+  currency: "VES" | "USD";
+  exchangeRate: number;
+  quantity?: number;
+  isWeighted?: boolean;
+}
+
+export interface CashFlowSummary {
+  period: string;
+  initialBalance: number;
+  totalInflows: number;
+  totalOutflows: number;
+  netFlow: number;
+  finalBalance: number;
+  transactionCount: number;
+  exchangeRateUsed: number;
+}

@@ -21,7 +21,8 @@ import type {
   SaleWithDetails,
   SalesByDay,
   SalesByProduct,
-  SecurityAuditLog
+  SecurityAuditLog,
+  CashFlowReport
 } from "../types/reports.types";
 
 export interface ReportsDb {
@@ -38,6 +39,7 @@ export interface ReportsDb {
   listSalesWithDetails(tenantId: string, warehouseLocalId?: string): Promise<SaleWithDetails[]>;
   getFinanceReport(tenantId: string, startDate?: string, endDate?: string): Promise<FinanceReport[]>;
   getBalanceSheet(tenantId: string, startDate?: string, endDate?: string): Promise<BalanceSheetReport[]>;
+  getCashFlowReport(tenantId: string, startDate?: string, endDate?: string): Promise<CashFlowReport[]>;
 }
 
 export interface ReportsService {
@@ -98,6 +100,11 @@ export interface ReportsService {
     startDate?: string,
     endDate?: string
   ): Promise<Result<BalanceSheetReport[], AppError>>;
+  getCashFlowReport(
+    tenant: ReportsTenantContext,
+    startDate?: string,
+    endDate?: string
+  ): Promise<Result<CashFlowReport[], AppError>>;
 }
 
 interface CreateReportsServiceDependencies {
@@ -488,6 +495,60 @@ export const createReportsService = ({
     }
   };
 
+  const getCashFlowReport: ReportsService["getCashFlowReport"] = async (
+    tenant,
+    startDate,
+    endDate
+  ) => {
+    try {
+      const data = await db.getCashFlowReport(tenant.tenantSlug, startDate, endDate);
+
+      if (!data || data.length === 0) {
+        return ok([]);
+      }
+
+      const report = data[0]!;
+
+      if (report.exchangeRateUsed <= 0) {
+        return err(
+          createAppError({
+            code: "EXCHANGE_RATE_NOT_FOUND",
+            message: "No se encontró la tasa de cambio para el período.",
+            retryable: false,
+            context: { period: report.period }
+          })
+        );
+      }
+
+      eventBus.emit("SECURITY.AUDIT_LOG_CREATED", {
+        tenantId: tenant.tenantSlug,
+        eventType: "REPORTS.CASH_FLOW_GENERATED",
+        targetTable: "cash_flow",
+        success: true,
+        details: {
+          period: report.period,
+          initialBalance: report.initialBalance,
+          inflows: report.inflows.total,
+          outflows: report.outflows.total,
+          netFlow: report.netFlow,
+          finalBalance: report.finalBalance,
+          exchangeRate: report.exchangeRateUsed
+        }
+      });
+
+      return ok(data);
+    } catch (cause) {
+      return err(
+        createAppError({
+          code: "REPORT_CASH_FLOW_FAILED",
+          message: "No se pudo obtener el flujo de caja.",
+          retryable: false,
+          cause
+        })
+      );
+    }
+  };
+
   return {
     getSalesByDay,
     getSalesByProduct,
@@ -501,6 +562,7 @@ export const createReportsService = ({
     getLotLayers,
     listSalesWithDetails,
     getFinanceReport,
-    getBalanceSheet
+    getBalanceSheet,
+    getCashFlowReport
   };
 };

@@ -8,7 +8,9 @@ import type {
   GrossProfit,
   KardexEntry,
   SalesByDay,
-  SalesByProduct
+  SalesByProduct,
+  CashFlowReport,
+  CashFlowEntry
 } from "../types/reports.types";
 
 // Implementa la interfaz ReportsDb usando Dexie/IndexedDB
@@ -420,6 +422,206 @@ const lastClosing = closings[closings.length - 1]!;
       },
       balanceCheck: balanceCheck,
       liquidityIndex: liquidityIndex,
+      exchangeRateUsed: 36.0
+    }];
+  }
+
+  async getCashFlowReport(tenantId: string, startDate?: string, endDate?: string): Promise<CashFlowReport[]> {
+    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    const allBoxClosings = await db.box_closings
+      .where("tenantId")
+      .equals(tenantId)
+      .and((b) => !b.deletedAt && b.status === "closed")
+      .sortBy("closedAt");
+
+    let initialBalance = 0;
+    if (allBoxClosings.length > 0) {
+      const lastClosing = allBoxClosings[allBoxClosings.length - 1]!;
+      initialBalance = Number(lastClosing.countedAmount ?? lastClosing.expectedAmount ?? 0);
+    }
+
+    const sales = await db.sales
+      .where("tenantId")
+      .equals(tenantId)
+      .and((s) => !s.deletedAt && s.status === "completed")
+      .toArray();
+
+    const filteredSales = sales.filter((sale) => {
+      const saleDate = new Date(sale.createdAt ?? "");
+      return saleDate >= start && saleDate <= end;
+    });
+
+    let salesInflows = 0;
+    let igtfInflows = 0;
+    const cashFlowEntries: CashFlowEntry[] = [];
+
+    for (const sale of filteredSales) {
+      const payments = sale.payments ?? [];
+      const saleDate = sale.createdAt ?? new Date().toISOString();
+      const exchangeRate = Number(sale.exchangeRate ?? 36.0);
+
+      for (const payment of payments) {
+        const amount = Number(payment.amount ?? 0);
+        const currency = (payment.currency as "VES" | "USD") ?? "VES";
+
+        if (currency === "VES") {
+          salesInflows += amount;
+        } else {
+          const amountInVes = amount * exchangeRate;
+          salesInflows += amountInVes;
+          const igtfAmount = amountInVes * 0.03;
+          igtfInflows += igtfAmount;
+        }
+
+        cashFlowEntries.push({
+          id: sale.localId + "_" + Math.random().toString(36).substring(7),
+          type: "inflow",
+          source: "sale",
+          reference: sale.saleNumber ?? sale.localId,
+          date: saleDate,
+          amount: currency === "VES" ? amount : amount * exchangeRate,
+          currency: currency,
+          exchangeRate: exchangeRate
+        });
+      }
+    }
+
+    const invoices = await db.invoices
+      .where("tenantId")
+      .equals(tenantId)
+      .and((i) => !i.deletedAt && i.status === "issued")
+      .toArray();
+
+    const filteredInvoices = invoices.filter((invoice) => {
+      const invoiceDate = new Date(invoice.createdAt ?? "");
+      return invoiceDate >= start && invoiceDate <= end;
+    });
+
+    for (const invoice of filteredInvoices) {
+      const payments = invoice.payments ?? [];
+      const invoiceDate = invoice.createdAt ?? new Date().toISOString();
+      const exchangeRate = Number(invoice.exchangeRate ?? 36.0);
+
+      for (const payment of payments) {
+        const amount = Number(payment.amount ?? 0);
+        const currency = (payment.currency as "VES" | "USD") ?? "VES";
+
+        if (currency === "VES") {
+          salesInflows += amount;
+        } else {
+          const amountInVes = amount * exchangeRate;
+          salesInflows += amountInVes;
+          const igtfAmount = amountInVes * 0.03;
+          igtfInflows += igtfAmount;
+        }
+
+        cashFlowEntries.push({
+          id: invoice.localId + "_" + Math.random().toString(36).substring(7),
+          type: "inflow",
+          source: "invoice",
+          reference: invoice.invoiceNumber ?? invoice.localId,
+          date: invoiceDate,
+          amount: currency === "VES" ? amount : amount * exchangeRate,
+          currency: currency,
+          exchangeRate: exchangeRate
+        });
+      }
+    }
+
+    const purchases = await db.purchases
+      .where("tenantId")
+      .equals(tenantId)
+      .and((p) => !p.deletedAt && (p.status === "received" || p.status === "confirmed"))
+      .toArray();
+
+    const filteredPurchases = purchases.filter((purchase) => {
+      const purchaseDate = new Date(purchase.createdAt ?? "");
+      return purchaseDate >= start && purchaseDate <= end;
+    });
+
+    let purchaseOutflows = 0;
+    for (const purchase of filteredPurchases) {
+      const purchaseDate = purchase.createdAt ?? new Date().toISOString();
+      const amount = Number(purchase.total ?? 0);
+      const exchangeRate = Number(purchase.exchangeRate ?? 36.0);
+
+      purchaseOutflows += amount * exchangeRate;
+
+cashFlowEntries.push({
+          id: purchase.localId + "_" + Math.random().toString(36).substring(7),
+          type: "outflow",
+          source: "purchase",
+          reference: purchase.localId,
+          date: purchaseDate,
+          amount: amount * exchangeRate,
+          currency: "VES",
+          exchangeRate: exchangeRate
+        });
+    }
+
+    const movements = await db.stock_movements
+      .where("tenantId")
+      .equals(tenantId)
+      .and((m) => !m.deletedAt && m.movementType === "adjustment_out")
+      .toArray();
+
+    const filteredMovements = movements.filter((movement) => {
+      const movementDate = new Date(movement.createdAt ?? "");
+      return movementDate >= start && movementDate <= end;
+    });
+
+    let expenseOutflows = 0;
+    for (const movement of filteredMovements) {
+      const movementDate = movement.createdAt ?? new Date().toISOString();
+      const quantity = Number(movement.quantity ?? 0);
+      const unitCost = Number(movement.unitCost ?? 0);
+
+      const isWeighted = false;
+      const amount = isWeighted ? Number((quantity * unitCost).toFixed(4)) : quantity * unitCost;
+      expenseOutflows += amount;
+
+      cashFlowEntries.push({
+        id: movement.localId + "_" + Math.random().toString(36).substring(7),
+        type: "outflow",
+        source: "adjustment",
+        reference: movement.localId,
+        date: movementDate,
+        amount: amount,
+        currency: "VES",
+        exchangeRate: 1,
+        quantity: quantity,
+        isWeighted: isWeighted
+      });
+    }
+
+    const igtfPaid = igtfInflows * 0.03;
+
+    const totalInflows = salesInflows + igtfInflows;
+    const totalOutflows = purchaseOutflows + igtfPaid + expenseOutflows;
+    const netFlow = totalInflows - totalOutflows;
+    const finalBalance = initialBalance + netFlow;
+
+    const periodKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
+
+    return [{
+      period: periodKey,
+      initialBalance: initialBalance,
+      inflows: {
+        sales: salesInflows,
+        igtf: igtfInflows,
+        others: 0,
+        total: totalInflows
+      },
+      outflows: {
+        purchases: purchaseOutflows,
+        igtfPaid: igtfPaid,
+        expenses: expenseOutflows,
+        total: totalOutflows
+      },
+      netFlow: netFlow,
+      finalBalance: finalBalance,
       exchangeRateUsed: 36.0
     }];
   }
