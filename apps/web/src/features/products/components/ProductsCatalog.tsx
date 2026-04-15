@@ -1,24 +1,93 @@
-import { useEffect, useState, useMemo } from "react";
-import { Box, Folder, Scale, Shirt } from "lucide-react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { Box, Folder, Scale, Shirt, Download, Loader2 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { eventBus } from "@/lib/core/runtime";
 import { useProducts } from "../hooks/useProducts";
 import { productsService } from "../services/products.service.instance";
+import { adminService } from "@/features/admin/services/admin.service.instance";
 import type { ProductsActorContext, Product } from "../types/products.types";
 import { Tabs } from "@/common/components/Tabs";
 import { KPIHeader } from "./KPIHeader";
 import { ProductsDataTable } from "./ProductsDataTable";
 import { ProductsFilters, type ProductsFiltersState } from "./ProductsFilters";
 import { EmptyState } from "@/common/components/EmptyState";
+import { Modal } from "@/common/components/Modal";
+import type { GlobalProduct } from "@/features/admin/types/admin.types";
+import { useToast } from "@/common/stores/toastStore";
 
 const DEFAULT_EXCHANGE_RATE = 480;
+
+function VirtualizedGlobalProductList({
+  products,
+  selectedProducts,
+  onToggle,
+  containerRef
+}: {
+  products: GlobalProduct[];
+  selectedProducts: Set<string>;
+  onToggle: (id: string) => void;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const virtualizer = useVirtualizer({
+    count: products.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => 72,
+    overscan: 10
+  });
+
+  return (
+    <div
+      ref={containerRef}
+      className="max-h-96 overflow-y-auto border border-surface-200 rounded"
+    >
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: "100%",
+          position: "relative"
+        }}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const product = products[virtualRow.index];
+          return (
+            <div
+              key={product.id}
+              data-index={virtualRow.index}
+              className="flex items-center gap-3 p-3 hover:bg-surface-50 border-b border-surface-100 absolute w-full"
+              style={{
+                transform: `translateY(${virtualRow.start}px)`
+              }}
+            >
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedProducts.has(product.id)}
+                  onChange={() => onToggle(product.id)}
+                  className="w-4 h-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
+                />
+              </label>
+              <div className="flex-1">
+                <div className="font-medium">{product.name}</div>
+                <div className="text-sm text-content-secondary">
+                  SKU: {product.sku} | Presentaciones: {product.presentations.length}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 interface ProductsCatalogProps {
   tenantSlug: string;
   actor: ProductsActorContext;
   exchangeRate?: number;
+  businessTypeId?: string;
 }
 
-export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateFromApp }: ProductsCatalogProps) {
+export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateFromApp, businessTypeId }: ProductsCatalogProps) {
   const { state, refresh } = useProducts({
     service: productsService,
     tenant: { tenantSlug },
@@ -32,9 +101,30 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
     taxable: "all"
   });
 
+  const toast = useToast();
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [globalProducts, setGlobalProducts] = useState<GlobalProduct[]>([]);
+  const [globalProductsLoading, setGlobalProductsLoading] = useState(false);
+  const [globalProductsCount, setGlobalProductsCount] = useState<number>(0);
+  const [selectedGlobalProducts, setSelectedGlobalProducts] = useState<Set<string>>(new Set());
+  const [importingProducts, setImportingProducts] = useState(false);
+  const globalProductsContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!businessTypeId) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await adminService.listGlobalProducts(businessTypeId);
+      if (!cancelled && result.ok) {
+        setGlobalProductsCount(result.data.length);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [businessTypeId]);
 
   useEffect(() => {
     if (typeof exchangeRateFromApp === "number" && exchangeRateFromApp > 0) {
@@ -101,6 +191,91 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
     return products;
   }, [state.products, filters]);
 
+  const handleOpenImportModal = async () => {
+    setShowImportModal(true);
+    setGlobalProductsLoading(true);
+    try {
+      const result = await adminService.listGlobalProducts(businessTypeId);
+      if (result.ok) {
+        setGlobalProducts(result.data);
+        setGlobalProductsCount(result.data.length);
+      }
+    } finally {
+      setGlobalProductsLoading(false);
+    }
+  };
+
+  const handleToggleGlobalProduct = (productId: string) => {
+    setSelectedGlobalProducts((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  };
+
+  const handleImportSelected = async () => {
+    if (selectedGlobalProducts.size === 0) {
+      toast.warning("Seleccione al menos un producto");
+      return;
+    }
+
+    setImportingProducts(true);
+    try {
+      const productsToImport = globalProducts.filter((p) => selectedGlobalProducts.has(p.id));
+
+      const importData = productsToImport.map((p) => {
+        const item = {
+          id: p.id,
+          name: p.name,
+          sku: p.sku,
+          isWeighted: p.isWeighted,
+          unitOfMeasure: p.unitOfMeasure,
+          isTaxable: p.isTaxable,
+          isSerialized: p.isSerialized,
+          visible: p.visible,
+          presentations: p.presentations.map((pres) => {
+            const pItem: Record<string, unknown> = {
+              name: pres.name,
+              factor: pres.factor,
+              price: pres.price,
+              isDefault: pres.isDefault
+            };
+            if (pres.barcode) pItem.barcode = pres.barcode;
+            return pItem as { name: string; factor: number; price: number; isDefault: boolean; barcode?: string };
+          })
+        };
+
+        if (p.description) (item as Record<string, unknown>).description = p.description;
+        if (p.categoryId) (item as Record<string, unknown>).categoryId = p.categoryId;
+        if (p.weight) (item as Record<string, unknown>).weight = p.weight;
+        if (p.length) (item as Record<string, unknown>).length = p.length;
+        if (p.width) (item as Record<string, unknown>).width = p.width;
+        if (p.height) (item as Record<string, unknown>).height = p.height;
+
+        return item as Parameters<typeof productsService.importGlobalProducts>[1][number];
+      });
+
+      const result = await productsService.importGlobalProducts({ tenantSlug }, importData);
+
+      if (result.ok) {
+        toast.success(
+          `Importados ${result.data.importedProducts} productos con ${result.data.importedPresentations} presentaciones`
+        );
+        setShowImportModal(false);
+        setSelectedGlobalProducts(new Set());
+        await refresh();
+      } else {
+        toast.error(`Error al importar: ${result.error.message}`);
+      }
+    } finally {
+      setImportingProducts(false);
+    }
+  };
+
   const handleEditProduct = async (_product: Product) => {
     // TODO: Open edit modal
   };
@@ -116,7 +291,11 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
     if (!confirmed) return;
     
     try {
-      await productsService.deleteProduct(product.localId, tenantSlug);
+      await productsService.deleteProduct(
+        { tenantSlug },
+        actor,
+        product.localId
+      );
       eventBus.emit("PRODUCT.DELETED", { localId: product.localId });
       await refresh();
     } catch {
@@ -268,13 +447,25 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
       ) : null}
       
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-content-primary mb-1">Maestro de Catálogo</h1>
-        <p className="text-content-secondary">Gestiona tus productos, categorías y presentaciones</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-content-primary mb-1">Maestro de Catálogo</h1>
+            <p className="text-content-secondary">Gestiona tus productos, categorías y presentaciones</p>
+          </div>
+          <button
+            onClick={handleOpenImportModal}
+            className="btn btn-primary flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Importar del Catálogo Global
+          </button>
+        </div>
       </div>
 
       <KPIHeader
         products={state.products}
         categories={state.categories}
+        globalProductsCount={globalProductsCount}
       />
 
       <Tabs
@@ -282,6 +473,93 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
         variant="pills"
         defaultTab="products"
       />
+
+      {showImportModal && (
+        <Modal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          title="Importar del Catálogo Global"
+          size="lg"
+        >
+          <div className="space-y-4">
+            {globalProductsLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
+                <span className="ml-2">Cargando productos globales...</span>
+              </div>
+            ) : globalProducts.length === 0 ? (
+              <p className="text-content-secondary text-center p-4">
+                No hay productos globales disponibles.
+              </p>
+            ) : (
+              <>
+                <div className="text-sm text-content-secondary mb-2">
+                  Seleccione los productos a importar: {selectedGlobalProducts.size} seleccionados
+                </div>
+                {globalProducts.length > 100 ? (
+                  <VirtualizedGlobalProductList
+                    products={globalProducts}
+                    selectedProducts={selectedGlobalProducts}
+                    onToggle={handleToggleGlobalProduct}
+                    containerRef={globalProductsContainerRef}
+                  />
+                ) : (
+                  <div className="max-h-96 overflow-y-auto border border-surface-200 rounded">
+                    {globalProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        className="flex items-center gap-3 p-3 hover:bg-surface-50 border-b border-surface-100"
+                      >
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedGlobalProducts.has(product.id)}
+                            onChange={() => handleToggleGlobalProduct(product.id)}
+                            className="w-4 h-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
+                          />
+                        </label>
+                        <div className="flex-1">
+                          <div className="font-medium">{product.name}</div>
+                          <div className="text-sm text-content-secondary">
+                            SKU: {product.sku} | Presentaciones: {product.presentations.length}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="btn btn-ghost"
+                disabled={importingProducts}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleImportSelected}
+                disabled={selectedGlobalProducts.size === 0 || importingProducts}
+                className="btn btn-primary flex items-center gap-2"
+              >
+                {importingProducts ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Importando...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Importar ({selectedGlobalProducts.size})
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </section>
   );
 }

@@ -1,23 +1,23 @@
-import { Package, Folder, Scale, Shirt } from "lucide-react";
+import { Package, Folder, Scale, Globe } from "lucide-react";
 import type { Category, Product } from "../types/products.types";
 import { Tooltip } from "@/common";
 
 interface KPIHeaderProps {
   products: Product[];
   categories: Category[];
+  globalProductsCount?: number;
 }
 
-export function KPIHeader({ products, categories }: KPIHeaderProps) {
+export function KPIHeader({ products, categories, globalProductsCount }: KPIHeaderProps) {
   const activeProducts = products.filter(p => !p.deletedAt);
   const activeCategories = categories.filter(c => !c.deletedAt);
   const taxableProducts = activeProducts.filter(p => p.isTaxable);
-  const seedProducts = activeProducts.filter(p => !p.preferredSupplierLocalId);
 
   const kpis = [
     { label: "Total SKUs", value: activeProducts.length, icon: Package, tooltip: "Total de productos activos en el catálogo" },
     { label: "Categorías Activas", value: activeCategories.length, icon: Folder, tooltip: "Categorías de productos disponibles" },
     { label: "Gravables (IVA 16%)", value: taxableProducts.length, icon: Scale, tooltip: "Productos que aplicarán IVA en ventas" },
-    { label: "Global (Seed)", value: seedProducts.length, icon: Shirt, tooltip: "Productos sin proveedor preferido asignado" }
+    { label: "Catálogo Global", value: globalProductsCount ?? 0, icon: Globe, tooltip: "Productos disponibles en el catálogo global para importar" }
   ];
 
   return (

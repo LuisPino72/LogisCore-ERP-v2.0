@@ -23,7 +23,7 @@ export interface Category {
   name: string;
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string;
+  deletedAt?: string | null;
 }
 
 /**
@@ -45,6 +45,7 @@ export interface ProductPresentation {
   isDefault?: boolean;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
 }
 
 /**
@@ -76,6 +77,8 @@ export interface Product {
   defaultPresentationId?: string | null;
   preferredSupplierLocalId?: string | null;
   deletedAt?: string | null;
+  // Campos para productos globales/heredados
+  globalProductId?: string | null;
 }
 
 /**
@@ -256,4 +259,24 @@ export interface ProductsUiState {
   presentations: ProductPresentation[];
   sizeColors: ProductSizeColor[];
   lastError: AppError | null;
+}
+
+/**
+ * Presentación de producto global (para importación)
+ */
+export interface GlobalProductPresentation {
+  name: string;
+  factor: number;
+  price: number;
+  isDefault: boolean;
+  barcode?: string;
+}
+
+/**
+ * Resultado de importar productos globales
+ */
+export interface ImportGlobalProductsResult {
+  importedProducts: number;
+  importedPresentations: number;
+  skippedProducts: number;
 }

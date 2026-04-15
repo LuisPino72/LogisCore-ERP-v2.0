@@ -9,6 +9,10 @@ describe("architecture guard", () => {
       path.resolve(
         process.cwd(),
         "apps/web/src/features/tenant/components/TenantBootstrapGate.tsx"
+      ),
+      path.resolve(
+        process.cwd(),
+        "apps/web/src/features/products/components/ProductsCatalog.tsx"
       )
     ]);
 

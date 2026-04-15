@@ -114,9 +114,9 @@ export const createTenantService = ({
   ) => {
     const tenantQuery = await supabase
       .from("tenants")
-      .select("id, slug, name")
+      .select("id, slug, name, business_type_id")
       .eq("owner_user_id", userId)
-      .maybeSingle<{ id: string; slug: string; name: string }>();
+      .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
 
     if (tenantQuery.error || !tenantQuery.data) {
       return err(
@@ -130,11 +130,12 @@ export const createTenantService = ({
       );
     }
 
-    const tenant = {
+    const tenant: TenantContext = {
       tenantUuid: tenantQuery.data.id,
       tenantSlug: tenantQuery.data.slug,
       name: tenantQuery.data.name,
-      userId
+      userId,
+      ...(tenantQuery.data.business_type_id ? { businessTypeId: tenantQuery.data.business_type_id } : {})
     };
     eventBus.emit("TENANT.RESOLVED", tenant);
     return ok(tenant);
@@ -314,17 +315,19 @@ export const createTenantService = ({
     let tenantSlug: string | null = null;
     let tenantId: string | null = null;
     let tenantName: string | null = null;
+    let businessTypeId: string | undefined = undefined;
 
     const ownerQuery = await supabase
       .from("tenants")
-      .select("id, slug, name")
+      .select("id, slug, name, business_type_id")
       .eq("owner_user_id", userId)
-      .maybeSingle<{ id: string; slug: string; name: string }>();
+      .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
 
     if (ownerQuery.data) {
       tenantSlug = ownerQuery.data.slug;
       tenantId = ownerQuery.data.id;
       tenantName = ownerQuery.data.name;
+      businessTypeId = ownerQuery.data.business_type_id ?? undefined;
     } else {
       // Try as employee — find tenant_id from user_roles
       const roleQuery = await supabase
@@ -336,14 +339,15 @@ export const createTenantService = ({
       if (roleQuery.data?.tenant_id) {
         const tenantByIdQuery = await supabase
           .from("tenants")
-          .select("id, slug, name")
+          .select("id, slug, name, business_type_id")
           .eq("id", roleQuery.data.tenant_id)
-          .maybeSingle<{ id: string; slug: string; name: string }>();
+          .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
 
         if (tenantByIdQuery.data) {
           tenantSlug = tenantByIdQuery.data.slug;
           tenantId = tenantByIdQuery.data.id;
           tenantName = tenantByIdQuery.data.name;
+          businessTypeId = tenantByIdQuery.data.business_type_id ?? undefined;
         }
       }
     }
@@ -358,11 +362,12 @@ export const createTenantService = ({
       );
     }
 
-    const tenant = {
+    const tenant: TenantContext = {
       tenantUuid: tenantId,
       tenantSlug,
       name: tenantName ?? "N/A",
-      userId
+      userId,
+      ...(businessTypeId ? { businessTypeId } : {})
     };
     eventBus.emit("TENANT.RESOLVED", tenant);
 

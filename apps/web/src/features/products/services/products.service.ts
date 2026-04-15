@@ -18,7 +18,9 @@ import type {
   Product,
   ProductPresentation,
   ProductSizeColor,
-  ProductsTenantContext
+  ProductsTenantContext,
+  GlobalProductPresentation,
+  ImportGlobalProductsResult
 } from "../types/products.types";
 import {
   validateProductInput,
@@ -135,6 +137,26 @@ export interface ProductsService {
     actor: ProductsActorContext,
     productLocalId: string
   ): Promise<Result<void, AppError>>;
+  importGlobalProducts(
+    tenant: ProductsTenantContext,
+    globalProducts: Array<{
+      id: string;
+      name: string;
+      sku: string;
+      description?: string;
+      categoryId?: string;
+      isWeighted: boolean;
+      unitOfMeasure: string;
+      isTaxable: boolean;
+      isSerialized: boolean;
+      weight?: number;
+      length?: number;
+      width?: number;
+      height?: number;
+      visible: boolean;
+      presentations: GlobalProductPresentation[];
+    }>
+  ): Promise<Result<ImportGlobalProductsResult, AppError>>;
 }
 
 interface ProductsServiceDependencies {
@@ -1163,6 +1185,162 @@ export const createProductsService = ({
       });
     };
 
+    const importGlobalProducts: ProductsService["importGlobalProducts"] = async (
+      tenant,
+      globalProducts
+    ) => {
+      const validation = validateTenantForDexie(tenant.tenantSlug);
+      if (!validation.ok) return err(validation.error);
+
+      const now = clock().toISOString();
+
+      let importedProducts = 0;
+      let importedPresentations = 0;
+      let skippedProducts = 0;
+
+      for (const gp of globalProducts) {
+        const existingProducts = await db.listProducts(tenant.tenantSlug);
+        const skuExists = existingProducts.some((p) => p.sku === gp.sku && !p.deletedAt);
+
+        if (skuExists) {
+          skippedProducts++;
+          continue;
+        }
+
+        const productLocalId = uuid();
+        let defaultPresentationId: string | null = null;
+
+        const product: Product = {
+          localId: productLocalId,
+          tenantId: tenant.tenantSlug,
+          name: gp.name,
+          sku: gp.sku,
+          description: gp.description ?? null,
+          categoryId: gp.categoryId ?? null,
+          isWeighted: gp.isWeighted ?? false,
+          unitOfMeasure: gp.unitOfMeasure ?? "un",
+          isTaxable: gp.isTaxable ?? true,
+          isSerialized: gp.isSerialized ?? false,
+          weight: gp.weight ?? null,
+          length: gp.length ?? null,
+          width: gp.width ?? null,
+          height: gp.height ?? null,
+          visible: gp.visible ?? true,
+          defaultPresentationId: null,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: undefined,
+          globalProductId: gp.id
+        };
+
+        const createdPresentations: ProductPresentation[] = [];
+
+        for (const gpPres of gp.presentations) {
+          const presId = uuid();
+          if (gpPres.isDefault) {
+            defaultPresentationId = presId;
+          }
+
+          const presentation: ProductPresentation = {
+            id: presId,
+            tenantId: tenant.tenantSlug,
+            productLocalId: productLocalId,
+            name: gpPres.name,
+            factor: gpPres.factor,
+            price: gpPres.price,
+            barcode: gpPres.barcode,
+            isDefault: gpPres.isDefault,
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: undefined
+          };
+
+          await db.createPresentation(presentation);
+          createdPresentations.push(presentation);
+          importedPresentations++;
+
+          const syncResult = await syncEngine.enqueue({
+            id: uuid(),
+            table: "product_presentations",
+            operation: "create",
+            payload: {
+              id: presId,
+              tenant_id: tenant.tenantSlug,
+              product_local_id: productLocalId,
+              name: gpPres.name,
+              factor: gpPres.factor,
+              price: gpPres.price,
+              barcode: gpPres.barcode ?? null,
+              is_default: gpPres.isDefault,
+              created_at: now,
+              updated_at: now
+            },
+            localId: presId,
+            tenantId: tenant.tenantSlug,
+            createdAt: now,
+            attempts: 0
+          });
+          if (!syncResult.ok) {
+            return err(syncResult.error);
+          }
+        }
+
+        if (defaultPresentationId) {
+          product.defaultPresentationId = defaultPresentationId;
+        }
+
+        await db.createProduct(product);
+        importedProducts++;
+
+        const syncProductResult = await syncEngine.enqueue({
+          id: uuid(),
+          table: "products",
+          operation: "create",
+          payload: {
+            local_id: productLocalId,
+            tenant_id: tenant.tenantSlug,
+            name: gp.name,
+            sku: gp.sku,
+            description: gp.description ?? null,
+            category_id: gp.categoryId ?? null,
+            is_weighted: gp.isWeighted ?? false,
+            unit_of_measure: gp.unitOfMeasure ?? "un",
+            is_taxable: gp.isTaxable ?? true,
+            is_serialized: gp.isSerialized ?? false,
+            weight: gp.weight ?? null,
+            length: gp.length ?? null,
+            width: gp.width ?? null,
+            height: gp.height ?? null,
+            visible: gp.visible ?? true,
+            default_presentation_id: defaultPresentationId,
+            created_at: now,
+            updated_at: now,
+            global_product_id: gp.id
+          },
+          localId: productLocalId,
+          tenantId: tenant.tenantSlug,
+          createdAt: now,
+          attempts: 0
+        });
+        if (!syncProductResult.ok) {
+          return err(syncProductResult.error);
+        }
+
+        eventBus.emit("PRODUCT.CREATED", {
+          tenantId: tenant.tenantSlug,
+          localId: productLocalId,
+          visible: product.visible,
+          variantsCount: createdPresentations.length
+        });
+      }
+
+      return ok({
+        importedProducts,
+        importedPresentations,
+        skippedProducts
+      });
+    };
+
     return {
       createCategory,
       createProduct,
@@ -1175,6 +1353,7 @@ export const createProductsService = ({
       listPresentations,
       updatePresentation,
       deleteCategory,
-      deleteProduct
+      deleteProduct,
+      importGlobalProducts
     };
   };

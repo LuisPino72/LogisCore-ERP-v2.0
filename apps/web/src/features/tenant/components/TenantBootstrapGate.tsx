@@ -9,6 +9,7 @@ import { useAdmin } from "@/features/admin/hooks/useAdmin";
 import { AdminLayout, Dashboard, TenantsList, SecurityPanel, BusinessTypesPanel, SubscriptionsPanel, SettingsPanel, GlobalCatalogPanel } from "@/features/admin";
 import { LoadingSpinner } from "@/common";
 import { type AdminModule, type Tenant } from "@/features/admin/types/admin.types";
+import type { TenantContext } from "../types/tenant.types";
 import { type ActorContext, type ActorPermissions } from "@/lib/permissions/permissions.types";
 import { eventBus } from "@/lib/core/runtime";
 
@@ -24,7 +25,7 @@ export interface TenantBootstrapGateProps {
   authService: Parameters<typeof useAuth>[0]["service"];
   tenantService: Parameters<typeof useTenantData>[0]["tenant"];
   coreService: { startSync: () => unknown; bootstrapSession: () => Promise<unknown> };
-  renderApp?: (tenantSlug: string, actor: ActorContext, signOut: () => void) => ReactNode;
+  renderApp?: (tenantSlug: string, actor: ActorContext, signOut: () => void, tenantContext: TenantContext | null) => ReactNode;
 }
 
 export function TenantBootstrapGate({
@@ -162,7 +163,6 @@ export function TenantBootstrapGate({
             users={admin.securityUsers}
             isLoading={admin.state.isLoading}
             onRefresh={refreshSecurity}
-            onToggleUser={admin.toggleUserStatus}
             auditLogs={admin.auditLogs}
             auditLogsTotal={admin.auditLogsTotal}
             onLoadAuditLogs={admin.loadAuditLogs}
@@ -210,15 +210,9 @@ export function TenantBootstrapGate({
   if (renderApp && (state.tenant?.tenantSlug || impersonatedTenantSlug)) {
     const slug = impersonatedTenantSlug || state.tenant?.tenantSlug;
     const defaultPermissions: ActorPermissions = {
-      canApplyDiscount: false,
+      permissions: [],
       maxDiscountPercent: 0,
-      canApplyCustomPrice: false,
-      canVoidSale: false,
-      canRefundSale: false,
-      canVoidInvoice: false,
-      canAdjustStock: false,
-      canViewReports: true,
-      canExportReports: false
+      allowedWarehouseLocalIds: []
     };
 
     return (
@@ -238,7 +232,7 @@ export function TenantBootstrapGate({
         {renderApp(slug!, {
           role: state.userRole?.role ?? "employee",
           permissions: state.userRole?.permissions ?? defaultPermissions
-        }, signOut)}
+        }, signOut, state.tenant)}
       </div>
     );
   }

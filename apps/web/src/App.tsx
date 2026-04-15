@@ -38,6 +38,7 @@ interface SharedOperationalData {
   isLoading: boolean;
   lastError: string | null;
   exchangeRate: number;
+  businessTypeId?: string;
 }
 
 function DashboardHome({ 
@@ -58,7 +59,7 @@ function DashboardHome({
     <Suspense fallback={<LoadingFallback />}>
       <DashboardPanel 
         tenant={tenantContext as never} 
-        actor={actor} 
+        actor={actor as never} 
         onNavigate={onNavigate}
         onUpdateExchangeRate={onUpdateExchangeRate}
         onFetchExchangeRates={onFetchExchangeRates}
@@ -73,14 +74,16 @@ function ModuleRenderer({
   actor,
   onNavigate,
   onUpdateExchangeRate,
-  onFetchExchangeRates
+  onFetchExchangeRates,
+  businessTypeId
 }: { 
   moduleId: ModuleId, 
   tenantSlug: string, 
   actor: ActorContext,
   onNavigate: (module: ModuleId) => void,
   onUpdateExchangeRate: (rate: number) => Promise<void>,
-  onFetchExchangeRates: () => Promise<void>
+  onFetchExchangeRates: () => Promise<void>,
+  businessTypeId?: string
 }) {
   const [sharedData, setSharedData] = useState<SharedOperationalData>({
     products: [],
@@ -176,6 +179,7 @@ function ModuleRenderer({
             tenantSlug={tenantSlug}
             actor={actor as never}
             exchangeRate={sharedData.exchangeRate}
+            {...(businessTypeId ? { businessTypeId } : {})}
           />
         );
       case "purchases":
@@ -278,18 +282,22 @@ export function App() {
       authService={authService}
       tenantService={tenantService}
       coreService={coreService}
-      renderApp={(tenantSlug, actor, signOut) => (
-        <AppLayout activeModule={activeModule} onModuleChange={setActiveModule} onLogout={signOut}>
-          <ModuleRenderer 
-            moduleId={activeModule} 
-            tenantSlug={tenantSlug} 
-            actor={actor}
-            onNavigate={setActiveModule}
-            onUpdateExchangeRate={handleUpdateExchangeRate}
-            onFetchExchangeRates={handleFetchExchangeRates}
-          />
-        </AppLayout>
-      )}
+      renderApp={(tenantSlug, actor, signOut, tenantContext) => {
+          const businessTypeId = tenantContext?.businessTypeId;
+          return (
+            <AppLayout activeModule={activeModule} onModuleChange={setActiveModule} onLogout={signOut}>
+              <ModuleRenderer 
+                moduleId={activeModule} 
+                tenantSlug={tenantSlug} 
+                actor={actor as never}
+                onNavigate={setActiveModule}
+                onUpdateExchangeRate={handleUpdateExchangeRate}
+                onFetchExchangeRates={handleFetchExchangeRates}
+                {...(businessTypeId ? { businessTypeId } : {})}
+              />
+            </AppLayout>
+          );
+        }}
     />
   );
 }
