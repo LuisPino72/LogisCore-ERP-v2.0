@@ -28,7 +28,6 @@ interface TaxpayerInfo {
   rif: string;
   razonSocial: string;
   direccionFiscal: string;
-  regimen: string;
 }
 
 interface TenantFormProps {
@@ -68,7 +67,6 @@ const defaultTaxpayerInfo: TaxpayerInfo = {
   rif: "",
   razonSocial: "",
   direccionFiscal: "",
-  regimen: "ORDINARIO"
 };
 
 const defaultWarehouse: WarehouseInput = {
@@ -102,7 +100,7 @@ function getInitialFormData(initialData: Tenant | null | undefined, tenantEmploy
   if (!initialData) return defaultFormData;
   
   const ti = initialData.taxpayerInfo;
-  let parsedTi = { rif: "", razonSocial: "", direccionFiscal: "", regimen: "ORDINARIO" };
+  let parsedTi = { rif: "", razonSocial: "", direccionFiscal: "" };
   
   if (ti) {
     if (typeof ti === "string") {
@@ -138,7 +136,6 @@ function getInitialFormData(initialData: Tenant | null | undefined, tenantEmploy
       rif: parsedTi.rif,
       razonSocial: parsedTi.razonSocial,
       direccionFiscal: parsedTi.direccionFiscal,
-      regimen: parsedTi.regimen
     },
     employees: [{ email: "", password: "", fullName: "" }],
     existingEmployees,
@@ -354,7 +351,6 @@ export function TenantForm({
             rif: formData.taxpayerInfo.rif || undefined,
             razonSocial: formData.taxpayerInfo.razonSocial || undefined,
             direccionFiscal: formData.taxpayerInfo.direccionFiscal || undefined,
-            regimen: formData.taxpayerInfo.regimen || undefined
           }
         : undefined,
       timezone: "America/Caracas",

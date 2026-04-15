@@ -21,7 +21,6 @@ interface UpdateTenantInput {
     rif?: string;
     razonSocial?: string;
     direccionFiscal?: string;
-    regimen?: string;
   };
   ownerUserId?: string;
 }

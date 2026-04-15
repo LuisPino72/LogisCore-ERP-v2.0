@@ -1,12 +1,22 @@
 import type { Invoice } from "../types/invoicing.types";
 import { Modal } from "@/common/components/Modal";
 import { Badge } from "@/common/components/Badge";
-import { User, Calendar, CreditCard } from "lucide-react";
+import { User, Calendar, CreditCard, FileDown } from "lucide-react";
+import { generateCertifiedPdf } from "../services/pdf.service";
+import { logPdfExport } from "../services/audit.service";
+import { useState } from "react";
 
 interface InvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
   invoice: Invoice | null;
+  tenantConfig?: {
+    companyName: string;
+    companyRif: string;
+    companyAddress: string;
+    companyPhone?: string;
+    companyEmail?: string;
+  };
 }
 
 const statusConfig: Record<string, { variant: "default" | "success" | "error"; label: string }> = {
@@ -15,7 +25,10 @@ const statusConfig: Record<string, { variant: "default" | "success" | "error"; l
   voided: { variant: "error", label: "Anulada" },
 };
 
-export function InvoiceModal({ isOpen, onClose, invoice }: InvoiceModalProps) {
+export function InvoiceModal({ isOpen, onClose, invoice, tenantConfig }: InvoiceModalProps) {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
   if (!invoice) return null;
 
   const formatCurrency = (value: number) => {
@@ -37,6 +50,44 @@ export function InvoiceModal({ isOpen, onClose, invoice }: InvoiceModalProps) {
 
   const status = statusConfig[invoice.status] || { variant: "default", label: invoice.status };
 
+  const handleGeneratePdf = async () => {
+    if (!tenantConfig) {
+      setPdfError("Configuración del tenant no disponible");
+      return;
+    }
+
+    setIsGeneratingPdf(true);
+    setPdfError(null);
+
+    const result = await generateCertifiedPdf({
+      invoice,
+      taxRules: [],
+      tenant: tenantConfig
+    });
+
+    if (result.ok) {
+      const url = URL.createObjectURL(result.data.blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.data.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      logPdfExport({
+        invoiceId: invoice.localId,
+        invoiceNumber: invoice.invoiceNumber ?? ""
+      });
+    } else {
+      setPdfError(result.error.message);
+    }
+
+    setIsGeneratingPdf(false);
+  };
+
+  const canDownloadPdf = invoice.status === "issued" && tenantConfig;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -47,11 +98,26 @@ export function InvoiceModal({ isOpen, onClose, invoice }: InvoiceModalProps) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Badge variant={status.variant}>{status.label}</Badge>
-          {invoice.controlNumber && (
-            <span className="font-mono text-sm text-content-secondary">
-              Control: {invoice.controlNumber}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {pdfError && (
+              <span className="text-sm text-state-error">{pdfError}</span>
+            )}
+            {canDownloadPdf && (
+              <button
+                onClick={handleGeneratePdf}
+                disabled={isGeneratingPdf}
+                className="btn btn-primary flex items-center gap-2 text-sm py-1.5 px-3"
+              >
+                <FileDown className="w-4 h-4" />
+                {isGeneratingPdf ? "Generando..." : "Descargar PDF"}
+              </button>
+            )}
+            {invoice.controlNumber && (
+              <span className="font-mono text-sm text-content-secondary">
+                Control: {invoice.controlNumber}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-sm">

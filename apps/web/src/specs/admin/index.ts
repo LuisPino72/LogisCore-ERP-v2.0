@@ -110,11 +110,14 @@ export const updateTenantSchema = tenantSchema.partial().extend({
 
 export type UpdateTenantInput = z.infer<typeof updateTenantSchema>;
 
+const PERMISSION_ARRAY_REGEX = /^[A-Z]+:[A-Z_]+$/;
+
 export const userSchema = z.object({
   id: z.string().uuid().optional(),
   email: z.string().email("Email inválido"),
   fullName: z.string().nullable().optional(),
   role: z.enum(["owner", "employee"]),
+  permissions: z.array(z.string().regex(PERMISSION_ARRAY_REGEX, "Formato: MODULO:ACCION")).default([]),
   tenantId: z.string().regex(SLUG_REGEX, "Debe ser slug (no UUID)"),
   isActive: z.boolean(),
   lastLoginAt: z.string().datetime().nullable().optional(),
@@ -473,3 +476,20 @@ export const adminConfig = {
   validSubscriptionStatuses: VALID_SUBSCRIPTION_STATUSES,
   validUserRoles: VALID_USER_ROLES,
 } as const;
+
+export function validateUserPermission(
+  userPermissions: string[],
+  requiredPermission: string
+): boolean {
+  if (userPermissions.includes(requiredPermission)) {
+    return true;
+  }
+  return false;
+}
+
+export function hasAnyPermission(
+  userPermissions: string[],
+  requiredPermissions: string[]
+): boolean {
+  return requiredPermissions.some(perm => userPermissions.includes(perm));
+}

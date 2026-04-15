@@ -167,7 +167,7 @@ describe("invoicing.service", () => {
     if (invoice.ok) {
       return;
     }
-    expect(invoice.error.code).toBe("INVOICE_PERMISSION_DENIED");
+    expect(invoice.error.code).toBe("ADMIN_PERMISSION_DENIED");
   });
 
   it("anula factura exitosamente", async () => {

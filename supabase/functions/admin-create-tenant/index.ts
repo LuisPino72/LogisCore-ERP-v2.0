@@ -74,7 +74,6 @@ interface CreateTenantInput {
     rif: string;
     razonSocial: string;
     direccionFiscal: string;
-    regimen?: string;
   };
   employees?: Array<{
     email: string;

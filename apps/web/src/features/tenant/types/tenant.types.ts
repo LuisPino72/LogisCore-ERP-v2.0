@@ -29,22 +29,22 @@ export interface TenantContext {
  * Define las operaciones permitidas para el usuario.
  */
 export interface RolePermissions {
-  canApplyDiscount: boolean;
+  permissions: string[];
   maxDiscountPercent: number;
-  canApplyCustomPrice: boolean;
-  canVoidSale: boolean;
-  canRefundSale: boolean;
-  canVoidInvoice: boolean;
-  canAdjustStock: boolean;
-  canViewReports: boolean;
-  canExportReports: boolean;
   allowedWarehouseLocalIds?: string[];
-  canCreatePurchaseOrders?: boolean;
-  canApprovePurchaseOrders?: boolean;
-  canCreateProductionOrders?: boolean;
-  canApproveProductionOrders?: boolean;
-  canManageUsers?: boolean;
-  canManageTenants?: boolean;
+}
+
+export function hasPermission(permissions: RolePermissions, permission: string, role: string): boolean {
+  if (role === "owner" || role === "admin") {
+    return true;
+  }
+  if (!permissions) {
+    return false;
+  }
+  if (Array.isArray(permissions.permissions)) {
+    return permissions.permissions.includes(permission);
+  }
+  return false;
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   type Result,
   type SyncEngine
 } from "@logiscore/core";
+import { hasPermission } from "@/features/tenant/types/tenant.types";
 import type { StockMovementRecord } from "@/lib/db/dexie";
 import type {
   BoxClosing,
@@ -379,13 +380,15 @@ export const createSalesService = ({
     if (!warehouseAccess.ok) {
       return err(warehouseAccess.error);
     }
-    if (input.discountTotal > 0 && actor.role === "employee") {
-      if (!actor.permissions.canApplyDiscount) {
+    if (input.discountTotal > 0) {
+      const canDiscount = hasPermission(actor.permissions, "SALES:DISCOUNT", actor.role);
+      if (!canDiscount) {
         return err(
           createAppError({
-            code: "DISCOUNT_PERMISSION_DENIED",
-            message: "El usuario no tiene permisos para descuentos.",
-            retryable: false
+            code: "ADMIN_PERMISSION_DENIED",
+            message: "No tiene permiso para aplicar descuentos.",
+            retryable: false,
+            context: { required: "SALES:DISCOUNT" }
           })
         );
       }
@@ -602,12 +605,14 @@ export const createSalesService = ({
   };
 
   const closeBox: SalesService["closeBox"] = async (tenant, actor, input) => {
-    if (actor.role !== "owner" && actor.role !== "admin") {
+    const canManageBox = hasPermission(actor.permissions, "SALES:POS", actor.role);
+    if (!canManageBox) {
       return err(
         createAppError({
-          code: "BOX_CLOSING_PERMISSION_DENIED",
-          message: "Solo owner/admin puede cerrar caja.",
-          retryable: false
+          code: "ADMIN_PERMISSION_DENIED",
+          message: "No tiene permiso para cerrar caja.",
+          retryable: false,
+          context: { required: "SALES:POS" }
         })
       );
     }
@@ -698,12 +703,14 @@ export const createSalesService = ({
   };
 
   const openBox: SalesService["openBox"] = async (tenant, actor, input) => {
-    if (actor.role !== "owner" && actor.role !== "admin") {
+    const canManageBox = hasPermission(actor.permissions, "SALES:POS", actor.role);
+    if (!canManageBox) {
       return err(
         createAppError({
-          code: "BOX_OPEN_PERMISSION_DENIED",
-          message: "Solo owner/admin puede abrir caja.",
-          retryable: false
+          code: "ADMIN_PERMISSION_DENIED",
+          message: "No tiene permiso para abrir caja.",
+          retryable: false,
+          context: { required: "SALES:POS" }
         })
       );
     }

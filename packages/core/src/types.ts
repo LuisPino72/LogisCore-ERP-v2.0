@@ -68,3 +68,47 @@ export interface CoreDb {
   saveBootstrapState(state: CoreBootstrapState): Promise<void>;
   getBootstrapState(id: string): Promise<CoreBootstrapState | null>;
 }
+
+export interface SyncMetadata {
+  tableName: string;
+  tenantId: string;
+  lastSyncTimestamp: string;
+  lastSyncVersion: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ConflictResolutionStrategy = "LWW" | "SUM_MERGE" | "MANUAL";
+
+export interface SyncConflict {
+  localId: string;
+  table: string;
+  localData: Record<string, unknown>;
+  remoteData: Record<string, unknown>;
+  strategy: ConflictResolutionStrategy;
+}
+
+export interface ConflictResolver {
+  resolve(conflict: SyncConflict): Promise<Result<Record<string, unknown>, AppError>>;
+}
+
+export type SyncPriority = "CRITICAL" | "HIGH" | "LOW";
+
+export interface SyncTableConfig {
+  tableName: string;
+  priority: SyncPriority;
+  incremental: boolean;
+  conflictStrategy: ConflictResolutionStrategy;
+}
+
+export const DEFAULT_SYNC_TABLE_CONFIGS: Record<string, SyncTableConfig> = {
+  exchange_rates: { tableName: "exchange_rates", priority: "CRITICAL", incremental: true, conflictStrategy: "LWW" },
+  tax_rules: { tableName: "tax_rules", priority: "CRITICAL", incremental: true, conflictStrategy: "LWW" },
+  products: { tableName: "products", priority: "HIGH", incremental: true, conflictStrategy: "LWW" },
+  categories: { tableName: "categories", priority: "HIGH", incremental: true, conflictStrategy: "LWW" },
+  warehouses: { tableName: "warehouses", priority: "HIGH", incremental: true, conflictStrategy: "LWW" },
+  suppliers: { tableName: "suppliers", priority: "HIGH", incremental: true, conflictStrategy: "LWW" },
+  sales: { tableName: "sales", priority: "LOW", incremental: false, conflictStrategy: "MANUAL" },
+  purchases: { tableName: "purchases", priority: "LOW", incremental: false, conflictStrategy: "MANUAL" },
+  stock_movements: { tableName: "stock_movements", priority: "LOW", incremental: false, conflictStrategy: "MANUAL" },
+};

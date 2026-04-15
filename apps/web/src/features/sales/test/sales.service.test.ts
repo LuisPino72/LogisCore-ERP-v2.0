@@ -268,7 +268,7 @@ describe("sales.service", () => {
 
     expect(denied.ok).toBe(false);
     if (!denied.ok) {
-      expect(denied.error.code).toBe("BOX_CLOSING_PERMISSION_DENIED");
+      expect(denied.error.code).toBe("ADMIN_PERMISSION_DENIED");
     }
   });
 
@@ -506,7 +506,7 @@ describe("sales.service", () => {
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("DISCOUNT_PERMISSION_DENIED");
+    expect(result.error.code).toBe("ADMIN_PERMISSION_DENIED");
   });
 
   it("valida limite de descuento del empleado", async () => {
@@ -523,13 +523,8 @@ describe("sales.service", () => {
         role: "employee",
         userId: "u-2",
         permissions: {
-          canApplyDiscount: true,
+          permissions: ["SALES:DISCOUNT"],
           maxDiscountPercent: 10,
-          canApplyCustomPrice: false,
-          canVoidSale: false,
-          canRefundSale: false,
-          canVoidInvoice: false,
-          canAdjustStock: false,
           allowedWarehouseLocalIds: ["wh-1"]
         }
       },

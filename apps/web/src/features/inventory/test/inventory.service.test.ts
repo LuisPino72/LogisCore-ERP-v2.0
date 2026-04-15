@@ -195,7 +195,7 @@ describe("inventory.service", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("INVENTORY_PERMISSION_DENIED");
+      expect(result.error.code).toBe("ADMIN_PERMISSION_DENIED");
     }
   });
 

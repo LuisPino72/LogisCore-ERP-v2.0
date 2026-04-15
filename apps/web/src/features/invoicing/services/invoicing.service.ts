@@ -8,6 +8,7 @@ import {
   type Result,
   type SyncEngine
 } from "@logiscore/core";
+import { hasPermission } from "@/features/tenant/types/tenant.types";
 import type { InvoiceRangeService } from "./invoice-range.service";
 import {
   validateRif,
@@ -165,12 +166,14 @@ export const createInvoicingService = ({
       );
     }
 
-    if (actor.role !== "owner" && actor.role !== "admin" && !actor.permissions.canVoidInvoice) {
+    const canIssueInvoice = hasPermission(actor.permissions, "INVOICE:ISSUE", actor.role);
+    if (!canIssueInvoice) {
       return err(
         createAppError({
-          code: "INVOICE_PERMISSION_DENIED",
-          message: "No tiene permisos para crear facturas.",
-          retryable: false
+          code: "ADMIN_PERMISSION_DENIED",
+          message: "No tiene permiso para crear facturas.",
+          retryable: false,
+          context: { required: "INVOICE:ISSUE" }
         })
       );
     }
@@ -438,16 +441,16 @@ export const createInvoicingService = ({
       );
     }
 
-    if (actor.role !== "owner" && actor.role !== "admin") {
-      if (!actor.permissions.canVoidInvoice) {
-        return err(
-          createAppError({
-            code: "INVOICE_VOID_PERMISSION_DENIED",
-            message: "No tiene permisos para anular facturas.",
-            retryable: false
-          })
-        );
-      }
+    const canVoidInvoice = hasPermission(actor.permissions, "INVOICE:VOID", actor.role);
+    if (!canVoidInvoice) {
+      return err(
+        createAppError({
+          code: "ADMIN_PERMISSION_DENIED",
+          message: "No tiene permiso para anular facturas.",
+          retryable: false,
+          context: { required: "INVOICE:VOID" }
+        })
+      );
     }
 
     const invoice = await db.getInvoiceByLocalId(

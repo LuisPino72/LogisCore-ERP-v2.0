@@ -23,10 +23,18 @@ export const SUBSCRIPTION_ERROR_CODES = {
   DATES_INVALID: "ADMIN_SUBSCRIPTION_DATES_INVALID",
 } as const;
 
+export const PERMISSION_ERROR_CODES = {
+  DENIED: "ADMIN_PERMISSION_DENIED",
+  INVALID_FORMAT: "ADMIN_INVALID_PERMISSION_FORMAT",
+  NOT_FOUND: "ADMIN_PERMISSION_NOT_FOUND",
+  INSUFFICIENT_WAREHOUSE_ACCESS: "ADMIN_INSUFFICIENT_WAREHOUSE_ACCESS",
+} as const;
+
 export const ADMIN_ERROR_CODES = {
   ...TENANT_ERROR_CODES,
   ...USER_ERROR_CODES,
   ...SUBSCRIPTION_ERROR_CODES,
+  ...PERMISSION_ERROR_CODES,
 } as const;
 
 export type AdminErrorCode = (typeof ADMIN_ERROR_CODES)[keyof typeof ADMIN_ERROR_CODES];
@@ -173,3 +181,33 @@ export const USER_ROLE_EMPLOYEE = "employee";
 
 export type ValidSubscriptionStatus = typeof VALID_SUBSCRIPTION_STATUSES[number];
 export type ValidUserRole = typeof VALID_USER_ROLES[number];
+
+export const PERMISSION_REGEX = /^[A-Z]+:[A-Z_]+$/;
+
+export function createPermissionError(
+  code: (typeof PERMISSION_ERROR_CODES)[keyof typeof PERMISSION_ERROR_CODES],
+  context?: { permission?: string; required?: string; warehouseId?: string }
+): AppError {
+  const messages: Record<(typeof PERMISSION_ERROR_CODES)[keyof typeof PERMISSION_ERROR_CODES], string> = {
+    [PERMISSION_ERROR_CODES.DENIED]: "No tiene permiso para realizar esta acción",
+    [PERMISSION_ERROR_CODES.INVALID_FORMAT]: "Formato de permiso inválido. Use formato MODULO:ACCION (ej: SALES:VOID)",
+    [PERMISSION_ERROR_CODES.NOT_FOUND]: "Permiso no encontrado",
+    [PERMISSION_ERROR_CODES.INSUFFICIENT_WAREHOUSE_ACCESS]: "No tiene acceso al almacén requerido",
+  };
+
+  return {
+    code,
+    message: messages[code],
+    retryable: false,
+    context: context as Record<string, unknown>,
+  };
+}
+
+export function validatePermissionFormat(permission: string): boolean {
+  return PERMISSION_REGEX.test(permission);
+}
+
+export function validatePermissionArray(permissions: unknown): boolean {
+  if (!Array.isArray(permissions)) return false;
+  return permissions.every(p => typeof p === "string" && PERMISSION_REGEX.test(p));
+}

@@ -379,7 +379,7 @@ describe("purchases.service", () => {
 
     expect(received.ok).toBe(false);
     if (received.ok) return;
-    expect(received.error.code).toBe("PURCHASE_WAREHOUSE_ACCESS_DENIED");
+    expect(received.error.code).toBe("ADMIN_INSUFFICIENT_WAREHOUSE_ACCESS");
   });
 
   it("confirma una compra en estado draft", async () => {

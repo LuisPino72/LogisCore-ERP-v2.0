@@ -12,6 +12,7 @@ import {
   type Result,
   type SyncEngine
 } from "@logiscore/core";
+import { hasPermission } from "@/features/tenant/types/tenant.types";
 import type {
   CreateInventoryCountInput,
   CreateProductSizeColorInput,
@@ -155,18 +156,16 @@ export const createInventoryService = ({
   const assertAdjustPermission = (
     actor: InventoryActorContext
   ): Result<void, AppError> => {
-    if (
-      actor.role === "owner" ||
-      actor.role === "admin" ||
-      actor.permissions.canAdjustStock
-    ) {
+    const canAdjust = hasPermission(actor.permissions, "INVENTORY:ADJUST", actor.role);
+    if (canAdjust) {
       return ok<void>(undefined);
     }
     return err(
       createAppError({
-        code: "INVENTORY_PERMISSION_DENIED",
-        message: "El usuario no tiene permisos para ajustar inventario.",
-        retryable: false
+        code: "ADMIN_PERMISSION_DENIED",
+        message: "No tiene permiso para ajustar inventario.",
+        retryable: false,
+        context: { required: "INVENTORY:ADJUST" }
       })
     );
   };
@@ -175,7 +174,7 @@ export const createInventoryService = ({
     actor: InventoryActorContext,
     warehouseLocalId: string
   ): Result<void, AppError> => {
-    if (actor.role === "owner" || actor.role === "admin") {
+    if (hasPermission(actor.permissions, "INVENTORY:VIEW", actor.role)) {
       return ok<void>(undefined);
     }
     const allowed = actor.permissions.allowedWarehouseLocalIds;

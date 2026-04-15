@@ -26,17 +26,6 @@ export function TaxpayerInfoForm({ taxpayerInfo, errors, onChange }: TaxpayerInf
           />
           {errors.rif && <p className="text-xs text-state-error mt-1">{errors.rif}</p>}
         </div>
-        <div>
-          <label className="label">Régimen</label>
-          <select
-            className="input"
-            value={taxpayerInfo.regimen}
-            onChange={(e) => onChange("regimen", e.target.value)}
-          >
-            <option value="ORDINARIO">Ordinario</option>
-            <option value="ESPECIAL">Especial</option>
-          </select>
-        </div>
         <div className="col-span-2">
           <label className="label">Razón Social</label>
           <input

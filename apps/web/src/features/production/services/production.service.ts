@@ -12,6 +12,7 @@ import {
   type Result,
   type SyncEngine
 } from "@logiscore/core";
+import { hasPermission } from "@/features/tenant/types/tenant.types";
 import type { StockMovementRecord } from "@/lib/db/dexie";
 import type {
   CompleteProductionOrderInput,
@@ -110,14 +111,14 @@ export const createProductionService = ({
     actor: ProductionActorContext,
     warehouseLocalId: string
   ): Result<void, AppError> => {
-    if (actor.role === "owner" || actor.role === "admin") {
+    if (hasPermission(actor.permissions, "PRODUCTION:ORDER", actor.role)) {
       return ok<void>(undefined);
     }
     const allowed = actor.permissions.allowedWarehouseLocalIds;
     if (!allowed?.includes(warehouseLocalId)) {
       return err(
         createAppError({
-          code: "WAREHOUSE_ACCESS_DENIED",
+          code: "ADMIN_INSUFFICIENT_WAREHOUSE_ACCESS",
           message: "El usuario no tiene acceso a la bodega seleccionada.",
           retryable: false,
           context: { warehouseLocalId }

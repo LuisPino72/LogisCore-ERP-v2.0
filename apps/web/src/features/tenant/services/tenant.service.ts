@@ -57,16 +57,11 @@ interface CreateTenantServiceDependencies {
   eventBus: EventBus;
 }
 
+import { DEFAULT_EMPLOYEE_PERMISSIONS } from "../../../lib/permissions/rbac-constants";
+
 const defaultPermissions: RolePermissions = {
-  canApplyDiscount: false,
-  maxDiscountPercent: 0,
-  canApplyCustomPrice: false,
-  canVoidSale: false,
-  canRefundSale: false,
-  canVoidInvoice: false,
-  canAdjustStock: false,
-  canViewReports: false,
-  canExportReports: false
+  permissions: Array.from(DEFAULT_EMPLOYEE_PERMISSIONS),
+  maxDiscountPercent: 0
 };
 
 export const createTenantService = ({

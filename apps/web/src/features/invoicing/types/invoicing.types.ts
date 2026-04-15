@@ -105,6 +105,11 @@ export interface Invoice {
   xmlSeniat?: string | null;
   jsonSeniat?: object | null;
   authorizationNumber?: string | null;
+  exchangeRateSnapshot?: {
+    rate: number;
+    source: string;
+    capturedAt: string;
+  } | null;
   issuedAt?: string;
   voidedAt?: string;
   createdAt: string;

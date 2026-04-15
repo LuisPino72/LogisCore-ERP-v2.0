@@ -11,7 +11,8 @@ export default [
       "**/node_modules/**",
       ".agents/**",
       "Memoria/**",
-      "supabase/functions/**"
+      "supabase/functions/**",
+      "apps/web/public/**"
     ]
   },
   js.configs.recommended,

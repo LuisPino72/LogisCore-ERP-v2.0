@@ -89,6 +89,14 @@
         "required": true,
         "description": "Rol del usuario"
       },
+      "permissions": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[A-Z]+:[A-Z_]+$"
+        },
+        "description": "Permisos granulares MODULO:ACCION"
+      },
       "tenantId": {
         "type": "string",
         "required": true,
@@ -330,12 +338,42 @@
       "code": "ADMIN_SUBSCRIPTION_DATES_INVALID",
       "message": "Fecha de fin debe ser mayor a fecha de inicio",
       "retryable": false
+    },
+    "ADMIN_PERMISSION_DENIED": {
+      "code": "ADMIN_PERMISSION_DENIED",
+      "message": "No tiene permiso para realizar esta acción",
+      "retryable": false
+    },
+    "ADMIN_INVALID_PERMISSION_FORMAT": {
+      "code": "ADMIN_INVALID_PERMISSION_FORMAT",
+      "message": "Formato de permiso inválido. Use formato MODULO:ACCION",
+      "retryable": false
+    },
+    "ADMIN_PERMISSION_NOT_FOUND": {
+      "code": "ADMIN_PERMISSION_NOT_FOUND",
+      "message": "Permiso no encontrado",
+      "retryable": false
+    },
+    "ADMIN_INSUFFICIENT_WAREHOUSE_ACCESS": {
+      "code": "ADMIN_INSUFFICIENT_WAREHOUSE_ACCESS",
+      "message": "No tiene acceso al almacén requerido",
+      "retryable": false
     }
+  },
+
+  "permission_modules": {
+    "SALES": ["POS", "VOID", "REFUND", "DISCOUNT"],
+    "INVENTORY": ["VIEW", "ADJUST", "COUNT"],
+    "PURCHASES": ["ORDER", "RECEIVE", "SUPPLIERS"],
+    "INVOICE": ["ISSUE", "VOID"],
+    "PRODUCTION": ["ORDER", "RECIPE"],
+    "REPORTS": ["VIEW", "EXPORT"],
+    "ADMIN": ["USERS", "TENANT", "SUBSCRIPTION"]
   },
 
   "references": {
     "architecture_doc": "Memoria/ARCHITECTURE.md",
-    "section": "1.3 Reglas de Oro / 2.1 Esquema Dual",
+    "section": "1.3 Reglas de Oro / 2.1 Esquema Dual / P9 RBAC",
     "version_date": "2026-04-14"
   }
 }

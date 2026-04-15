@@ -182,6 +182,13 @@ export function InvoicingPanel({ tenantSlug, actor }: InvoicingPanelProps) {
         isOpen={showInvoiceModal}
         onClose={() => setShowInvoiceModal(false)}
         invoice={selectedInvoice}
+        tenantConfig={{
+          companyName: "Empresa Demo",
+          companyRif: "J123456789",
+          companyAddress: "Av. Principal, Caracas",
+          companyPhone: "0212-1234567",
+          companyEmail: "demo@empresa.com"
+        }}
       />
 
       <VoidInvoiceModal

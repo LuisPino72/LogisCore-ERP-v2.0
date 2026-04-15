@@ -1,13 +1,6 @@
 export interface ActorPermissions {
-  canApplyDiscount: boolean;
+  permissions: string[];
   maxDiscountPercent: number;
-  canApplyCustomPrice: boolean;
-  canVoidSale: boolean;
-  canRefundSale: boolean;
-  canVoidInvoice: boolean;
-  canAdjustStock: boolean;
-  canViewReports: boolean;
-  canExportReports: boolean;
   allowedWarehouseLocalIds?: string[];
 }
 
@@ -18,51 +11,53 @@ export interface ActorContext {
   permissions: ActorPermissions;
 }
 
-export interface PermissionsService {
-  canManageCatalog(actor: ActorContext): boolean;
-  canApplyDiscount(actor: ActorContext): boolean;
-  canVoidTransaction(actor: ActorContext): boolean;
-  canRefundTransaction(actor: ActorContext): boolean;
-  canAdjustStock(actor: ActorContext): boolean;
-  canManageUsers(actor: ActorContext): boolean;
-  canManageSubscriptions(actor: ActorContext): boolean;
-  canViewReports(actor: ActorContext): boolean;
-  canExportReports(actor: ActorContext): boolean;
+export function createPermissionsService() {
+  const hasPermission = (actor: ActorContext, permission: string): boolean => {
+    if (actor.role === "owner" || actor.role === "admin") {
+      return true;
+    }
+    return actor.permissions.permissions.includes(permission);
+  };
+
+  return {
+    canManageCatalog: (actor: ActorContext) =>
+      hasPermission(actor, "PRODUCTS:CATALOG") ||
+      hasPermission(actor, "PRODUCTS:CREATE"),
+
+    canApplyDiscount: (actor: ActorContext) =>
+      hasPermission(actor, "SALES:DISCOUNT") ||
+      actor.permissions.maxDiscountPercent > 0,
+
+    canVoidTransaction: (actor: ActorContext) =>
+      hasPermission(actor, "SALES:VOID"),
+
+    canRefundTransaction: (actor: ActorContext) =>
+      hasPermission(actor, "SALES:REFUND"),
+
+    canAdjustStock: (actor: ActorContext) =>
+      hasPermission(actor, "INVENTORY:ADJUST"),
+
+    canManageUsers: (actor: ActorContext) =>
+      hasPermission(actor, "ADMIN:USERS"),
+
+    canManageSubscriptions: (actor: ActorContext) =>
+      hasPermission(actor, "ADMIN:SUBSCRIPTION"),
+
+    canViewReports: (actor: ActorContext) =>
+      hasPermission(actor, "REPORTS:VIEW"),
+
+    canExportReports: (actor: ActorContext) =>
+      hasPermission(actor, "REPORTS:EXPORT"),
+
+    canVoidInvoice: (actor: ActorContext) =>
+      hasPermission(actor, "INVOICE:VOID"),
+
+    canReceivePurchase: (actor: ActorContext) =>
+      hasPermission(actor, "PURCHASES:RECEIVE"),
+
+    canCreateProductionOrder: (actor: ActorContext) =>
+      hasPermission(actor, "PRODUCTION:ORDER"),
+  };
 }
 
-export const createPermissionsService = (): PermissionsService => ({
-  canManageCatalog: (actor) => 
-    actor.role === "owner" || actor.role === "admin" ||
-    actor.permissions.canAdjustStock || actor.permissions.canApplyCustomPrice,
-    
-  canApplyDiscount: (actor) =>
-    actor.role === "owner" || actor.role === "admin" ||
-    (actor.permissions.canApplyDiscount && 
-     actor.permissions.maxDiscountPercent > 0),
-    
-  canVoidTransaction: (actor) =>
-    actor.role === "owner" || actor.role === "admin" ||
-    actor.permissions.canVoidSale,
-    
-  canRefundTransaction: (actor) =>
-    actor.role === "owner" || actor.role === "admin" ||
-    actor.permissions.canRefundSale,
-    
-  canAdjustStock: (actor) =>
-    actor.role === "owner" || actor.role === "admin" ||
-    actor.permissions.canAdjustStock,
-    
-  canManageUsers: (actor) =>
-    actor.role === "owner" || actor.role === "admin",
-    
-  canManageSubscriptions: (actor) =>
-    actor.role === "owner" || actor.role === "admin",
-    
-  canViewReports: (actor) =>
-    actor.role === "owner" || actor.role === "admin" ||
-    actor.permissions.canViewReports,
-    
-  canExportReports: (actor) =>
-    actor.role === "owner" || actor.role === "admin" ||
-    actor.permissions.canExportReports
-});
+export type PermissionsService = ReturnType<typeof createPermissionsService>;

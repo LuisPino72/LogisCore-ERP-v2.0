@@ -1,0 +1,97 @@
+import { useEffect, useState, useCallback } from "react";
+
+interface UseBackgroundSyncOptions {
+  onSyncComplete?: (tag: string) => void;
+  onSyncError?: (tag: string, error: Error) => void;
+}
+
+interface UseBackgroundSyncReturn {
+  isSupported: boolean;
+  isRegistered: boolean;
+  lastSyncResult: { tag: string; timestamp: string } | null;
+  requestSync: (tag: string) => Promise<boolean>;
+}
+
+export function useBackgroundSync(options: UseBackgroundSyncOptions = {}): UseBackgroundSyncReturn {
+  const { onSyncComplete, onSyncError } = options;
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [lastSyncResult, setLastSyncResult] = useState<{ tag: string; timestamp: string } | null>(null);
+
+  const isSupported = typeof window !== "undefined" && "serviceWorker" in navigator && "sync" in window;
+
+  useEffect(() => {
+    if (!isSupported) return;
+
+    async function registerServiceWorker() {
+      try {
+        const registration = await navigator.serviceWorker.register("/sw.js", {
+          scope: "/"
+        });
+
+        console.log("Service Worker registered:", registration.scope);
+
+        if ("sync" in registration) {
+          setIsRegistered(true);
+          console.log("Background Sync supported and registered");
+        }
+      } catch (error) {
+        console.error("Service Worker registration failed:", error);
+      }
+    }
+
+    registerServiceWorker();
+  }, [isSupported]);
+
+  useEffect(() => {
+    if (!isSupported) return;
+
+    function handleMessage(event: MessageEvent) {
+      if (event.data?.type === "BACKGROUND_SYNC") {
+        setLastSyncResult({
+          tag: event.data.tag,
+          timestamp: event.data.timestamp
+        });
+        onSyncComplete?.(event.data.tag);
+      }
+    }
+
+    navigator.serviceWorker.addEventListener("message", handleMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", handleMessage);
+    };
+  }, [isSupported, onSyncComplete]);
+
+  const requestSync = useCallback(async (tag: string): Promise<boolean> => {
+    if (!isSupported || !isRegistered) {
+      console.warn("Background Sync not supported or not registered");
+      return false;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if ("sync" in registration) {
+        const syncRegistration = registration as unknown as { sync?: { register: (tag: string) => Promise<void> } };
+        if (syncRegistration.sync) {
+          await syncRegistration.sync.register(`sync-${tag}`);
+          console.log(`Background sync registered for: ${tag}`);
+          return true;
+        }
+        return false;
+        console.log(`Background sync registered for: ${tag}`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Failed to register background sync:", error);
+      onSyncError?.(tag, error as Error);
+      return false;
+    }
+  }, [isSupported, isRegistered, onSyncError]);
+
+  return {
+    isSupported,
+    isRegistered,
+    lastSyncResult,
+    requestSync
+  };
+}
