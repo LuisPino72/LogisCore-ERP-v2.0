@@ -1,7 +1,7 @@
 export interface ActorPermissions {
   permissions: string[];
   maxDiscountPercent: number;
-  allowedWarehouseLocalIds?: string[];
+  allowedWarehouseLocalIds: string[];
 }
 
 export type ActorRole = "owner" | "employee" | "admin";

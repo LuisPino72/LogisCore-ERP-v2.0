@@ -14,7 +14,9 @@ export interface SalesTenantContext {
 export type SalesCurrency = "VES" | "USD";
 
 /**
- * Permisos del actor en ventas
+ * Permisos del actor en ventas.
+ * Con exactOptionalPropertyTypes, todas las propiedades son requeridas.
+ * Los valores por defecto se asignan en el factories/permissions factory.
  */
 export interface SalesActorPermissions {
   canApplyDiscount: boolean;
@@ -24,13 +26,13 @@ export interface SalesActorPermissions {
   canRefundSale: boolean;
   canVoidInvoice: boolean;
   canAdjustStock: boolean;
-  allowedWarehouseLocalIds?: string[];
-  canCreatePurchaseOrders?: boolean;
-  canApprovePurchaseOrders?: boolean;
-  canCreateProductionOrders?: boolean;
-  canApproveProductionOrders?: boolean;
-  canManageUsers?: boolean;
-  canManageTenants?: boolean;
+  allowedWarehouseLocalIds: string[];
+  canCreatePurchaseOrders: boolean;
+  canApprovePurchaseOrders: boolean;
+  canCreateProductionOrders: boolean;
+  canApproveProductionOrders: boolean;
+  canManageUsers: boolean;
+  canManageTenants: boolean;
 }
 
 /** Contexto del usuario en ventas */

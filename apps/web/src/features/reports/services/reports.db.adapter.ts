@@ -1,5 +1,5 @@
 // Reports - Adaptador de base de datos para consultas de reportes
-import { db, type SecurityAuditLogRecord, type InventoryLotRecord } from "@/lib/db/dexie";
+import { db, type SecurityAuditLogRecord, type InventoryLotRecord, type ProductRecord } from "@/lib/db/dexie";
 import type { ReportsDb } from "./reports.service";
 import type {
   BoxClosingSummary,
@@ -206,6 +206,7 @@ export class DexieReportsDbAdapter implements ReportsDb {
   async getFinanceReport(tenantId: string, startDate?: string, endDate?: string): Promise<FinanceReport[]> {
     const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
     const end = endDate ? new Date(endDate) : new Date();
+    end.setHours(23, 59, 59, 999);
 
     const sales = await db.sales
       .where("tenantId")
@@ -311,6 +312,12 @@ export class DexieReportsDbAdapter implements ReportsDb {
   async getBalanceSheet(tenantId: string, startDate?: string, endDate?: string): Promise<BalanceSheetReport[]> {
     const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
 
+    const productsMap = new Map<string, ProductRecord>();
+    const allProducts = await db.products.where("tenantId").equals(tenantId).toArray();
+    for (const product of allProducts) {
+      productsMap.set(product.localId, product);
+    }
+
     const lots = await db.inventory_lots
       .where("tenantId")
       .equals(tenantId)
@@ -319,9 +326,10 @@ export class DexieReportsDbAdapter implements ReportsDb {
 
     let inventoryValue = 0;
     for (const lot of lots) {
+      const product = productsMap.get(lot.productLocalId);
+      const isWeighted = product?.isWeighted ?? false;
       const qty = Number(lot.quantity);
       const cost = Number(lot.unitCost);
-      const isWeighted = false;
       inventoryValue += isWeighted ? Number((qty * cost).toFixed(4)) : qty * cost;
     }
 

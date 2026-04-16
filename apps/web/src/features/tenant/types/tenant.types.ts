@@ -33,7 +33,7 @@ export interface TenantContext {
 export interface RolePermissions {
   permissions: string[];
   maxDiscountPercent: number;
-  allowedWarehouseLocalIds?: string[];
+  allowedWarehouseLocalIds: string[];
 }
 
 export function hasPermission(permissions: RolePermissions, permission: string, role: string): boolean {
