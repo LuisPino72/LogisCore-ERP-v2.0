@@ -49,7 +49,7 @@ export function ProductionPanel({ tenantSlug, actor, products, warehouses = defa
     completeProductionOrder
   } = useProduction({
     service: productionService,
-    tenant: { tenantSlug },
+    tenant: { tenantSlug, features: features ?? {} },
     actor
   });
 

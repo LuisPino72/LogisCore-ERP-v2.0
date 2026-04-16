@@ -8,21 +8,30 @@ interface AppLayoutProps {
   activeModule: ModuleId;
   onModuleChange: (module: ModuleId) => void;
   onLogout?: () => void;
+  features?: Record<string, boolean>;
 }
 
-const modules = [
+const baseModules = [
   { id: "dashboard" as const, label: "Dashboard", icon: null },
   { id: "inventory" as const, label: "Inventario", icon: null },
   { id: "products" as const, label: "Productos", icon: null },
   { id: "purchases" as const, label: "Compras", icon: null },
   { id: "sales" as const, label: "Ventas", icon: null },
-  { id: "production" as const, label: "Producción", icon: null },
   { id: "invoicing" as const, label: "Facturación", icon: null },
   { id: "reports" as const, label: "Reportes", icon: null }
 ];
 
-export function AppLayout({ children, activeModule, onModuleChange, onLogout }: AppLayoutProps) {
+const proModules = [
+  { id: "production" as const, label: "Producción", icon: null }
+];
+
+export function AppLayout({ children, activeModule, onModuleChange, onLogout, features = {} }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
+
+  const hasProductionAccess = features.production === true;
+  const modules = hasProductionAccess 
+    ? [...baseModules.slice(0, 5), ...proModules, ...baseModules.slice(5)]
+    : baseModules;
 
   return (
     <div className="flex h-screen bg-surface-50">

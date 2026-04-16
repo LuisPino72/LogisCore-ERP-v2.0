@@ -6,6 +6,7 @@ import type { AppError } from "@logiscore/core";
  */
 export interface ProductionTenantContext {
   tenantSlug: string;
+  features?: Record<string, boolean>;
 }
 
 /**

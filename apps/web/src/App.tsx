@@ -296,11 +296,11 @@ export function App() {
       coreService={coreService}
       renderApp={(tenantSlug, actor, signOut, tenantContext) => {
           const computedMaxProducts = (tenantContext?.features?.products as number | undefined) ?? undefined;
-          const computedFeatures = tenantContext?.features;
+const computedFeatures = tenantContext?.features ?? {};
           const computedBusinessTypeId = tenantContext?.businessTypeId;
           return (
-            <AppLayout activeModule={activeModule} onModuleChange={setActiveModule} onLogout={signOut}>
-              <ModuleRenderer 
+            <AppLayout activeModule={activeModule} onModuleChange={setActiveModule} onLogout={signOut} features={computedFeatures}>
+              <ModuleRenderer
                 moduleId={activeModule} 
                 tenantSlug={tenantSlug} 
                 actor={actor as never}

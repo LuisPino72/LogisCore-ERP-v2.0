@@ -113,6 +113,8 @@ const ownerActor = {
 };
 
 describe("production.service", () => {
+  const tenantWithProduction = { tenantSlug: "tenant-demo", features: { production: true } };
+
   it("rechaza completar orden con stock insuficiente", async () => {
     const db = createDbMock();
     const service = createProductionService({
@@ -122,7 +124,7 @@ describe("production.service", () => {
     });
 
     const recipe = await service.createRecipe(
-      { tenantSlug: "tenant-demo" },
+      tenantWithProduction,
       ownerActor,
       {
         productLocalId: "prod-finished",
@@ -137,7 +139,7 @@ describe("production.service", () => {
     }
 
     const createdOrder = await service.createProductionOrder(
-      { tenantSlug: "tenant-demo" },
+      tenantWithProduction,
       ownerActor,
       {
         recipeLocalId: recipe.data.localId,
@@ -151,13 +153,13 @@ describe("production.service", () => {
     }
 
     await service.startProductionOrder(
-      { tenantSlug: "tenant-demo" },
+      tenantWithProduction,
       ownerActor,
       { productionOrderLocalId: createdOrder.data.localId }
     );
 
     const completed = await service.completeProductionOrder(
-      { tenantSlug: "tenant-demo" },
+      tenantWithProduction,
       ownerActor,
       {
         productionOrderLocalId: createdOrder.data.localId,
@@ -181,6 +183,9 @@ describe("production.service", () => {
         warehouseLocalId: "wh-1",
         movementType: "purchase_in",
         quantity: 10,
+        unitCost: 0,
+        referenceType: "purchase",
+        referenceLocalId: "ref-1",
         createdAt: "2026-01-01T00:00:00.000Z"
       }
     ]);
@@ -192,7 +197,7 @@ describe("production.service", () => {
     });
 
     const recipe = await service.createRecipe(
-      { tenantSlug: "tenant-demo" },
+      tenantWithProduction,
       ownerActor,
       {
         productLocalId: "prod-finished",
@@ -207,7 +212,7 @@ describe("production.service", () => {
     }
 
     const order = await service.createProductionOrder(
-      { tenantSlug: "tenant-demo" },
+      tenantWithProduction,
       ownerActor,
       {
         recipeLocalId: recipe.data.localId,
@@ -221,13 +226,13 @@ describe("production.service", () => {
     }
 
     await service.startProductionOrder(
-      { tenantSlug: "tenant-demo" },
+      tenantWithProduction,
       ownerActor,
       { productionOrderLocalId: order.data.localId }
     );
 
     const completed = await service.completeProductionOrder(
-      { tenantSlug: "tenant-demo" },
+      tenantWithProduction,
       ownerActor,
       {
         productionOrderLocalId: order.data.localId,

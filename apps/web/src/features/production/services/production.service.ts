@@ -13,6 +13,10 @@ import {
   type SyncEngine
 } from "@logiscore/core";
 import { hasPermission } from "@/features/tenant/types/tenant.types";
+
+const hasProductionAccess = (features?: Record<string, boolean>): boolean => {
+  return features?.production === true;
+};
 import type { StockMovementRecord } from "@/lib/db/dexie";
 import type {
   CompleteProductionOrderInput,
@@ -145,6 +149,16 @@ export const createProductionService = ({
     _actor,
     input
   ) => {
+    if (!hasProductionAccess(tenant.features)) {
+      return err(
+        createAppError({
+          code: "ADMIN_PRODUCTION_ACCESS_DENIED",
+          message: "El módulo de Producción requiere el plan Pro.",
+          retryable: false,
+          context: { features: tenant.features }
+        })
+      );
+    }
     if (!input.productLocalId.trim() || !input.name.trim()) {
       return err(
         createAppError({
@@ -226,6 +240,16 @@ export const createProductionService = ({
     actor,
     input
   ) => {
+    if (!hasProductionAccess(tenant.features)) {
+      return err(
+        createAppError({
+          code: "ADMIN_PRODUCTION_ACCESS_DENIED",
+          message: "El módulo de Producción requiere el plan Pro.",
+          retryable: false,
+          context: { features: tenant.features }
+        })
+      );
+    }
     if (input.plannedQty <= 0) {
       return err(
         createAppError({
@@ -303,6 +327,16 @@ export const createProductionService = ({
     actor,
     input
   ) => {
+    if (!hasProductionAccess(tenant.features)) {
+      return err(
+        createAppError({
+          code: "ADMIN_PRODUCTION_ACCESS_DENIED",
+          message: "El módulo de Producción requiere el plan Pro.",
+          retryable: false,
+          context: { features: tenant.features }
+        })
+      );
+    }
     const order = await db.getProductionOrderByLocalId(
       tenant.tenantSlug,
       input.productionOrderLocalId
@@ -377,6 +411,16 @@ export const createProductionService = ({
     actor,
     input
   ) => {
+    if (!hasProductionAccess(tenant.features)) {
+      return err(
+        createAppError({
+          code: "ADMIN_PRODUCTION_ACCESS_DENIED",
+          message: "El módulo de Producción requiere el plan Pro.",
+          retryable: false,
+          context: { features: tenant.features }
+        })
+      );
+    }
     const order = await db.getProductionOrderByLocalId(
       tenant.tenantSlug,
       input.productionOrderLocalId
