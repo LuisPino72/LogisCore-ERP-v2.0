@@ -50,7 +50,7 @@ class TenantTranslator {
 
     return err(
       createAppError({
-        code: "TENANT_NOT_FOUND",
+        code: "SYNC_TENANT_TRANSLATION_FAILED",
         message: `No se puede resolver el UUID para el tenant: ${tenantSlug}. Ejecute bootstrapSession primero.`,
         retryable: false,
         context: { tenantSlug }
@@ -77,6 +77,17 @@ class TenantTranslator {
       return ok(cached.tenantUuid);
     }
 
+    if (!supabase) {
+      return err(
+        createAppError({
+          code: "SYNC_TENANT_TRANSLATION_FAILED",
+          message: "Cliente Supabase no disponible.",
+          retryable: false,
+          context: { tenantSlug }
+        })
+      );
+    }
+
     const { data, error } = await supabase
       .from("tenants")
       .select("id, name, tenant_slug, owner_user_id")
@@ -86,7 +97,7 @@ class TenantTranslator {
     if (error || !data) {
       return err(
         createAppError({
-          code: "TENANT_NOT_FOUND",
+          code: "SYNC_TENANT_TRANSLATION_FAILED",
           message: error?.message ?? `Tenant no encontrado: ${tenantSlug}`,
           retryable: false,
           context: { tenantSlug }
