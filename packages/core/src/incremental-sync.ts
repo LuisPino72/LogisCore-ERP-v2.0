@@ -8,14 +8,21 @@ export class DefaultConflictResolver implements ConflictResolver {
       case "LWW":
         return ok(conflict.remoteData);
 
-      case "SUM_MERGE":
-        if (typeof conflict.localData.quantity === "number" && typeof conflict.remoteData.quantity === "number") {
-          return ok({
-            ...conflict.remoteData,
-            quantity: conflict.localData.quantity + conflict.remoteData.quantity
-          });
+      case "SUM_MERGE": {
+        const merged = { ...conflict.remoteData };
+        const SCALE = 10000;
+        for (const key in conflict.localData) {
+          if (
+            typeof conflict.localData[key] === "number" &&
+            typeof conflict.remoteData[key] === "number"
+          ) {
+            merged[key] = Math.round(
+              (conflict.localData[key] + conflict.remoteData[key]) * SCALE
+            ) / SCALE;
+          }
         }
-        return ok(conflict.remoteData);
+        return ok(merged);
+      }
 
       case "MANUAL":
         return err(

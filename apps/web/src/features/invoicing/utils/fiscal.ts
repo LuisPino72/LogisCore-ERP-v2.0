@@ -47,14 +47,22 @@ export const applyCentsRule = (total: number): number => {
   return total;
 };
 
+export const needsCentsAdjustment = (total: number): boolean => {
+  const rounded = roundMoney(total);
+  return Math.abs(total - rounded) <= 0.01;
+};
+
 export const computeIgtf = (
-  subtotal: number,
-  taxTotal: number,
-  igtfRate: number
+  payments: Array<{ currency: string; amount: number }>,
+  igtfRate: number,
+  exchangeRate: number
 ): number => {
-  const totalBeforeIgtf = subtotal + taxTotal;
-  const igtfAmount = roundMoney(totalBeforeIgtf * (igtfRate / 100));
-  return igtfAmount;
+  const foreignPaymentsTotal = payments
+    .filter((p) => p.currency === "USD")
+    .reduce((sum, p) => sum + p.amount, 0);
+  
+  const igtfAmount = foreignPaymentsTotal * exchangeRate * (igtfRate / 100);
+  return roundMoney(igtfAmount);
 };
 
 export const computeInvoiceTotal = (

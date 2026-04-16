@@ -542,12 +542,11 @@ export const createPurchasesService = ({
       ...receivedItemsDetail
     ];
 
-    const receivingItemsWithWeight: { productLocalId: string; qty: number; isWeighted?: boolean; unitCost: number }[] = input.receivedItems.map((ri) => {
+    const receivingItemsWithWeight: { productLocalId: string; qty: number; unitCost: number }[] = input.receivedItems.map((ri) => {
       const orderedItem = purchase.items.find((i) => i.productLocalId === ri.productLocalId);
       return {
         productLocalId: ri.productLocalId,
         qty: ri.qty,
-        isWeighted: orderedItem ? false : undefined,
         unitCost: orderedItem?.unitCost ?? 0
       };
     });
@@ -571,15 +570,12 @@ export const createPurchasesService = ({
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {})
     };
 
-    const stockMovements: StockMovementRecord[] = receiving.items.map((item, index) => {
-      const isWeighted = receivingItemsWithWeight[index]?.isWeighted ?? false;
-      const qtyValidation = validateQuantityPrecision(item.qty, isWeighted);
+    const stockMovements: StockMovementRecord[] = receiving.items.map((item) => {
+      const qtyValidation = validateQuantityPrecision(item.qty, true);
       if (!qtyValidation.ok) {
         return null;
       }
-      const quantity = isWeighted 
-        ? Number(item.qty.toFixed(4))
-        : item.qty;
+      const quantity = Number(item.qty.toFixed(4));
       return {
         localId: uuid(),
         tenantId: tenant.tenantSlug,
@@ -600,11 +596,8 @@ export const createPurchasesService = ({
       return err(createPurchaseError(PURCHASE_ERROR_CODES.ITEM_INVALID));
     }
 
-    const inventoryLots: InventoryLot[] = receiving.items.map((item, index) => {
-      const isWeighted = receivingItemsWithWeight[index]?.isWeighted ?? false;
-      const quantity = isWeighted 
-        ? Number(item.qty.toFixed(4))
-        : item.qty;
+    const inventoryLots: InventoryLot[] = receiving.items.map((item) => {
+      const quantity = Number(item.qty.toFixed(4));
       return {
         localId: uuid(),
         tenantId: tenant.tenantSlug,

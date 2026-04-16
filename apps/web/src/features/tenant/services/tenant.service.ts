@@ -4,7 +4,7 @@
  * Todas las funciones retornan Result<T, AppError> para manejo de errores.
  */
 
-import { createAppError, err, ok, type AppError, type EventBus, type Result } from "@logiscore/core";
+import { createAppError, err, ok, type AppError, type EventBus, type Result, globalAsyncLock } from "@logiscore/core";
 import type {
   RolePermissions,
   TenantBootstrapResult,
@@ -309,103 +309,97 @@ export const createTenantService = ({
   };
 
   const bootstrapTenant: TenantService["bootstrapTenant"] = async (userId) => {
-    const roleResult = await resolveUserRole(userId);
-    if (!roleResult.ok) {
-      return err(roleResult.error);
-    }
+    return globalAsyncLock.execute(`bootstrap_${userId}`, async () => {
+      const roleResult = await resolveUserRole(userId);
+      if (!roleResult.ok) {
+        throw new Error(roleResult.error.message);
+      }
 
-    const normalizedRole = roleResult.data.role?.trim().toLowerCase();
+      const normalizedRole = roleResult.data.role?.trim().toLowerCase();
 
-    if (normalizedRole === "admin") {
-      return ok({
-        tenant: null,
-        userRole: roleResult.data,
-        subscriptionActive: true,
-        subscriptionEndDate: null,
-        isLastDay: false
-      });
-    }
+      if (normalizedRole === "admin") {
+        return {
+          tenant: null,
+          userRole: roleResult.data,
+          subscriptionActive: true,
+          subscriptionEndDate: null,
+          isLastDay: false
+        };
+      }
 
-    // Try finding tenant as owner first
-    let tenantSlug: string | null = null;
-    let tenantId: string | null = null;
-    let tenantName: string | null = null;
-    let businessTypeId: string | undefined = undefined;
+      let tenantSlug: string | null = null;
+      let tenantId: string | null = null;
+      let tenantName: string | null = null;
+      let businessTypeId: string | undefined = undefined;
 
-    const ownerQuery = await supabase
-      .from("tenants")
-      .select("id, slug, name, business_type_id")
-      .eq("owner_user_id", userId)
-      .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
+      const ownerQuery = await supabase
+        .from("tenants")
+        .select("id, slug, name, business_type_id")
+        .eq("owner_user_id", userId)
+        .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
 
-    if (ownerQuery.data) {
-      tenantSlug = ownerQuery.data.slug;
-      tenantId = ownerQuery.data.id;
-      tenantName = ownerQuery.data.name;
-      businessTypeId = ownerQuery.data.business_type_id ?? undefined;
-    } else {
-      // Try as employee — find tenant_id from user_roles
-      const roleQuery = await supabase
-        .from("user_roles")
-        .select("tenant_id")
-        .eq("user_id", userId)
-        .maybeSingle<{ tenant_id: string }>();
+      if (ownerQuery.data) {
+        tenantSlug = ownerQuery.data.slug;
+        tenantId = ownerQuery.data.id;
+        tenantName = ownerQuery.data.name;
+        businessTypeId = ownerQuery.data.business_type_id ?? undefined;
+      } else {
+        const roleQuery = await supabase
+          .from("user_roles")
+          .select("tenant_id")
+          .eq("user_id", userId)
+          .maybeSingle<{ tenant_id: string }>();
 
-      if (roleQuery.data?.tenant_id) {
-        const tenantByIdQuery = await supabase
-          .from("tenants")
-          .select("id, slug, name, business_type_id")
-          .eq("id", roleQuery.data.tenant_id)
-          .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
+        if (roleQuery.data?.tenant_id) {
+          const tenantByIdQuery = await supabase
+            .from("tenants")
+            .select("id, slug, name, business_type_id")
+            .eq("id", roleQuery.data.tenant_id)
+            .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
 
-        if (tenantByIdQuery.data) {
-          tenantSlug = tenantByIdQuery.data.slug;
-          tenantId = tenantByIdQuery.data.id;
-          tenantName = tenantByIdQuery.data.name;
-          businessTypeId = tenantByIdQuery.data.business_type_id ?? undefined;
+          if (tenantByIdQuery.data) {
+            tenantSlug = tenantByIdQuery.data.slug;
+            tenantId = tenantByIdQuery.data.id;
+            tenantName = tenantByIdQuery.data.name;
+            businessTypeId = tenantByIdQuery.data.business_type_id ?? undefined;
+          }
         }
       }
-    }
 
-    if (!tenantSlug || !tenantId) {
-      return err(
-        createAppError({
-          code: "TENANT_RESOLVE_FAILED",
-          message: "No se pudo resolver tenant para la sesion actual.",
-          retryable: false
-        })
-      );
-    }
+      if (!tenantSlug || !tenantId) {
+        throw new Error("No se pudo resolver tenant para la sesion actual.");
+      }
 
-    const tenant: TenantContext = {
-      tenantUuid: tenantId,
-      tenantSlug,
-      name: tenantName ?? "N/A",
-      userId,
-      ...(businessTypeId ? { businessTypeId } : {})
-    };
-    eventBus.emit("TENANT.RESOLVED", tenant);
+      const tenant: TenantContext = {
+        tenantUuid: tenantId,
+        tenantSlug,
+        name: tenantName ?? "N/A",
+        userId,
+        ...(businessTypeId ? { businessTypeId } : {})
+      };
+      eventBus.emit("TENANT.RESOLVED", tenant);
 
-    const subscriptionResult = await checkSubscription(tenantSlug);
-    if (!subscriptionResult.ok) {
-      return err(subscriptionResult.error);
-    }
+      const subscriptionResult = await checkSubscription(tenantSlug);
+      if (!subscriptionResult.ok) {
+        throw new Error(subscriptionResult.error.message);
+      }
 
-    const enrichedTenant: TenantContext = {
-      ...tenant,
-      maxUsers: subscriptionResult.data.maxUsers,
-      features: subscriptionResult.data.features
-    };
-    eventBus.emit("TENANT.RESOLVED", enrichedTenant);
+      const enrichedTenant: TenantContext = {
+        ...tenant,
+        maxUsers: subscriptionResult.data.maxUsers,
+        features: subscriptionResult.data.features
+      };
+      eventBus.emit("TENANT.RESOLVED", enrichedTenant);
 
-    return ok({
-      tenant: enrichedTenant,
-      userRole: roleResult.data,
-      subscriptionActive: subscriptionResult.data.isActive,
-      subscriptionEndDate: subscriptionResult.data.endDate || null,
-      isLastDay: !!subscriptionResult.data.isLastDay,
-      maxUsers: subscriptionResult.data.maxUsers,
-      features: subscriptionResult.data.features
+      return {
+        tenant: enrichedTenant,
+        userRole: roleResult.data,
+        subscriptionActive: subscriptionResult.data.isActive,
+        subscriptionEndDate: subscriptionResult.data.endDate || null,
+        isLastDay: !!subscriptionResult.data.isLastDay,
+        maxUsers: subscriptionResult.data.maxUsers,
+        features: subscriptionResult.data.features
+      };
     });
   };
 

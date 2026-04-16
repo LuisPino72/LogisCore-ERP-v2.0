@@ -101,10 +101,9 @@ export class DefaultSyncEngine implements SyncEngine {
       return ok<"processed" | "skipped">("processed");
     }
 
-    const errorCode = processed.error.code.toUpperCase();
-    const errorMessage = processed.error.message.toUpperCase();
     const isConflict =
-      errorCode.includes("CONFLICT") || errorMessage.includes("CONFLICT");
+      processed.error.code === "SYNC_CONFLICT" || 
+      processed.error.code === "SYNC_CONFLICT_MANUAL";
     const isTransactional = this.transactionalTables.has(nextItem.table);
     const isCatalog = this.isCatalogTable(nextItem.table);
 

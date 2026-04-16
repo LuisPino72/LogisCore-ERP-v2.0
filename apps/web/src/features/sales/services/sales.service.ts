@@ -9,6 +9,7 @@ import {
 } from "@logiscore/core";
 import { hasPermission } from "@/features/tenant/types/tenant.types";
 import type { StockMovementRecord } from "@/lib/db/dexie";
+import type { InventoryLot } from "@/features/inventory/types/inventory.types";
 import type {
   BoxClosing,
   CloseBoxInput,
@@ -23,13 +24,12 @@ import type {
   SuspendedSale
 } from "../types/sales.types";
 import {
-  validateCentsRule,
   validateTenantForDexie,
   validatePaymentSufficient,
-  applyCentsAdjustment,
   validateQuantityPrecision,
   validateExchangeRateSnapshot,
 } from "../../../specs/sales";
+import { applyCentsRule, needsCentsAdjustment, computeIgtf } from "../../invoicing/utils/fiscal";
 
 /**
  * Interfaz para acceder a funciones RPC de Supabase.
@@ -89,6 +89,8 @@ export interface SalesDb {
   ): Promise<void>;
   listBoxClosings(tenantId: string): Promise<BoxClosing[]>;
   createStockMovements(movements: StockMovementRecord[]): Promise<void>;
+  listInventoryLots(tenantId: string): Promise<InventoryLot[]>;
+  updateInventoryLot(lot: InventoryLot): Promise<void>;
 }
 
 /**
@@ -170,6 +172,75 @@ export const createSalesService = ({
       return roundMoney(amount / exchangeRate);
     }
     return NaN;
+  };
+
+  const consumeFifoStock = async (
+    tenantId: string,
+    productLocalId: string,
+    warehouseLocalId: string,
+    quantityToConsume: number,
+    saleLocalId: string,
+    actorUserId: string,
+    now: string
+  ): Promise<Result<{ movements: StockMovementRecord[]; totalCost: number }, AppError>> => {
+    const allLots = await db.listInventoryLots(tenantId);
+    const activeLots = allLots
+      .filter(lot => 
+        lot.productLocalId === productLocalId && 
+        lot.warehouseLocalId === warehouseLocalId && 
+        lot.status === "active"
+      )
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    let remaining = quantityToConsume;
+    const movements: StockMovementRecord[] = [];
+    let totalCost = 0;
+
+    for (const lot of activeLots) {
+      if (remaining <= 0) break;
+
+      const lotQty = Number(lot.quantity);
+      const lotCost = Number(lot.unitCost);
+      const consumeFromLot = Math.min(remaining, lotQty);
+
+      movements.push({
+        localId: uuid(),
+        tenantId,
+        productLocalId,
+        warehouseLocalId,
+        movementType: "sale_out",
+        quantity: consumeFromLot,
+        unitCost: lotCost,
+        costLayerId: lot.localId,
+        referenceType: "sale",
+        referenceLocalId: saleLocalId,
+        notes: "Salida por venta POS (FIFO)",
+        createdBy: actorUserId,
+        createdAt: now
+      });
+
+      totalCost += consumeFromLot * lotCost;
+      remaining -= consumeFromLot;
+
+      const newLotQty = lotQty - consumeFromLot;
+      await db.updateInventoryLot({
+        ...lot,
+        quantity: newLotQty,
+        status: newLotQty <= 0 ? "consumed" : "active"
+      });
+    }
+
+    if (remaining > 0) {
+      return err(
+        createAppError({
+          code: "SALE_ITEM_STOCK_INSUFFICIENT",
+          message: `Stock insuficiente para el producto ${productLocalId}. Faltan ${remaining} unidades.`,
+          retryable: false
+        })
+      );
+    }
+
+    return ok({ movements, totalCost });
   };
 
   const computeTotalsFromPayments = (
@@ -369,7 +440,7 @@ export const createSalesService = ({
 
     for (const item of input.items) {
       const qtyValidation = validateQuantityPrecision(
-        item.quantity,
+        item.qty,
         item.isWeighted ?? false
       );
       if (!qtyValidation.ok) {
@@ -410,10 +481,29 @@ export const createSalesService = ({
       return err(paymentTotals.error);
     }
 
-    const centsValidation = validateCentsRule(input.total);
-    if (!centsValidation.ok) {
-      const adjustedTotal = applyCentsAdjustment(input.total);
-      input.total = adjustedTotal;
+    const igtfAmount = computeIgtf(
+      input.payments,
+      0.03,
+      input.exchangeRate
+    );
+    input.igtfAmount = igtfAmount;
+
+    const hasWeightedItems = input.items.some(item => item.isWeighted ?? false);
+    const precision = hasWeightedItems ? 4 : 2;
+
+    const roundValue = (val: number): number => {
+      const factor = Math.pow(10, precision);
+      return Math.round((val + Number.EPSILON) * factor) / factor;
+    };
+
+    const adjustedSubtotal = roundValue(input.subtotal);
+    const adjustedTaxTotal = roundValue(input.taxTotal);
+    const adjustedDiscountTotal = roundValue(input.discountTotal);
+    const adjustedIgtf = roundValue(igtfAmount);
+    input.total = roundValue(adjustedSubtotal + adjustedTaxTotal - adjustedDiscountTotal + adjustedIgtf);
+
+    if (needsCentsAdjustment(input.total)) {
+      input.total = applyCentsRule(input.total);
     }
 
     const paymentValidation = validatePaymentSufficient(
@@ -435,6 +525,7 @@ export const createSalesService = ({
       p_subtotal: input.subtotal,
       p_tax_total: input.taxTotal,
       p_discount_total: input.discountTotal,
+      p_igtf_amount: input.igtfAmount,
       p_total: input.total,
       p_total_paid: paymentTotals.data.totalPaid,
       p_change_amount: paymentTotals.data.changeAmount,
@@ -475,6 +566,7 @@ export const createSalesService = ({
       subtotal: input.subtotal,
       taxTotal: input.taxTotal,
       discountTotal: input.discountTotal,
+      igtfAmount: input.igtfAmount,
       total: input.total,
       totalPaid: paymentTotals.data.totalPaid,
       changeAmount: paymentTotals.data.changeAmount,
@@ -489,29 +581,27 @@ export const createSalesService = ({
       updatedAt: now
     };
 
+
     await db.createSale(sale);
-    const stockMovements: StockMovementRecord[] = input.items.map((item) => {
-      const quantity = item.isWeighted 
-        ? Number(item.qty.toFixed(4)) 
-        : item.qty;
-      return {
-        localId: uuid(),
-        tenantId: tenant.tenantSlug,
-        productLocalId: item.productLocalId,
-        warehouseLocalId: input.warehouseLocalId,
-        movementType: "sale_out",
-        quantity,
-        unitCost: item.unitCost ?? 0,
-        referenceType: "sale",
-        referenceLocalId: localId,
-        notes: "Salida por venta POS",
-        createdBy: actor.userId || "",
-        createdAt: now
-      };
-    });
-    if (stockMovements.length) {
-      await db.createStockMovements(stockMovements);
-      for (const movement of stockMovements) {
+    
+    const allStockMovements: StockMovementRecord[] = [];
+    for (const item of input.items) {
+      const fifoResult = await consumeFifoStock(
+        tenant.tenantSlug,
+        item.productLocalId,
+        input.warehouseLocalId,
+        item.qty,
+        localId,
+        actor.userId || "",
+        now
+      );
+      if (!fifoResult.ok) return fifoResult;
+      allStockMovements.push(...fifoResult.data.movements);
+    }
+
+    if (allStockMovements.length) {
+      await db.createStockMovements(allStockMovements);
+      for (const movement of allStockMovements) {
         eventBus.emit("INVENTORY.STOCK_MOVEMENT_RECORDED", {
           tenantId: tenant.tenantSlug,
           localId: movement.localId,

@@ -77,6 +77,15 @@ const createInventoryDbMock = (): InventoryDb => {
       if (movement) {
         movements.set(movement.localId, movement);
       }
+    },
+    async listInventoryLots(tenantId) {
+      return [];
+    },
+    async createInventoryLot(lot) {
+      // No-op for tests
+    },
+    async updateInventoryLot(lot) {
+      // No-op for tests
     }
   };
 };
@@ -86,7 +95,7 @@ const createSyncEngineMock = (): SyncEngine => ({
   processNext: vi.fn(async () => ok<"processed" | "skipped">("skipped")),
   startPeriodicSync: vi.fn(),
   stopPeriodicSync: vi.fn(),
-  getStatus: vi.fn(() => "idle")
+  getStatus: vi.fn(() => "idle" as const)
 });
 
 const ownerActor = {
@@ -285,7 +294,9 @@ describe("inventory.service", () => {
         tenantId: "tenant-demo",
         name: "Bodega Principal",
         isActive: true,
-        isDefault: true
+        isDefault: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z"
       });
 
       const result = await service.recordStockMovement(
@@ -324,7 +335,9 @@ describe("inventory.service", () => {
         tenantId: "tenant-demo",
         name: "Bodega Principal",
         isActive: true,
-        isDefault: true
+        isDefault: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z"
       });
 
       const result = await service.recordStockMovement(
@@ -362,7 +375,9 @@ describe("inventory.service", () => {
         tenantId: "tenant-demo",
         name: "Bodega Principal",
         isActive: true,
-        isDefault: true
+        isDefault: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z"
       });
 
       const result = await service.recordStockMovement(
@@ -400,7 +415,9 @@ describe("inventory.service", () => {
         tenantId: "tenant-demo",
         name: "Bodega Principal",
         isActive: true,
-        isDefault: true
+        isDefault: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z"
       });
 
       const result = await service.recordStockMovement(
@@ -436,7 +453,9 @@ describe("inventory.service", () => {
         tenantId: "tenant-demo",
         name: "Bodega Principal",
         isActive: true,
-        isDefault: true
+        isDefault: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z"
       });
 
       const result = await service.recordStockMovement(

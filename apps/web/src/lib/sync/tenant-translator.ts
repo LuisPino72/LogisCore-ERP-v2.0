@@ -7,12 +7,14 @@ interface TenantMapping {
   tenantSlug: string;
   tenantUuid: string;
   tenantName: string;
+  ownerUserId?: string;
 }
 
 interface TenantTranslatorDeps {
   getCachedTenant: () => TenantMapping | null;
   setCachedTenant: (mapping: TenantMapping) => void;
   clearCachedTenant: () => void;
+  getCurrentUserId: () => string | null;
 }
 
 class TenantTranslator {
@@ -56,15 +58,28 @@ class TenantTranslator {
     );
   }
 
-  async fetchTenantUuid(tenantSlug: string): Promise<Result<string, AppError>> {
+  async fetchTenantUuid(
+    tenantSlug: string,
+    currentUserId?: string
+  ): Promise<Result<string, AppError>> {
     const cached = this.cache.get(tenantSlug);
     if (cached) {
+      if (currentUserId && cached.ownerUserId && cached.ownerUserId !== currentUserId) {
+        return err(
+          createAppError({
+            code: "TENANT_ACCESS_DENIED",
+            message: `El usuario ${currentUserId} no es propietario del tenant ${tenantSlug}`,
+            retryable: false,
+            context: { tenantSlug, currentUserId, ownerUserId: cached.ownerUserId }
+          })
+        );
+      }
       return ok(cached.tenantUuid);
     }
 
     const { data, error } = await supabase
       .from("tenants")
-      .select("id, name, tenant_slug")
+      .select("id, name, tenant_slug, owner_user_id")
       .eq("tenant_slug", tenantSlug)
       .single();
 
@@ -79,10 +94,22 @@ class TenantTranslator {
       );
     }
 
+    if (currentUserId && data.owner_user_id && data.owner_user_id !== currentUserId) {
+      return err(
+        createAppError({
+          code: "TENANT_ACCESS_DENIED",
+          message: `El usuario actual no tiene acceso al tenant ${tenantSlug}`,
+          retryable: false,
+          context: { tenantSlug, currentUserId, ownerUserId: data.owner_user_id }
+        })
+      );
+    }
+
     const mapping: TenantMapping = {
       tenantSlug: data.tenant_slug,
       tenantUuid: data.id,
-      tenantName: data.name
+      tenantName: data.name,
+      ownerUserId: data.owner_user_id
     };
 
     this.setCachedTenant(mapping);

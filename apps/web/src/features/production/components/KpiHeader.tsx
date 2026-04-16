@@ -1,5 +1,7 @@
+import { useEffect, useState, useMemo } from "react";
 import type { ProductionOrder, ProductionLog, Recipe } from "../types/production.types";
 import { Tooltip } from "@/common";
+import { eventBus } from "@/lib/core/runtime";
 
 export interface ProductionKpis {
   activeOrders: number;
@@ -15,18 +17,31 @@ interface KpiHeaderProps {
 }
 
 export function KpiHeader({ orders, logs, recipes }: KpiHeaderProps) {
-  const activeOrders = orders.filter(
+  const [isDashboardReady, setIsDashboardReady] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = eventBus.on("DASHBOARD.READY", () => {
+      setIsDashboardReady(true);
+    });
+    return unsubscribe;
+  }, []);
+
+  const dataToUse = useMemo(() => {
+    return isDashboardReady ? { orders, logs, recipes } : { orders: [], logs: [], recipes: [] };
+  }, [isDashboardReady, orders, logs, recipes]);
+
+  const activeOrders = dataToUse.orders.filter(
     (o) => o.status === "draft" || o.status === "in_progress"
   ).length;
 
-  const completedOrders = logs.slice(-10);
+  const completedOrders = dataToUse.logs.slice(-10);
   const averageYield =
     completedOrders.length > 0
       ? completedOrders.reduce((sum, log) => sum + log.variancePercent, 0) /
         completedOrders.length
       : 0;
 
-  const totalRecipes = recipes.filter((r) => !r.deletedAt).length;
+  const totalRecipes = dataToUse.recipes.filter((r) => !r.deletedAt).length;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

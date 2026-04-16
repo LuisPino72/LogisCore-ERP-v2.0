@@ -4,6 +4,7 @@ type EventHandler = (payload: unknown) => void;
 
 export class InMemoryEventBus implements EventBus {
   private readonly handlers = new Map<EventName, Set<EventHandler>>();
+  private handlerCount = 0;
 
   emit<TPayload = unknown>(event: EventName, payload: TPayload): void {
     const eventHandlers = this.handlers.get(event);
@@ -22,6 +23,11 @@ export class InMemoryEventBus implements EventBus {
     const eventHandlers = this.handlers.get(event) ?? new Set<EventHandler>();
     eventHandlers.add(handler as EventHandler);
     this.handlers.set(event, eventHandlers);
+    this.handlerCount++;
+
+    if (this.handlerCount > 50) {
+      console.warn(`[EventBus] High handler count (${this.handlerCount}). Ensure unsubscribe is called.`);
+    }
 
     return () => {
       const currentHandlers = this.handlers.get(event);
@@ -32,6 +38,11 @@ export class InMemoryEventBus implements EventBus {
       if (currentHandlers.size === 0) {
         this.handlers.delete(event);
       }
+      this.handlerCount = Math.max(0, this.handlerCount - 1);
     };
+  }
+
+  getHandlerCount(): number {
+    return this.handlerCount;
   }
 }

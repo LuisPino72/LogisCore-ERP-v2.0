@@ -110,20 +110,24 @@ test.describe('Weighted Products & Fiscal Rules Tests', () => {
     const sales = await dbUtil.getByIndex('sales', 'tenantId', TEST_TENANT_SLUG);
     
     const salesWithIGTF = sales.filter((s: Record<string, unknown>) => (s.igtf_amount as number) > 0);
-    console.log(`Sales with IGTF: ${salesWithIGTF.length}`);
     
     if (salesWithIGTF.length > 0) {
       const sale = salesWithIGTF[0] as Record<string, unknown>;
-      const total = sale.total as number;
+      const payments = sale.payments as Array<{ currency: string; amount: number }>;
+      const exchangeRate = sale.exchangeRate as number;
       const igtfAmount = sale.igtf_amount as number;
-      const expectedIGTF = total * 0.03;
       
-      console.log(`Sale total: ${total}, IGTF: ${igtfAmount}, Expected: ${expectedIGTF.toFixed(4)}`);
+      const usdPaymentsTotal = payments
+        .filter(p => p.currency === 'USD')
+        .reduce((sum, p) => sum + p.amount, 0);
       
-      expect(igtfAmount).toBeGreaterThan(0);
+      const expectedIGTF = usdPaymentsTotal * exchangeRate * 0.03;
+      
+      console.log(`USD Payments: ${usdPaymentsTotal}, Rate: ${exchangeRate}, IGTF: ${igtfAmount}, Expected: ${expectedIGTF.toFixed(4)}`);
+      
       expect(Math.abs(igtfAmount - expectedIGTF)).toBeLessThan(0.01);
     } else {
-      console.log('No sales with IGTF yet - need to complete sale with USD payment');
+      console.log('No sales with IGTF yet');
       expect(true).toBe(true);
     }
   });

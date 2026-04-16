@@ -117,12 +117,13 @@ export const createInvoicingService = ({
   const computeInvoiceTotals = async (
     tenantId: string,
     items: InvoiceItem[],
+    payments: Array<{ currency: string; amount: number }>,
     currency: "VES" | "USD",
     exchangeRate: number,
     igtfRate: number
   ): Promise<{ subtotal: number; taxTotal: number; igtfAmount: number; total: number }> => {
     let subtotal = 0;
-    let taxTotal = 0;
+    let taxTotalAccumulator = 0;
 
     for (const item of items) {
       const itemSubtotal = item.qty * item.unitPrice;
@@ -135,18 +136,18 @@ export const createInvoicingService = ({
       const taxableSubtotal = itemSubtotal - itemDiscount;
       const taxAmount = taxableSubtotal * (item.taxRate / 100);
       subtotal += taxableSubtotal;
-      taxTotal += roundMoneyLocal(taxAmount);
+      taxTotalAccumulator += taxAmount;
     }
 
-    const totalBeforeIgtf = subtotal + taxTotal;
+    const totalBeforeIgtf = subtotal + taxTotalAccumulator;
     let igtfAmount = 0;
     if (igtfRate > 0) {
-      igtfAmount = roundMoneyLocal(totalBeforeIgtf * (igtfRate / 100));
+      igtfAmount = computeIgtf(payments, igtfRate, exchangeRate);
     }
 
     return {
       subtotal: roundMoneyLocal(subtotal),
-      taxTotal: roundMoneyLocal(taxTotal),
+      taxTotal: roundMoneyLocal(taxTotalAccumulator),
       igtfAmount,
       total: roundMoneyLocal(totalBeforeIgtf + igtfAmount)
     };
@@ -226,6 +227,7 @@ export const createInvoicingService = ({
     const totals = await computeInvoiceTotals(
       tenant.tenantSlug,
       mockItems,
+      [],
       "VES",
       1,
       igtfRate
@@ -390,7 +392,7 @@ export const createInvoicingService = ({
     const igtfRate = await computeTaxRateFromRules(tenant.tenantSlug, "igtf");
     let igtfAmount = 0;
     if (igtfRate > 0) {
-      igtfAmount = computeIgtf(invoice.subtotal, invoice.taxTotal, igtfRate);
+      igtfAmount = computeIgtf(invoice.payments, igtfRate, invoice.exchangeRate);
     }
 
     const totalWithIgtf = computeInvoiceTotal(invoice.subtotal, invoice.taxTotal, igtfAmount);

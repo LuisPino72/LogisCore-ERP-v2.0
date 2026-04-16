@@ -107,22 +107,24 @@ export class StorageManager {
     db: IDBDatabase,
     maxAgeDays: number = 365
   ): Promise<Result<number, AppError>> {
-    const tablesToClean = ["sales", "purchases", "invoices", "production_logs"];
+    const transactionalTables = Array.from(db.objectStoreNames).filter(
+      name => !name.startsWith("sync_") && !name.startsWith("config_")
+    );
     let totalDeleted = 0;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
     const cutoffISO = cutoffDate.toISOString();
 
-    for (const tableName of tablesToClean) {
-      if (!db.objectStoreNames.contains(tableName)) continue;
-
+    for (const tableName of transactionalTables) {
       try {
         const store = db.transaction(tableName, "readwrite").objectStore(tableName);
+        if (!store.indexNames.contains("createdAt")) continue;
+
         const index = store.index("createdAt");
         const range = IDBKeyRange.upperBound(cutoffISO);
 
         const request = index.openCursor(range);
-        
+
         await new Promise<void>((resolve, reject) => {
           request.onsuccess = (event) => {
             const cursor = (event.target as IDBRequest).result;

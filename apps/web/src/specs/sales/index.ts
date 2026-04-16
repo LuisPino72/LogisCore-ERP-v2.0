@@ -106,27 +106,6 @@ export function validateIGTF(
   return ok(undefined);
 }
 
-export function validateCentsRule(total: number): Result<void, AppError> {
-  const cents = Math.abs((total % 1) * 100);
-  if (cents > 1) {
-    return err(
-      createSalesError("CENTS_ADJUSTMENT_NEEDED", {
-        total,
-        cents,
-      })
-    );
-  }
-  return ok(undefined);
-}
-
-export function applyCentsAdjustment(total: number): number {
-  const cents = Math.abs((total % 1) * 100);
-  if (cents <= 1) {
-    return Math.floor(total * 100) / 100;
-  }
-  return total;
-}
-
 export function validateTenantForDexie(tenantId: string): Result<void, AppError> {
   if (!/^[a-z0-9-]+$/.test(tenantId)) {
     return err(

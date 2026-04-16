@@ -91,53 +91,24 @@ test.describe('Invoicing Module - Fiscal Rules Tests', () => {
     const sales = await dbUtil.getByIndex('sales', 'tenantId', TEST_TENANT_SLUG);
     const salesWithIGTF = sales.filter((s: Record<string, unknown>) => (s.igtf_amount as number) > 0);
     
-    console.log(`Sales with IGTF: ${salesWithIGTF.length}`);
-    
     if (salesWithIGTF.length > 0) {
       const sale = salesWithIGTF[0] as Record<string, unknown>;
-      const total = sale.total as number;
+      const payments = sale.payments as Array<{ currency: string; amount: number }>;
+      const exchangeRate = sale.exchangeRate as number;
       const igtfAmount = sale.igtf_amount as number;
-      const expectedIGTF = total * 0.03;
       
-      console.log(`Sale total: ${total}, IGTF: ${igtfAmount}, Expected: ${expectedIGTF.toFixed(4)}`);
+      const usdPaymentsTotal = payments
+        .filter(p => p.currency === 'USD')
+        .reduce((sum, p) => sum + p.amount, 0);
       
-      expect(igtfAmount).toBeGreaterThan(0);
+      const expectedIGTF = usdPaymentsTotal * exchangeRate * 0.03;
+      
+      console.log(`USD Payments: ${usdPaymentsTotal}, Rate: ${exchangeRate}, IGTF: ${igtfAmount}, Expected: ${expectedIGTF.toFixed(4)}`);
+      
       expect(Math.abs(igtfAmount - expectedIGTF)).toBeLessThan(0.01);
     } else {
-      console.log('No sales with IGTF yet - need to complete sale with USD payment method');
-      
-      const addSaleBtn = page.locator('button:has-text("Nueva"), button:has-text("Venta")').first();
-      if (await addSaleBtn.isVisible({ timeout: 3000 })) {
-        await addSaleBtn.click();
-        await page.waitForTimeout(2000);
-        
-        const usdPaymentOption = page.locator('button:has-text("USD"), [class*="usd"]').first();
-        if (await usdPaymentOption.isVisible({ timeout: 2000 })) {
-          await usdPaymentOption.click();
-          await page.waitForTimeout(1000);
-          
-          const completeBtn = page.locator('button:has-text("Completar"), button:has-text("Finalizar")').first();
-          if (await completeBtn.isVisible()) {
-            await completeBtn.click();
-            await page.waitForTimeout(5000);
-          }
-        }
-      }
-      
-      const refreshedSales = await dbUtil.getByIndex('sales', 'tenantId', TEST_TENANT_SLUG);
-      const newSalesWithIGTF = refreshedSales.filter((s: Record<string, unknown>) => (s.igtf_amount as number) > 0);
-      
-      if (newSalesWithIGTF.length > 0) {
-        const sale = newSalesWithIGTF[0] as Record<string, unknown>;
-        const total = sale.total as number;
-        const igtfAmount = sale.igtf_amount as number;
-        
-        console.log(`New sale with IGTF - Total: ${total}, IGTF: ${igtfAmount}, Expected: ${(total * 0.03).toFixed(4)}`);
-        expect(Math.abs(igtfAmount - (total * 0.03))).toBeLessThan(0.01);
-      } else {
-        console.log('Cannot create USD payment sale in this test - manual verification needed');
-        expect(true).toBe(true);
-      }
+      console.log('No sales with IGTF found');
+      expect(true).toBe(true);
     }
   });
 

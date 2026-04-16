@@ -1,4 +1,4 @@
-import { memo, useRef } from "react";
+import { memo, useRef, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { TableColumn, SortState } from "../types/common.types";
 
@@ -10,7 +10,17 @@ export interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
   emptyMessage?: string;
   loading?: boolean;
+  virtualizerHeight?: number;
 }
+
+const getValue = <T,>(row: T, key: string): unknown => {
+  const keys = key.split(".");
+  let value: unknown = row;
+  for (const k of keys) {
+    value = (value as Record<string, unknown>)?.[k];
+  }
+  return value;
+};
 
 export const DataTable = memo(function DataTable<T>({
   columns,
@@ -19,79 +29,55 @@ export const DataTable = memo(function DataTable<T>({
   onSort,
   onRowClick,
   emptyMessage = "No hay datos",
-  loading
+  loading,
+  virtualizerHeight = 400
 }: DataTableProps<T>) {
-  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
   const shouldVirtualize = data.length > 100;
-  
+
+  const columnWidths = useMemo(() => {
+    return columns.map((col) => col.width || "1fr").join(" ");
+  }, [columns]);
+
   const rowVirtualizer = useVirtualizer({
     count: data.length,
-    getScrollElement: () => tableContainerRef.current,
+    getScrollElement: () => parentRef.current,
     estimateSize: () => 48,
     overscan: 10,
     enabled: shouldVirtualize
   });
 
-  const getValue = (row: T, key: string): unknown => {
-    const keys = key.split(".");
-    let value: unknown = row;
-    for (const k of keys) {
-      value = (value as Record<string, unknown>)?.[k];
-    }
-    return value;
-  };
-
-  const renderRow = (row: T, rowIndex: number, key: string) => (
-    <tr
-      key={key}
-      className="hover:bg-surface-50 transition-colors"
-      onClick={() => onRowClick?.(row)}
-    >
+  const renderCells = (row: T, _rowKey: string | number) => (
+    <>
       {columns.map((col) => {
         const value = getValue(row, col.key);
         return (
-          <td
+          <div
             key={col.key}
             className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-content-primary whitespace-nowrap overflow-hidden text-ellipsis"
           >
             {col.render ? col.render(value, row) : String(value ?? "")}
-          </td>
+          </div>
         );
       })}
-    </tr>
+    </>
   );
 
-  const _renderVirtualRow = (row: T, index: number) => (
-    <tr
-      data-index={index}
-      className="hover:bg-surface-50 transition-colors"
-      onClick={() => onRowClick?.(row)}
-    >
-      {columns.map((col) => {
-        const value = getValue(row, col.key);
-        return (
-          <td
-            key={col.key}
-            className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-content-primary whitespace-nowrap overflow-hidden text-ellipsis"
-          >
-            {col.render ? col.render(value, row) : String(value ?? "")}
-          </td>
-        );
-      })}
-    </tr>
-  );
-
-  return (
-    <div className="overflow-x-auto border border-surface-200 rounded-lg">
-      <table className="w-full min-w-[600px]">
-        <thead className="bg-surface-50 sticky top-0 z-10">
-          <tr>
+  if (shouldVirtualize) {
+    return (
+      <div className="border border-surface-200 rounded-lg overflow-hidden">
+        <div
+          className="grid gap-0"
+          style={{
+            gridTemplateColumns: columnWidths,
+            minWidth: "600px"
+          }}
+        >
+          <div className="bg-surface-50 sticky top-0 z-10 grid" style={{ gridTemplateColumns: columnWidths }}>
             {columns.map((col) => (
-              <th
+              <div
                 key={col.key}
                 className={`px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium text-content-primary ${
-                  col.width ? `w-${col.width}` : ""
-                } ${
                   col.sortable ? "cursor-pointer hover:bg-surface-100" : ""
                 }`}
                 onClick={() => col.sortable && onSort?.(col.key)}
@@ -102,71 +88,116 @@ export const DataTable = memo(function DataTable<T>({
                     <span className="text-brand-500">{sort.direction === "asc" ? "↑" : "↓"}</span>
                   )}
                 </div>
-              </th>
+              </div>
             ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-surface-200">
+          </div>
+          
           {loading ? (
-            <tr>
-              <td colSpan={columns.length} className="px-4 py-8 text-center text-content-secondary">
-                Cargando...
-              </td>
-            </tr>
+            <div
+              className="col-span-full px-4 py-8 text-center text-content-secondary"
+              style={{ gridColumn: `1 / -1` }}
+            >
+              Cargando...
+            </div>
           ) : data.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length} className="px-4 py-8 text-center text-content-secondary">
-                {emptyMessage}
-              </td>
-            </tr>
-          ) : shouldVirtualize ? (
-            <tr>
-              <td colSpan={columns.length} className="p-0">
-                <div
-                  ref={tableContainerRef}
-                  className="overflow-auto"
-                  style={{ height: "400px" }}
-                >
-                  <table className="w-full">
-                    <tbody className="divide-y divide-surface-200">
-                      {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                        const row = data[virtualRow.index];
-                        if (!row) return null;
-                        return (
-                          <tr
-                            key={virtualRow.key}
-                            data-index={virtualRow.index}
-                            className="hover:bg-surface-50 transition-colors"
-                            style={{
-                              transform: `translateY(${virtualRow.start}px)`,
-                              height: `${virtualRow.size}px`
-                            }}
-                            onClick={() => onRowClick?.(row)}
-                          >
-                            {columns.map((col) => {
-                              const value = getValue(row, col.key);
-                              return (
-                                <td
-                                  key={col.key}
-                                  className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-content-primary whitespace-nowrap overflow-hidden text-ellipsis"
-                                >
-                                  {col.render ? col.render(value, row) : String(value ?? "")}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </td>
-            </tr>
+            <div
+              className="col-span-full px-4 py-8 text-center text-content-secondary"
+              style={{ gridColumn: `1 / -1` }}
+            >
+              {emptyMessage}
+            </div>
           ) : (
-            data.map((row, rowIndex) => renderRow(row, rowIndex, `row-${rowIndex}`))
+            <div
+              ref={parentRef}
+              className="overflow-auto"
+              style={{ height: `${virtualizerHeight}px`, maxHeight: "60vh" }}
+            >
+              <div
+                style={{
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                  width: "100%",
+                  position: "relative"
+                }}
+              >
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = data[virtualRow.index];
+                  if (!row) return null;
+                  return (
+                    <div
+                      key={virtualRow.key}
+                      data-index={virtualRow.index}
+                      className="grid hover:bg-surface-50 transition-colors cursor-pointer absolute w-full"
+                      style={{
+                        transform: `translateY(${virtualRow.start}px)`,
+                        gridTemplateColumns: columnWidths,
+                        height: `${virtualRow.size}px`
+                      }}
+                      onClick={() => onRowClick?.(row)}
+                    >
+                      {renderCells(row, virtualRow.index)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
-        </tbody>
-      </table>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto border border-surface-200 rounded-lg">
+      <div
+        className="grid gap-0 min-w-[600px]"
+        style={{ gridTemplateColumns: columnWidths }}
+      >
+        <div className="bg-surface-50 sticky top-0 z-10 grid" style={{ gridTemplateColumns: columnWidths }}>
+          {columns.map((col) => (
+            <div
+              key={col.key}
+              className={`px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium text-content-primary ${
+                col.sortable ? "cursor-pointer hover:bg-surface-100" : ""
+              }`}
+              onClick={() => col.sortable && onSort?.(col.key)}
+            >
+              <div className="flex items-center gap-1">
+                {col.header}
+                {col.sortable && sort?.column === col.key && (
+                  <span className="text-brand-500">{sort.direction === "asc" ? "↑" : "↓"}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {loading ? (
+          <div
+            className="col-span-full px-4 py-8 text-center text-content-secondary"
+            style={{ gridColumn: `1 / -1` }}
+          >
+            Cargando...
+          </div>
+        ) : data.length === 0 ? (
+          <div
+            className="col-span-full px-4 py-8 text-center text-content-secondary"
+            style={{ gridColumn: `1 / -1` }}
+          >
+            {emptyMessage}
+          </div>
+        ) : (
+          data.map((row, rowIndex) => (
+            <div
+              key={`row-${rowIndex}`}
+              className="grid hover:bg-surface-50 transition-colors cursor-pointer"
+              style={{ gridTemplateColumns: columnWidths }}
+              onClick={() => onRowClick?.(row)}
+            >
+              {renderCells(row, rowIndex)}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 });

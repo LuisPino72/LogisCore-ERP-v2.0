@@ -94,6 +94,7 @@ export interface Sale {
   subtotal: number;
   taxTotal: number;
   discountTotal: number;
+  igtfAmount: number;
   total: number;
   totalPaid: number;
   changeAmount: number;
@@ -177,8 +178,10 @@ export interface CreatePosSaleInput {
   subtotal: number;
   taxTotal: number;
   discountTotal: number;
+  igtfAmount: number;
   total: number;
   totalPaid?: number;
+
   changeAmount?: number;
   items: SaleItem[];
   payments: SalePayment[];
