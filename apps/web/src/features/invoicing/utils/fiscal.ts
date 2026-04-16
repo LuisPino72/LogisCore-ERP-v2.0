@@ -61,7 +61,7 @@ export const computeIgtf = (
     .filter((p) => p.currency === "USD")
     .reduce((sum, p) => sum + p.amount, 0);
   
-  const igtfAmount = foreignPaymentsTotal * exchangeRate * (igtfRate / 100);
+  const igtfAmount = foreignPaymentsTotal * exchangeRate * igtfRate;
   return roundMoney(igtfAmount);
 };
 

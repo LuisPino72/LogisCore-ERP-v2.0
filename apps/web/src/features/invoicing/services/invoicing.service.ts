@@ -10,6 +10,7 @@ import {
 } from "@logiscore/core";
 import { hasPermission } from "@/features/tenant/types/tenant.types";
 import type { InvoiceRangeService } from "./invoice-range.service";
+import type { TaxRuleService } from "@/features/core/services/tax-rule.service";
 import {
   validateRif,
   computeIgtf,
@@ -88,6 +89,7 @@ interface CreateInvoicingServiceDependencies {
   syncEngine: SyncEngine;
   eventBus: EventBus;
   invoiceRangeService: InvoiceRangeService;
+  taxRuleService: TaxRuleService;
   getExchangeRate: () => Promise<number>;
   clock?: () => Date;
   uuid?: () => string;
@@ -98,21 +100,13 @@ export const createInvoicingService = ({
   syncEngine,
   eventBus,
   invoiceRangeService,
+  taxRuleService,
   getExchangeRate,
   clock = () => new Date(),
   uuid = () => crypto.randomUUID()
 }: CreateInvoicingServiceDependencies): InvoicingService => {
   const roundMoneyLocal = (value: number): number =>
     Math.round((value + Number.EPSILON) * 100) / 100;
-
-  const computeTaxRateFromRules = async (
-    tenantId: string,
-    type: "iva" | "islr" | "igtf"
-  ): Promise<number> => {
-    const rules = await db.getActiveTaxRules(tenantId);
-    const rule = rules.find((r) => r.type === type && r.isActive);
-    return rule?.rate ?? 0;
-  };
 
   const computeInvoiceTotals = async (
     tenantId: string,
@@ -205,8 +199,11 @@ export const createInvoicingService = ({
       }
     }
 
-    const ivaRate = await computeTaxRateFromRules(tenant.tenantSlug, "iva");
-    const igtfRate = await computeTaxRateFromRules(tenant.tenantSlug, "igtf");
+    const ivaRateResult = await taxRuleService.getRateByType(tenant.tenantSlug, "iva");
+    const igtfRateResult = await taxRuleService.getRateByType(tenant.tenantSlug, "igtf");
+
+    const ivaRate = ivaRateResult.ok ? ivaRateResult.data : 0;
+    const igtfRate = igtfRateResult.ok ? igtfRateResult.data : 0;
 
     const now = clock().toISOString();
     const localId = uuid();
@@ -389,7 +386,8 @@ export const createInvoicingService = ({
     }
     const { invoiceNumber, controlNumber } = numberResult.value;
 
-    const igtfRate = await computeTaxRateFromRules(tenant.tenantSlug, "igtf");
+    const igtfRateResult = await taxRuleService.getRateByType(tenant.tenantSlug, "igtf");
+    const igtfRate = igtfRateResult.ok ? igtfRateResult.data : 0;
     let igtfAmount = 0;
     if (igtfRate > 0) {
       igtfAmount = computeIgtf(invoice.payments, igtfRate, invoice.exchangeRate);

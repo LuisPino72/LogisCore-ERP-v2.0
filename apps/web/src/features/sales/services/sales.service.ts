@@ -8,6 +8,7 @@ import {
   type SyncEngine
 } from "@logiscore/core";
 import { hasPermission } from "@/features/tenant/types/tenant.types";
+import type { TaxRuleService } from "@/features/core/services/tax-rule.service";
 import type { StockMovementRecord } from "@/lib/db/dexie";
 import type { InventoryLot } from "@/features/inventory/types/inventory.types";
 import type {
@@ -138,6 +139,7 @@ interface SalesServiceDependencies {
   syncEngine: SyncEngine;
   eventBus: EventBus;
   supabase: SalesSupabaseLike;
+  taxRuleService: TaxRuleService;
   clock?: () => Date;
   uuid?: () => string;
 }
@@ -147,6 +149,7 @@ export const createSalesService = ({
   syncEngine,
   eventBus,
   supabase,
+  taxRuleService,
   clock = () => new Date(),
   uuid = () => crypto.randomUUID()
 }: SalesServiceDependencies): SalesService => {
@@ -481,9 +484,15 @@ export const createSalesService = ({
       return err(paymentTotals.error);
     }
 
+    const igtfRateResult = await taxRuleService.getRateByType(tenant.tenantSlug, "igtf");
+    if (!igtfRateResult.ok) {
+      return err(igtfRateResult.error);
+    }
+    const igtfRate = igtfRateResult.data;
+
     const igtfAmount = computeIgtf(
       input.payments,
-      0.03,
+      igtfRate,
       input.exchangeRate
     );
     input.igtfAmount = igtfAmount;

@@ -107,6 +107,11 @@ const createSyncEngineMock = (): SyncEngine => ({
   getStatus: vi.fn(() => "idle" as const)
 });
 
+const createTaxRuleServiceMock = () => ({
+  getRateByType: vi.fn(async () => ok(0.03)),
+  listActiveRules: vi.fn(async () => ok([]))
+});
+
 const createSupabaseMock = (): SalesSupabaseLike =>
   ({
     rpc: vi.fn(async <T,>(fn: string): Promise<{ data: T | null; error: { message: string } | null }> => {
@@ -147,7 +152,8 @@ describe("sales.service", () => {
       db: createSalesDbMock(),
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     const result = await service.createSuspendedSale(
@@ -167,7 +173,8 @@ describe("sales.service", () => {
       db: createSalesDbMock(),
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: { getRateByType: vi.fn(async () => ok(0.03)), listActiveRules: vi.fn(async () => ok([])) }
     });
 
     const result = await service.createPosSale(
@@ -197,7 +204,8 @@ describe("sales.service", () => {
       db: createSalesDbMock(),
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     const result = await service.createPosSale(
@@ -233,7 +241,8 @@ describe("sales.service", () => {
       db: createSalesDbMock(),
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     const result = await service.createPosSale(
@@ -265,7 +274,8 @@ describe("sales.service", () => {
       db,
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
     await service.openBox(
       { tenantSlug: "tenant-demo" },
@@ -309,7 +319,8 @@ describe("sales.service", () => {
       db: createSalesDbMock(),
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     const opened = await service.openBox(
@@ -344,7 +355,8 @@ describe("sales.service", () => {
       db,
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     const suspendedResult = await service.createSuspendedSale(
@@ -380,7 +392,8 @@ describe("sales.service", () => {
       db,
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     await db.createSuspendedSale({
@@ -413,7 +426,8 @@ describe("sales.service", () => {
       db: createSalesDbMock(),
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     const restored = await service.restoreSuspendedSale(
@@ -435,7 +449,8 @@ describe("sales.service", () => {
       db,
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     const open1 = await service.openBox(
@@ -479,7 +494,8 @@ describe("sales.service", () => {
       db: createSalesDbMock(),
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     await service.openBox(
@@ -504,7 +520,8 @@ describe("sales.service", () => {
       db: createSalesDbMock(),
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     const result = await service.createPosSale(
@@ -547,7 +564,8 @@ describe("sales.service", () => {
       db: createSalesDbMock(),
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     const result = await service.createPosSale(
@@ -586,7 +604,8 @@ describe("sales.service", () => {
       db,
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     const opened = await service.openBox(
@@ -626,7 +645,8 @@ payments: [{ method: "cash", currency: "VES", amount: 50 }],
       db: createSalesDbMock(),
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      supabase: createSupabaseMock()
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
     });
 
     await service.openBox(

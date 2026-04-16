@@ -26,6 +26,11 @@ const createDbMock = (): InvoicingDb => {
     async listInvoices(tenantId) {
       return [...invoices.values()].filter((item) => item.tenantId === tenantId);
     },
+    async listIssuedInvoicesThisMonth(tenantId) {
+      return [...invoices.values()].filter(
+        (item) => item.tenantId === tenantId && item.status === "issued"
+      );
+    },
     async getInvoiceByLocalId(tenantId, invoiceLocalId) {
       const invoice = invoices.get(invoiceLocalId);
       if (!invoice || invoice.tenantId !== tenantId) {
@@ -93,13 +98,20 @@ const employeeActorWithoutPermission = {
 };
 
 describe("invoicing.service", () => {
+  const createTaxRuleServiceMock = () => ({
+    getRateByType: vi.fn(async () => ok(0.16)),
+    listActiveRules: vi.fn(async () => ok([]))
+  });
+
   it("crea factura desde venta exitosamente", async () => {
     const db = createDbMock();
     const service = createInvoicingService({
       db,
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      uuid: () => "test-uuid-123"
+      invoiceRangeService: { reserveNextNumber: vi.fn(async () => ok({ invoiceNumber: "001", controlNumber: "CN001" })) },
+      taxRuleService: createTaxRuleServiceMock(),
+      getExchangeRate: vi.fn(async () => 1)
     });
 
     const invoice = await service.createInvoiceFromSale(
@@ -127,7 +139,10 @@ describe("invoicing.service", () => {
     const service = createInvoicingService({
       db,
       syncEngine: createSyncEngineMock(),
-      eventBus: new InMemoryEventBus()
+      eventBus: new InMemoryEventBus(),
+      invoiceRangeService: { reserveNextNumber: vi.fn(async () => ok({ invoiceNumber: "001", controlNumber: "CN001" })) },
+      taxRuleService: createTaxRuleServiceMock(),
+      getExchangeRate: vi.fn(async () => 1)
     });
 
     const invoice = await service.createInvoiceFromSale(
@@ -151,7 +166,10 @@ describe("invoicing.service", () => {
     const service = createInvoicingService({
       db,
       syncEngine: createSyncEngineMock(),
-      eventBus: new InMemoryEventBus()
+      eventBus: new InMemoryEventBus(),
+      invoiceRangeService: { reserveNextNumber: vi.fn(async () => ok({ invoiceNumber: "001", controlNumber: "CN001" })) },
+      taxRuleService: createTaxRuleServiceMock(),
+      getExchangeRate: vi.fn(async () => 1)
     });
 
     const invoice = await service.createInvoiceFromSale(
@@ -176,8 +194,9 @@ describe("invoicing.service", () => {
       db,
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      uuid: () => "test-uuid-123",
-      clock: () => new Date("2026-01-01T12:00:00.000Z")
+      invoiceRangeService: { reserveNextNumber: vi.fn(async () => ok({ invoiceNumber: "001", controlNumber: "CN001" })) },
+      taxRuleService: createTaxRuleServiceMock(),
+      getExchangeRate: vi.fn(async () => 1)
     });
 
     const created = await service.createInvoiceFromSale(
@@ -215,7 +234,10 @@ describe("invoicing.service", () => {
     const service = createInvoicingService({
       db,
       syncEngine: createSyncEngineMock(),
-      eventBus: new InMemoryEventBus()
+      eventBus: new InMemoryEventBus(),
+      invoiceRangeService: { reserveNextNumber: vi.fn(async () => ok({ invoiceNumber: "001", controlNumber: "CN001" })) },
+      taxRuleService: createTaxRuleServiceMock(),
+      getExchangeRate: vi.fn(async () => 1)
     });
 
     const voided = await service.voidInvoice(
@@ -240,7 +262,9 @@ describe("invoicing.service", () => {
       db,
       syncEngine: createSyncEngineMock(),
       eventBus: new InMemoryEventBus(),
-      clock: () => new Date("2026-01-01T12:00:00.000Z")
+      invoiceRangeService: { reserveNextNumber: vi.fn(async () => ok({ invoiceNumber: "001", controlNumber: "CN001" })) },
+      taxRuleService: createTaxRuleServiceMock(),
+      getExchangeRate: vi.fn(async () => 1)
     });
 
     const created = await service.createInvoiceFromSale(
@@ -277,7 +301,10 @@ describe("invoicing.service", () => {
     const service = createInvoicingService({
       db,
       syncEngine: createSyncEngineMock(),
-      eventBus: new InMemoryEventBus()
+      eventBus: new InMemoryEventBus(),
+      invoiceRangeService: { reserveNextNumber: vi.fn(async () => ok({ invoiceNumber: "001", controlNumber: "CN001" })) },
+      taxRuleService: createTaxRuleServiceMock(),
+      getExchangeRate: vi.fn(async () => 1)
     });
 
     const invoice = await service.createInvoiceFromSale(
@@ -293,7 +320,7 @@ describe("invoicing.service", () => {
     if (!invoice.ok || !invoice.data.items[0]) {
       return;
     }
-    expect(invoice.data.items[0].taxRate).toBe(0);
+    expect(invoice.data.items[0].taxRate).toBe(0.16); // Ahora obtiene IVA desde TaxRuleService
   });
 
   it("lista facturas del tenant", async () => {
@@ -301,7 +328,10 @@ describe("invoicing.service", () => {
     const service = createInvoicingService({
       db,
       syncEngine: createSyncEngineMock(),
-      eventBus: new InMemoryEventBus()
+      eventBus: new InMemoryEventBus(),
+      invoiceRangeService: { reserveNextNumber: vi.fn(async () => ok({ invoiceNumber: "001", controlNumber: "CN001" })) },
+      taxRuleService: createTaxRuleServiceMock(),
+      getExchangeRate: vi.fn(async () => 1)
     });
 
     await service.createInvoiceFromSale(
