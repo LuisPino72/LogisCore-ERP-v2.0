@@ -1,5 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2.49.1";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { z } from "npm:zod@3.23.8";
 
 const jsonHeaders = {
   "Content-Type": "application/json",
@@ -7,6 +8,28 @@ const jsonHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS"
 };
+
+const DolarApiSchema = z.object({
+  fuente: z.string(),
+  nombre: z.string(),
+  compra: z.number().nullable(),
+  venta: z.number().nullable(),
+  promedio: z.number().nullable()
+});
+
+const ExchangeRateSchema = z.object({
+  source: z.string(),
+  name: z.string(),
+  rate: z.number().positive(),
+  type: z.enum(["compra", "venta"]),
+  fetchedAt: z.string().datetime()
+});
+
+const ExchangeRateResultSchema = z.object({
+  success: z.boolean(),
+  rates: z.array(ExchangeRateSchema),
+  error: z.string().optional()
+});
 
 interface DolarApiResponse {
   fuente: string;
@@ -43,7 +66,24 @@ Deno.serve(async (req: Request) => {
       throw new Error(`API error: ${response.status}`);
     }
 
-    const dolares: DolarApiResponse[] = await response.json();
+    const rawData = await response.json();
+    
+    // Validate incoming API data with Zod (Fase 3)
+    const parseResult = z.array(DolarApiSchema).safeParse(rawData);
+    
+    if (!parseResult.success) {
+      console.error("[FETCH-RATES] Schema validation failed:", parseResult.error.flatten());
+      return new Response(
+        JSON.stringify({
+          success: false,
+          rates: [],
+          error: "EXTERNAL_API_SCHEMA_INVALID: Data shape from BCV API does not match expected schema"
+        } as z.infer<typeof ExchangeRateResultSchema>),
+        { status: 502, headers: jsonHeaders }
+      );
+    }
+    
+    const dolares: DolarApiResponse[] = parseResult.data;
     
     const rates: ExchangeRateResult["rates"] = dolares.map((d) => ({
       source: d.fuente,
@@ -62,13 +102,20 @@ Deno.serve(async (req: Request) => {
     // Filtrar tasas válidas (solo oficial)
     const validRates = rates.filter(r => r.rate > 0 && r.source === "oficial");
 
-    if (validRates.length === 0) {
-      console.log("No valid rates to insert");
+    // Additional fiscal sanity check: Venezuelan BS rate should be reasonable (not negative, not zero, not absurdly high)
+    // Historical valid range: 10-2000 Bs per USD (adjusted for hyperinflation context)
+    const sanitizedRates = validRates.map(r => ({
+      ...r,
+      rate: Math.round(r.rate * 10000) / 10000 // Ensure 4-decimal precision for fiscal accuracy
+    })).filter(r => r.rate > 10 && r.rate < 5000); // Sanity bounds for VES exchange rate
+
+    if (sanitizedRates.length === 0) {
+      console.log("No valid rates to insert after sanitization");
       return new Response(
         JSON.stringify({
           success: true,
-          rates,
-          message: "No valid rates to insert"
+          rates: sanitizedRates,
+          message: "No valid rates to insert after sanitization"
         } as ExchangeRateResult),
         { headers: jsonHeaders }
       );
@@ -87,7 +134,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Insertar nueva tasa
-    const insertData = validRates.map(rate => ({
+    const insertData = sanitizedRates.map(rate => ({
       local_id: crypto.randomUUID(),
       from_currency: "USD",
       to_currency: "VES",
