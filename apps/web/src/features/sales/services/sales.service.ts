@@ -92,6 +92,7 @@ export interface SalesDb {
   createStockMovements(movements: StockMovementRecord[]): Promise<void>;
   listInventoryLots(tenantId: string): Promise<InventoryLot[]>;
   updateInventoryLot(lot: InventoryLot): Promise<void>;
+  createAuditLog(log: { tenantId: string; userId?: string; eventType: string; targetTable?: string; targetLocalId?: string; success: boolean; details?: Record<string, unknown>; createdAt: string }): Promise<void>;
 }
 
 /**
@@ -627,7 +628,22 @@ export const createSalesService = ({
       );
     }
 
-    const queueResult = await syncEngine.enqueue({
+    await db.createAuditLog({
+      tenantId: tenant.tenantSlug,
+      userId: actor.userId ?? "system",
+      eventType: "SALE_COMPLETED",
+      targetTable: "sales",
+      targetLocalId: sale.localId,
+      success: true,
+      details: {
+        total: sale.total,
+        paymentMethod: input.payments[0]?.method,
+        warehouseId: input.warehouseLocalId
+      },
+      createdAt: now
+    });
+
+    const syncResult = await syncEngine.enqueue({
       id: uuid(),
       table: "security_audit_log",
       operation: "create",
@@ -642,8 +658,8 @@ export const createSalesService = ({
       createdAt: now,
       attempts: 0
     });
-    if (!queueResult.ok) {
-      return err(queueResult.error);
+    if (!syncResult.ok) {
+      console.error("Failed to sync audit log:", syncResult.error);
     }
 
     eventBus.emit("SALE.COMPLETED", {

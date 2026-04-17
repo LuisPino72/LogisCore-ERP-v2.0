@@ -93,6 +93,9 @@ const createDbMock = (initialStockMovements: StockMovementRecord[] = []): Produc
           }
           return acc - item.quantity;
         }, 0);
+    },
+    async createAuditLog() {
+      // No-op for tests
     }
   };
 };

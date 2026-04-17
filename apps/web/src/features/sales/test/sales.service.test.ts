@@ -95,6 +95,9 @@ const createSalesDbMock = (withLots = true): SalesDb => {
     },
     async updateInventoryLot(lot) {
       lots.set(lot.localId, lot);
+    },
+    async createAuditLog() {
+      return;
     }
   };
 };

@@ -8,7 +8,8 @@ import {
   type ProductionLogRecord,
   type ProductionOrderRecord,
   type RecipeRecord,
-  type StockMovementRecord
+  type StockMovementRecord,
+  type SecurityAuditLogRecord
 } from "@/lib/db/dexie";
 import type { ProductionDb } from "./production.service";
 
@@ -142,5 +143,12 @@ export class DexieProductionDbAdapter implements ProductionDb {
       }
       return acc - movement.quantity;
     }, 0);
+  }
+
+  async createAuditLog(log: Omit<SecurityAuditLogRecord, "localId">): Promise<void> {
+    await db.security_audit_log.put({
+      ...log,
+      localId: crypto.randomUUID()
+    });
   }
 }

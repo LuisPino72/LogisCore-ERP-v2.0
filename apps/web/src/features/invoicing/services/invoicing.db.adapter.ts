@@ -3,7 +3,7 @@
  * Implementa la interfaz InvoicingDb con operaciones CRUD y de negocio.
  */
 
-import { db, type InvoiceRecord, type TaxRuleRecord, type ExchangeRateRecord } from "@/lib/db/dexie";
+import { db, type InvoiceRecord, type TaxRuleRecord, type ExchangeRateRecord, type SecurityAuditLogRecord } from "@/lib/db/dexie";
 import type { InvoicingDb } from "./invoicing.service";
 
 export class DexieInvoicingDbAdapter implements InvoicingDb {
@@ -101,5 +101,12 @@ export class DexieInvoicingDbAdapter implements InvoicingDb {
         new Date(item.issuedAt) <= endOfMonth
       )
       .toArray();
+  }
+
+  async createAuditLog(log: Omit<SecurityAuditLogRecord, "localId">): Promise<void> {
+    await db.security_audit_log.put({
+      ...log,
+      localId: crypto.randomUUID()
+    });
   }
 }

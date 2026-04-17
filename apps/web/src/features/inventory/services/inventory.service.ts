@@ -65,6 +65,7 @@ export interface InventoryDb {
   listInventoryLots(tenantId: string): Promise<InventoryLot[]>;
   createInventoryLot(lot: InventoryLot): Promise<void>;
   updateInventoryLot(lot: InventoryLot): Promise<void>;
+  createAuditLog(log: { tenantId: string; userId?: string; eventType: string; targetTable?: string; targetLocalId?: string; success: boolean; details?: Record<string, unknown>; createdAt: string }): Promise<void>;
 }
 
 /**
@@ -453,6 +454,23 @@ export const createInventoryService = ({
     }
 
     await db.createStockMovement(movement);
+
+    await db.createAuditLog({
+      tenantId: tenant.tenantSlug,
+      userId: actor.userId ?? "system",
+      eventType: "INVENTORY_STOCK_MOVEMENT",
+      targetTable: "stock_movements",
+      targetLocalId: movement.localId,
+      success: true,
+      details: {
+        type: movement.movementType,
+        productId: movement.productLocalId,
+        warehouseId: movement.warehouseLocalId,
+        quantity: movement.quantity
+      },
+      createdAt: movement.createdAt
+    });
+
     eventBus.emit("INVENTORY.STOCK_MOVEMENT_RECORDED", {
       tenantId: tenant.tenantSlug,
       localId: movement.localId,

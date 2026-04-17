@@ -63,6 +63,9 @@ const createDbMock = (): InvoicingDb => {
           item.fromCurrency === fromCurrency &&
           item.toCurrency === toCurrency
       );
+    },
+    async createAuditLog() {
+      // No-op for tests
     }
   };
 };

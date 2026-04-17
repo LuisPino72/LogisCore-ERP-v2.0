@@ -56,6 +56,7 @@ export interface InvoicingDb {
     fromCurrency: string,
     toCurrency: string
   ): Promise<ExchangeRate | undefined>;
+  createAuditLog(log: { tenantId: string; userId?: string; eventType: string; targetTable?: string; targetLocalId?: string; success: boolean; details?: Record<string, unknown>; createdAt: string }): Promise<void>;
 }
 
 /**
@@ -286,6 +287,22 @@ export const createInvoicingService = ({
     }
 
     await db.createInvoice(invoice);
+
+    await db.createAuditLog({
+      tenantId: tenant.tenantSlug,
+      userId: actor.userId ?? "system",
+      eventType: "INVOICE_CREATED",
+      targetTable: "invoices",
+      targetLocalId: invoice.localId,
+      success: true,
+      details: {
+        invoiceNumber: invoice.invoiceNumber,
+        controlNumber: invoice.controlNumber,
+        saleLocalId: input.saleLocalId
+      },
+      createdAt: now
+    });
+
     eventBus.emit("INVOICE.CREATED", {
       tenantId: tenant.tenantSlug,
       localId: invoice.localId
@@ -459,6 +476,21 @@ export const createInvoicingService = ({
       total: finalTotal,
       issuedAt: now,
       updatedAt: now
+    });
+
+    await db.createAuditLog({
+      tenantId: tenant.tenantSlug,
+      userId: actor.userId ?? "system",
+      eventType: "INVOICE_ISSUED",
+      targetTable: "invoices",
+      targetLocalId: updatedInvoice.localId,
+      success: true,
+      details: {
+        invoiceNumber,
+        controlNumber,
+        total: finalTotal
+      },
+      createdAt: now
     });
 
     eventBus.emit("INVOICE.ISSUED", {

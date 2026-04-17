@@ -59,6 +59,7 @@ export interface ProductionDb {
     productLocalId: string,
     warehouseLocalId: string
   ): Promise<number>;
+  createAuditLog(log: { tenantId: string; userId?: string; eventType: string; targetTable?: string; targetLocalId?: string; success: boolean; details?: Record<string, unknown>; createdAt: string }): Promise<void>;
 }
 
 /**
@@ -313,6 +314,18 @@ export const createProductionService = ({
     }
 
     await db.createProductionOrder(order);
+
+    await db.createAuditLog({
+      tenantId: tenant.tenantSlug,
+      userId: actor.userId ?? "system",
+      eventType: "PRODUCTION_ORDER_CREATED",
+      targetTable: "production_orders",
+      targetLocalId: order.localId,
+      success: true,
+      details: { recipeId: order.recipeLocalId, warehouseId: order.warehouseLocalId, plannedQty: order.plannedQty },
+      createdAt: now
+    });
+
     eventBus.emit("PRODUCTION.ORDER_CREATED", {
       tenantId: tenant.tenantSlug,
       localId: order.localId,

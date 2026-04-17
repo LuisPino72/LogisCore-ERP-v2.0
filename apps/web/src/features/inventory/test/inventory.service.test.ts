@@ -86,6 +86,9 @@ const createInventoryDbMock = (): InventoryDb => {
     },
     async updateInventoryLot(lot) {
       // No-op for tests
+    },
+    async createAuditLog() {
+      // No-op for tests
     }
   };
 };

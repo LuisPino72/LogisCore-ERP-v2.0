@@ -4,7 +4,8 @@ import {
   type PurchaseRecord,
   type ReceivingRecord,
   type StockMovementRecord,
-  type SupplierRecord
+  type SupplierRecord,
+  type SecurityAuditLogRecord
 } from "@/lib/db/dexie";
 import type { PurchasesDb } from "./purchases.service";
 import type { Purchase, Receiving, InventoryLot, Supplier } from "../types/purchases.types";
@@ -268,5 +269,12 @@ export class DexiePurchasesDbAdapter implements PurchasesDb {
       tenantId: product.tenantId,
       ...(product.preferredSupplierLocalId !== undefined ? { preferredSupplierLocalId: product.preferredSupplierLocalId } : {})
     };
+  }
+
+  async createAuditLog(log: Omit<SecurityAuditLogRecord, "localId">): Promise<void> {
+    await db.security_audit_log.put({
+      ...log,
+      localId: crypto.randomUUID()
+    });
   }
 }

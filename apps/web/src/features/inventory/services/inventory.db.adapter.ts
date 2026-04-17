@@ -5,11 +5,12 @@
 
 import {
   db,
-  type InventoryCountRecord,
-  type InventoryLotRecord,
+  type WarehouseRecord,
   type ProductSizeColorRecord,
   type StockMovementRecord,
-  type WarehouseRecord
+  type InventoryCountRecord,
+  type InventoryLotRecord,
+  type SecurityAuditLogRecord
 } from "@/lib/db/dexie";
 import type { InventoryDb } from "./inventory.service";
 
@@ -145,6 +146,13 @@ export class DexieInventoryDbAdapter implements InventoryDb {
 
   async updateInventoryLot(lot: InventoryLotRecord): Promise<void> {
     await db.inventory_lots.put(lot);
+  }
+
+  async createAuditLog(log: Omit<SecurityAuditLogRecord, "localId">): Promise<void> {
+    await db.security_audit_log.put({
+      ...log,
+      localId: crypto.randomUUID()
+    });
   }
 }
 

@@ -89,10 +89,18 @@ const createDbMock = (): PurchasesDb => {
       if (!product || product.tenantId !== tenantId) return;
       products.set(productLocalId, { ...product, preferredSupplierLocalId: supplierLocalId });
     },
+    async softDeleteSupplier(localId, tenantId, deletedAt) {
+      const supplier = suppliers.get(localId);
+      if (!supplier || supplier.tenantId !== tenantId) return;
+      suppliers.set(localId, { ...supplier, deletedAt });
+    },
     async getProductByLocalId(tenantId, localId) {
       const product = products.get(localId);
       if (!product || product.tenantId !== tenantId) return undefined;
       return product;
+    },
+    async createAuditLog() {
+      // No-op for tests
     }
   };
 };

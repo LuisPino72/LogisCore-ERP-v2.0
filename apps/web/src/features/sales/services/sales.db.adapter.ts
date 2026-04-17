@@ -8,7 +8,8 @@ import {
   type BoxClosingRecord,
   type SaleRecord,
   type StockMovementRecord,
-  type SuspendedSaleRecord
+  type SuspendedSaleRecord,
+  type SecurityAuditLogRecord
 } from "@/lib/db/dexie";
 import type { SalesDb } from "./sales.service";
 
@@ -107,5 +108,12 @@ export class DexieSalesDbAdapter implements SalesDb {
 
   async createStockMovements(movements: StockMovementRecord[]): Promise<void> {
     await db.stock_movements.bulkPut(movements);
+  }
+
+  async createAuditLog(log: Omit<SecurityAuditLogRecord, "localId">): Promise<void> {
+    await db.security_audit_log.put({
+      ...log,
+      localId: crypto.randomUUID()
+    });
   }
 }

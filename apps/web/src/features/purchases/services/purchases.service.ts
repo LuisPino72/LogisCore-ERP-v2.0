@@ -62,6 +62,7 @@ export interface PurchasesDb {
     supplierLocalId: string | null
   ): Promise<void>;
   getProductByLocalId(tenantId: string, localId: string): Promise<{ localId: string; tenantId: string; preferredSupplierLocalId?: string | null } | undefined>;
+  createAuditLog(log: { tenantId: string; userId?: string; eventType: string; targetTable?: string; targetLocalId?: string; success: boolean; details?: Record<string, unknown>; createdAt: string }): Promise<void>;
 }
 
 export interface PurchasesService {
@@ -230,6 +231,18 @@ export const createPurchasesService = ({
     }
 
     await db.createSupplier(supplier);
+
+    await db.createAuditLog({
+      tenantId: tenant.tenantSlug,
+      userId: actor.userId ?? "system",
+      eventType: "SUPPLIER_CREATED",
+      targetTable: "suppliers",
+      targetLocalId: supplier.localId,
+      success: true,
+      details: { name: supplier.name, rif: supplier.rif },
+      createdAt: now
+    });
+
     eventBus.emit("SUPPLIER.CREATED", {
       tenantId: tenant.tenantSlug,
       localId: supplier.localId,
@@ -483,6 +496,18 @@ export const createPurchasesService = ({
     }
 
     await db.createPurchase(purchase);
+
+    await db.createAuditLog({
+      tenantId: tenant.tenantSlug,
+      userId: actor.userId ?? "system",
+      eventType: "PURCHASE_CREATED",
+      targetTable: "purchases",
+      targetLocalId: purchase.localId,
+      success: true,
+      details: { total: purchase.total, warehouseId: purchase.warehouseLocalId, itemsCount: purchase.items.length },
+      createdAt: now
+    });
+
     eventBus.emit("PURCHASES.CREATED", {
       tenantId: tenant.tenantSlug,
       localId: purchase.localId,

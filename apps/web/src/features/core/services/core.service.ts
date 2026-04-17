@@ -81,6 +81,8 @@ export interface CoreService {
   startSync(): Result<SyncStatus, AppError>;
   checkSubscription(tenantSlug: string): Promise<Result<boolean, AppError>>;
   pullCatalogs(tenantSlug: string): Promise<Result<void, AppError>>;
+  getTimingMetrics(): { operation: string; durationMs: number; timestamp: string; success: boolean }[];
+  getSlaMetrics(operation?: string): { operation: string; avgMs: number; minMs: number; maxMs: number; count: number }[];
 }
 
 interface CoreServiceDependencies {
@@ -103,6 +105,39 @@ export const createCoreService = ({
   uuid = () => crypto.randomUUID()
 }: CoreServiceDependencies): CoreService => {
   const supabaseClient = supabase ?? null;
+
+  interface TimingMetric {
+    operation: string;
+    durationMs: number;
+    timestamp: string;
+    success: boolean;
+  }
+
+  const timingMetrics: TimingMetric[] = [];
+
+  const getTimingMetrics = (): TimingMetric[] => [...timingMetrics];
+
+  const getSlaMetrics = (operation?: string): { operation: string; avgMs: number; minMs: number; maxMs: number; count: number }[] => {
+    const filtered = operation
+      ? timingMetrics.filter(m => m.operation === operation)
+      : timingMetrics;
+
+    const grouped = filtered.reduce((acc, m) => {
+      if (!acc[m.operation]) {
+        acc[m.operation] = [];
+      }
+      acc[m.operation].push(m.durationMs);
+      return acc;
+    }, {} as Record<string, number[]>);
+
+    return Object.entries(grouped).map(([op, durations]) => ({
+      operation: op,
+      avgMs: Math.round(durations.reduce((a, b) => a + b, 0) / durations.length * 100) / 100,
+      minMs: Math.round(Math.min(...durations) * 100) / 100,
+      maxMs: Math.round(Math.max(...durations) * 100) / 100,
+      count: durations.length
+    }));
+  };
 
   const resolveTenantContext: CoreService["resolveTenantContext"] = async (
     userId
@@ -593,6 +628,8 @@ export const createCoreService = ({
       resolveTenantContext,
       startSync,
       checkSubscription,
-      pullCatalogs
+      pullCatalogs,
+      getTimingMetrics,
+      getSlaMetrics
     };
 };
