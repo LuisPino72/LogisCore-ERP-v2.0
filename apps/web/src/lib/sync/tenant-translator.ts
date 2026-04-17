@@ -1,13 +1,12 @@
 import { err, ok, type Result } from "@logiscore/core";
 import type { AppError } from "@logiscore/core";
 import { createAppError } from "@logiscore/core";
-import { supabase } from "../supabase/client";
 
 interface TenantMapping {
   tenantSlug: string;
   tenantUuid: string;
   tenantName: string;
-  ownerUserId?: string;
+  ownerUserId: string;
 }
 
 interface TenantTranslatorDeps {
@@ -17,9 +16,31 @@ interface TenantTranslatorDeps {
   getCurrentUserId: () => string | null;
 }
 
+type TenantDbResponse = {
+  data: { id: string; name: string; tenant_slug: string; owner_user_id?: string } | null;
+  error: { message: string } | null;
+};
+
+type TenantDbClient = {
+  from(table: "tenants"): {
+    select(columns: string): {
+      eq(column: string, value: string): {
+        single(): Promise<TenantDbResponse>;
+      };
+    };
+  };
+};
+
 class TenantTranslator {
   private cache: Map<string, TenantMapping> = new Map();
   private currentMapping: TenantMapping | null = null;
+  private dbClient: TenantDbClient | null = null;
+
+  constructor() {}
+
+  setDbClient(client: TenantDbClient): void {
+    this.dbClient = client;
+  }
 
   getCachedTenant(): TenantMapping | null {
     return this.currentMapping;
@@ -77,18 +98,19 @@ class TenantTranslator {
       return ok(cached.tenantUuid);
     }
 
-    if (!supabase) {
+    if (!this.dbClient) {
       return err(
         createAppError({
           code: "SYNC_TENANT_TRANSLATION_FAILED",
-          message: "Cliente Supabase no disponible.",
+          message: "Cliente de base de datos no disponible. Inicialice TenantTranslator con un cliente.",
           retryable: false,
           context: { tenantSlug }
         })
       );
     }
 
-    const { data, error } = await supabase
+    const db = this.dbClient;
+    const { data, error } = await db
       .from("tenants")
       .select("id, name, tenant_slug, owner_user_id")
       .eq("tenant_slug", tenantSlug)
@@ -105,22 +127,24 @@ class TenantTranslator {
       );
     }
 
-    if (currentUserId && data.owner_user_id && data.owner_user_id !== currentUserId) {
+    const tenantData = data as { id: string; name: string; tenant_slug: string; owner_user_id?: string };
+
+    if (currentUserId && tenantData.owner_user_id && tenantData.owner_user_id !== currentUserId) {
       return err(
         createAppError({
           code: "TENANT_ACCESS_DENIED",
           message: `El usuario actual no tiene acceso al tenant ${tenantSlug}`,
           retryable: false,
-          context: { tenantSlug, currentUserId, ownerUserId: data.owner_user_id }
+          context: { tenantSlug, currentUserId, ownerUserId: tenantData.owner_user_id }
         })
       );
     }
 
     const mapping: TenantMapping = {
-      tenantSlug: data.tenant_slug,
-      tenantUuid: data.id,
-      tenantName: data.name,
-      ownerUserId: data.owner_user_id
+      tenantSlug: tenantData.tenant_slug,
+      tenantUuid: tenantData.id,
+      tenantName: tenantData.name,
+      ownerUserId: tenantData.owner_user_id ?? ""
     };
 
     this.setCachedTenant(mapping);
@@ -181,4 +205,4 @@ class TenantTranslator {
 
 export const tenantTranslator = new TenantTranslator();
 
-export type { TenantMapping, TenantTranslatorDeps };
+export type { TenantMapping, TenantTranslatorDeps, TenantDbClient };

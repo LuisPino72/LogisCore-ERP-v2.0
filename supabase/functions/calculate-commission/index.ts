@@ -9,7 +9,6 @@ const jsonHeaders = {
 };
 
 interface CommissionInput {
-  tenantSlug: string;
   saleLocalId: string;
   salesPersonId: string;
   totalAmount: number;
@@ -35,6 +34,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   try {
@@ -47,12 +47,49 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "MISSING_BEARER_TOKEN" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "").trim();
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+
+    const authResult = await authClient.auth.getUser(token);
+    if (authResult.error || !authResult.data.user) {
+      return new Response(
+        JSON.stringify({ error: "INVALID_JWT" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: membership, error: membershipError } = await supabase
+      .from("user_roles")
+      .select("tenant_id")
+      .eq("user_id", authResult.data.user.id)
+      .eq("is_active", true)
+      .maybeSingle<{ tenant_id: string }>();
+
+    if (membershipError || !membership) {
+      return new Response(
+        JSON.stringify({ error: "FORBIDDEN_NO_TENANT" }),
+        { status: 403, headers: jsonHeaders }
+      );
+    }
+
+    const tenantId = membership.tenant_id;
 
     const { data: salesCommissions, error: commissionError } = await supabase
       .from("sales_commissions")
       .select("*")
-      .eq("tenant_slug", input.tenantSlug)
+      .eq("tenant_id", tenantId)
       .eq("sales_person_id", input.salesPersonId)
       .lte("start_date", new Date().toISOString())
       .or("end_date.is.null,end_date.gte." + new Date().toISOString())

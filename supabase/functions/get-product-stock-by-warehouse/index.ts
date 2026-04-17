@@ -1,15 +1,15 @@
 import { createClient } from "jsr:@supabase/supabase-js@2.49.1";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createRbacMiddleware } from "../_shared/rbac-middleware";
 
 const jsonHeaders = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-action-context, x-user-permissions",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
 interface StockInput {
-  tenantSlug: string;
   productLocalId?: string;
   warehouseLocalId?: string;
 }
@@ -39,21 +39,24 @@ Deno.serve(async (req: Request) => {
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   try {
-    const input: StockInput = await req.json();
-
-    if (!input.tenantSlug) {
+    const rbacMiddleware = await createRbacMiddleware("INVENTORY:VIEW");
+    const rbacResult = await rbacMiddleware(req);
+    
+    if (!rbacResult.ok) {
       return new Response(
-        JSON.stringify({ error: "MISSING_TENANT_SLUG" }),
-        { status: 400, headers: jsonHeaders }
+        JSON.stringify({ error: rbacResult.error.code }),
+        { status: 403, headers: jsonHeaders }
       );
     }
 
+    const { tenantId } = rbacResult.data;
+    const input: StockInput = await req.json();
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     let query = supabase
       .from("stock_movements")
       .select("product_local_id, warehouse_local_id, quantity, movement_type")
-      .eq("tenant_slug", input.tenantSlug)
+      .eq("tenant_id", tenantId)
       .is("deleted_at", null);
 
     if (input.productLocalId) {

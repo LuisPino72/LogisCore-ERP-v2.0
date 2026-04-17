@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2.49.1";
+import { createRbacMiddleware } from "../_shared/rbac-middleware";
 
 interface GlobalProductSeed {
   name: string;
@@ -94,28 +95,16 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    const rbacMiddleware = await createRbacMiddleware("ADMIN:USERS");
+    const rbacResult = await rbacMiddleware(req);
+    
+    if (!rbacResult.ok) {
       return new Response(
-        JSON.stringify({ success: false, error: "MISSING_BEARER_TOKEN" }),
-        { status: 401, headers: jsonHeaders }
-      );
-    }
-
-    const token = authHeader.replace("Bearer ", "").trim();
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } }
-    });
-
-    const authResult = await authClient.auth.getUser(token);
-    if (authResult.error || !authResult.data.user) {
-      return new Response(
-        JSON.stringify({ success: false, error: "INVALID_JWT" }),
-        { status: 401, headers: jsonHeaders }
+        JSON.stringify({ success: false, error: rbacResult.error.code }),
+        { status: 403, headers: jsonHeaders }
       );
     }
 

@@ -40,6 +40,7 @@ import type {
   GlobalProductPresentation
 } from "../types/admin.types";
 import { SUBSCRIPTION_ERROR_CODES } from "../../../specs/admin/errors";
+import { PERMISSIONS } from "@/lib/permissions/rbac-constants";
 
 /**
  * Contrato del servicio de admin.
@@ -90,13 +91,31 @@ interface CreateAdminServiceDependencies {
   syncEngine?: SyncEngine;
 }
 
-const getEdgeAuthHeaders = (accessToken: string): Record<string, string> => {
+export interface EdgeAuthOptions {
+  actionContext: string;
+  userPermissions: string[];
+}
+
+const getEdgeAuthHeaders = (
+  accessToken: string,
+  options?: EdgeAuthOptions
+): Record<string, string> => {
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  return {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${accessToken}`,
     ...(anonKey ? { apikey: anonKey } : {})
   };
+
+  if (options?.actionContext) {
+    headers["X-Action-Context"] = options.actionContext;
+  }
+
+  if (options?.userPermissions?.length) {
+    headers["X-User-Permissions"] = JSON.stringify(options.userPermissions);
+  }
+
+  return headers;
 };
 
 const getAuthToken = async (supabase: SupabaseClient): Promise<string | null> => {
@@ -247,7 +266,10 @@ export const createAdminService = ({
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, {
         method: "POST",
-        headers: getEdgeAuthHeaders(authToken),
+        headers: getEdgeAuthHeaders(authToken, {
+          actionContext: PERMISSIONS.ADMIN.USERS,
+          userPermissions: []
+        }),
         body: JSON.stringify(input)
       });
 
@@ -298,7 +320,10 @@ export const createAdminService = ({
       if (tenantData && Object.keys(tenantData).length > 0) {
         const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
           method: "POST",
-          headers: getEdgeAuthHeaders(authToken),
+          headers: getEdgeAuthHeaders(authToken, {
+            actionContext: PERMISSIONS.ADMIN.TENANT,
+            userPermissions: []
+          }),
           body: JSON.stringify({ action: "update", tenantId: id, data: tenantData })
         });
 
@@ -316,7 +341,10 @@ export const createAdminService = ({
       if (employees && employees.length > 0) {
         const empResponse = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
           method: "POST",
-          headers: getEdgeAuthHeaders(authToken),
+          headers: getEdgeAuthHeaders(authToken, {
+            actionContext: PERMISSIONS.ADMIN.USERS,
+            userPermissions: []
+          }),
           body: JSON.stringify({ action: "manage_employees", tenantId: id, data: { employees } })
         });
 
@@ -399,7 +427,10 @@ export const createAdminService = ({
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
         method: "POST",
-        headers: getEdgeAuthHeaders(authToken),
+        headers: getEdgeAuthHeaders(authToken, {
+          actionContext: PERMISSIONS.ADMIN.TENANT,
+          userPermissions: []
+        }),
         body: JSON.stringify({ action: "delete", tenantId: id, permanent })
       });
 
@@ -438,7 +469,10 @@ export const createAdminService = ({
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
         method: "POST",
-        headers: getEdgeAuthHeaders(authToken),
+        headers: getEdgeAuthHeaders(authToken, {
+          actionContext: PERMISSIONS.ADMIN.TENANT,
+          userPermissions: []
+        }),
         body: JSON.stringify({ action: "deactivate", tenantId: id })
       });
 
@@ -660,51 +694,91 @@ export const createAdminService = ({
   };
 
   const renewSubscription: AdminService["renewSubscription"] = async (id) => {
-    const result = await supabase.rpc("renew_subscription", { p_subscription_id: id });
-    if (result.error) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const authToken = await getAuthToken(supabase);
+    if (!supabaseUrl || !authToken) {
       return err(createAppError({
-        code: "ADMIN_RENEW_SUBSCRIPTION_FAILED",
-        message: result.error.message,
+        code: "ADMIN_AUTH_TOKEN_MISSING",
+        message: "Sesión admin inválida o expirada.",
         retryable: false
       }));
     }
-    eventBus.emit("ADMIN.SUBSCRIPTION_RENEWED", { subscriptionId: id });
-    return ok(undefined);
+
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/manage-subscription`, {
+        method: "POST",
+        headers: getEdgeAuthHeaders(authToken, {
+          actionContext: PERMISSIONS.ADMIN.SUBSCRIPTION,
+          userPermissions: []
+        }),
+        body: JSON.stringify({ subscriptionId: id })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        return err(createAppError({
+          code: "ADMIN_RENEW_SUBSCRIPTION_FAILED",
+          message: result.error ?? "Error al renovar suscripción",
+          retryable: false
+        }));
+      }
+
+      eventBus.emit("ADMIN.SUBSCRIPTION_RENEWED", { subscriptionId: id });
+      return ok(undefined);
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_RENEW_SUBSCRIPTION_FAILED",
+        message: String(error),
+        retryable: false
+      }));
+    }
   };
 
   const renewSubscriptionWithPlan: AdminService["renewSubscriptionWithPlan"] = async (subscriptionId, newPlanId) => {
-    const result = await supabase.rpc("renew_subscription_with_plan", { 
-      p_subscription_id: subscriptionId,
-      p_new_plan_id: newPlanId || null
-    });
-    if (result.error) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const authToken = await getAuthToken(supabase);
+    if (!supabaseUrl || !authToken) {
       return err(createAppError({
-        code: "ADMIN_RENEW_SUBSCRIPTION_WITH_PLAN_FAILED",
-        message: result.error.message,
+        code: "ADMIN_AUTH_TOKEN_MISSING",
+        message: "Sesión admin inválida o expirada.",
         retryable: false
       }));
     }
-    // Supabase RPC returns array for RETURNS TABLE. Data might be an array or null.
-    interface RenewResult {
-      new_plan_name: string;
-      new_end_date: string;
-      new_status: string;
-    }
-    const rows = result.data as RenewResult[] | null;
-    if (!rows || rows.length === 0) {
+
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/manage-subscription`, {
+        method: "POST",
+        headers: getEdgeAuthHeaders(authToken, {
+          actionContext: PERMISSIONS.ADMIN.SUBSCRIPTION,
+          userPermissions: []
+        }),
+        body: JSON.stringify({ subscriptionId, newPlanId })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        return err(createAppError({
+          code: "ADMIN_RENEW_SUBSCRIPTION_WITH_PLAN_FAILED",
+          message: result.error ?? "Error al renovar suscripción",
+          retryable: false
+        }));
+      }
+
+      eventBus.emit("ADMIN.SUBSCRIPTION_RENEWED", { subscriptionId, newPlanId });
+      return ok({
+        newPlanName: result.data.newPlanName,
+        newEndDate: result.data.newEndDate,
+        status: result.data.status
+      });
+    } catch (error) {
       return err(createAppError({
         code: "ADMIN_RENEW_SUBSCRIPTION_WITH_PLAN_FAILED",
-        message: "No se recibió respuesta de la renovación",
+        message: String(error),
         retryable: false
       }));
     }
-    const data = rows[0] as { new_plan_name: string; new_end_date: string; new_status: string };
-    eventBus.emit("ADMIN.SUBSCRIPTION_RENEWED", { subscriptionId, newPlanId });
-    return ok({
-      newPlanName: data.new_plan_name,
-      newEndDate: data.new_end_date,
-      status: data.new_status
-    });
   };
 
   const listSecurityUsers: AdminService["listSecurityUsers"] = async (tenantId) => {

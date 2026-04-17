@@ -108,7 +108,9 @@ export const DEFAULT_SYNC_TABLE_CONFIGS: Record<string, SyncTableConfig> = {
   categories: { tableName: "categories", priority: "HIGH", incremental: true, conflictStrategy: "LWW" },
   warehouses: { tableName: "warehouses", priority: "HIGH", incremental: true, conflictStrategy: "LWW" },
   suppliers: { tableName: "suppliers", priority: "HIGH", incremental: true, conflictStrategy: "LWW" },
+  invoices: { tableName: "invoices", priority: "HIGH", incremental: false, conflictStrategy: "MANUAL" },
+  invoice_items: { tableName: "invoice_items", priority: "HIGH", incremental: false, conflictStrategy: "MANUAL" },
   sales: { tableName: "sales", priority: "LOW", incremental: false, conflictStrategy: "MANUAL" },
   purchases: { tableName: "purchases", priority: "LOW", incremental: false, conflictStrategy: "MANUAL" },
-  stock_movements: { tableName: "stock_movements", priority: "LOW", incremental: false, conflictStrategy: "MANUAL" },
+  stock_movements: { tableName: "stock_movements", priority: "LOW", incremental: false, conflictStrategy: "SUM_MERGE" },
 };
