@@ -4,13 +4,59 @@
 
 import type { EmployeeManagement } from "../TenantForm";
 import { VALIDATION_RULES } from "@/common";
+import { PERMISSIONS, PERMISSION_MODULES } from "@/lib/permissions/rbac-constants";
 
 interface ExistingEmployeesSectionProps {
   formData: { existingEmployees: EmployeeManagement[] };
   errors: Record<string, string>;
-  onUpdateEmployee: (index: number, field: string, value: string | boolean) => void;
+  onUpdateEmployee: (index: number, field: string, value: string | boolean | string[]) => void;
   onMarkForDeletion: (index: number) => void;
   onAddNew: () => void;
+}
+
+function PermissionsChecklist({ 
+  selectedPermissions, 
+  onChange 
+}: { 
+  selectedPermissions: string[]; 
+  onChange: (perms: string[]) => void;
+}) {
+  const handleToggle = (perm: string) => {
+    if (selectedPermissions.includes(perm)) {
+      onChange(selectedPermissions.filter(p => p !== perm));
+    } else {
+      onChange([...selectedPermissions, perm]);
+    }
+  };
+
+  return (
+    <div className="mt-3 space-y-3">
+      <h4 className="text-xs font-medium text-content-secondary">Permisos del Empleado</h4>
+      {PERMISSION_MODULES.map(module => {
+        const modulePerms = PERMISSIONS[module as keyof typeof PERMISSIONS];
+        const permsList = Object.values(modulePerms);
+        
+        return (
+          <div key={module} className="border-l-2 border-surface-200 pl-3">
+            <h5 className="text-xs font-semibold text-content-primary mb-1">{module}</h5>
+            <div className="flex flex-wrap gap-2">
+              {permsList.map(perm => (
+                <label key={perm} className="flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={selectedPermissions.includes(perm)}
+                    onChange={() => handleToggle(perm)}
+                    className="rounded border-surface-300 text-accent-primary focus:ring-accent-primary"
+                  />
+                  <span className="text-content-secondary">{perm.split(":")[1]}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function ExistingEmployeesSection({ 
@@ -58,7 +104,22 @@ export function ExistingEmployeesSection({
                   <p className="text-xs text-state-error mt-1">{errors[`existing_${index}_fullName`]}</p>
                 )}
               </div>
+              <div className="col-span-2">
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={employee.isActive}
+                    onChange={(e) => onUpdateEmployee(index, "isActive", e.target.checked)}
+                    className="rounded border-surface-300 text-accent-primary"
+                  />
+                  <span className="text-content-secondary">Activo</span>
+                </label>
+              </div>
             </div>
+            <PermissionsChecklist 
+              selectedPermissions={employee.permissions || []}
+              onChange={(perms) => onUpdateEmployee(index, "permissions", perms)}
+            />
           </div>
         ))}
       </div>

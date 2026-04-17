@@ -31,6 +31,7 @@ interface EmployeeManagement {
   password?: string;
   action: "create" | "update" | "delete";
   userId?: string;
+  permissions?: string[];
 }
 
 Deno.serve(async (req: Request) => {
@@ -291,7 +292,8 @@ Deno.serve(async (req: Request) => {
               role: "employee",
               email: emp.email,
               full_name: emp.fullName,
-              is_active: true
+              is_active: true,
+              permissions: emp.permissions || []
             });
 
             results.push({ email: emp.email, success: true, userId: authData.user.id });
@@ -305,6 +307,7 @@ Deno.serve(async (req: Request) => {
             const updateData: Record<string, unknown> = {};
             if (emp.fullName) updateData.full_name = emp.fullName;
             if (emp.email) updateData.email = emp.email;
+            if (emp.permissions) updateData.permissions = emp.permissions;
 
             await supabase.from("user_roles").update(updateData).eq("user_id", emp.userId);
             results.push({ email: emp.email, success: true, userId: emp.userId });

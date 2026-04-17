@@ -60,6 +60,7 @@ export interface EmployeeInput {
   email?: string;
   password?: string;
   fullName?: string;
+  permissions?: string[];
 }
 
 /**
@@ -104,6 +105,7 @@ export interface EmployeeManagement {
   action: "create" | "update" | "delete";
   userId: string;
   isActive: boolean;
+  permissions?: string[];
 }
 
 /**
@@ -202,6 +204,7 @@ export interface SecurityUser {
   role: string;
   isActive: boolean;
   lastLoginAt?: string;
+  permissions?: string[];
 }
 
 /**

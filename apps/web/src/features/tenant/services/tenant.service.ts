@@ -61,8 +61,34 @@ import { DEFAULT_EMPLOYEE_PERMISSIONS } from "../../../lib/permissions/rbac-cons
 
 const defaultPermissions: RolePermissions = {
   permissions: Array.from(DEFAULT_EMPLOYEE_PERMISSIONS),
-  maxDiscountPercent: 0
+  maxDiscountPercent: 0,
+  allowedWarehouseLocalIds: []
 };
+
+function normalizePermissions(rawPermissions: unknown): RolePermissions {
+  if (!rawPermissions) {
+    return defaultPermissions;
+  }
+  
+  if (Array.isArray(rawPermissions)) {
+    return {
+      permissions: rawPermissions as string[],
+      maxDiscountPercent: 0,
+      allowedWarehouseLocalIds: []
+    };
+  }
+  
+  if (typeof rawPermissions === "object") {
+    const perms = rawPermissions as Record<string, unknown>;
+    return {
+      permissions: Array.isArray(perms.permissions) ? perms.permissions as string[] : [],
+      maxDiscountPercent: typeof perms.maxDiscountPercent === "number" ? perms.maxDiscountPercent : 0,
+      allowedWarehouseLocalIds: Array.isArray(perms.allowedWarehouseLocalIds) ? perms.allowedWarehouseLocalIds as string[] : []
+    };
+  }
+  
+  return defaultPermissions;
+}
 
 export const createTenantService = ({
   supabase,
@@ -167,7 +193,7 @@ export const createTenantService = ({
       );
     }
 
-    const basePermissions = roleQuery.data.permissions ?? defaultPermissions;
+    const basePermissions = normalizePermissions(roleQuery.data.permissions);
     const warehouseAccessResult = await resolveAllowedWarehouses(userId);
     if (!warehouseAccessResult.ok) {
       return err(warehouseAccessResult.error);

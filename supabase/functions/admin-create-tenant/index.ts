@@ -234,7 +234,8 @@ Deno.serve(async (req: Request) => {
         role: "employee",
         email: emp.email,
         full_name: emp.fullName,
-        is_active: true
+        is_active: true,
+        permissions: emp.permissions || []
       });
 
       createdEmployees.push({

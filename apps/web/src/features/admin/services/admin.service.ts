@@ -735,7 +735,8 @@ export const createAdminService = ({
       tenantName: row.tenants?.name,
       role: row.role,
       isActive: row.is_active ?? true,
-      lastLoginAt: row.last_login_at
+      lastLoginAt: row.last_login_at,
+      permissions: Array.isArray(row.permissions) ? row.permissions : []
     }));
 
     return ok(users);

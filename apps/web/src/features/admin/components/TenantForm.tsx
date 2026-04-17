@@ -115,7 +115,8 @@ function getInitialFormData(initialData: Tenant | null | undefined, tenantEmploy
     fullName: emp.fullName || "",
     action: "update" as const,
     userId: emp.userId,
-    isActive: emp.isActive
+    isActive: emp.isActive,
+    permissions: emp.permissions || []
   }));
   
   return {
@@ -191,7 +192,7 @@ export function TenantForm({
     if (errors[errorKey]) setErrors(prev => ({ ...prev, [errorKey]: "" }));
   };
 
-  const updateExistingEmployee = (index: number, field: string, value: string | boolean) => {
+  const updateExistingEmployee = (index: number, field: string, value: string | boolean | string[]) => {
     setFormData(prev => {
       const newEmployees = [...prev.existingEmployees];
       const current = newEmployees[index];
@@ -202,15 +203,17 @@ export function TenantForm({
         fullName: current.fullName, 
         userId: current.userId, 
         isActive: current.isActive,
-        action: current.action
+        action: current.action,
+        permissions: current.permissions || []
       };
       
       if (field === "fullName") updated.fullName = value as string;
       if (field === "email") updated.email = value as string;
       if (field === "isActive") updated.isActive = value as boolean;
       if (field === "userId") updated.userId = value as string;
+      if (field === "permissions") updated.permissions = value as string[];
       
-      if (field === "fullName" || field === "email") {
+      if (field === "fullName" || field === "email" || field === "permissions") {
         updated.action = "update";
       }
       
