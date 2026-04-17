@@ -1,0 +1,267 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/sync/v1.0.0",
+  "title": "Sync Entity Specification",
+  "description": "Sincronización incremental - Metadatos y ConflictResolver",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Sync",
+
+  "fields": {
+    "syncMetadata": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK del metadata"
+      },
+      "tenantId": {
+        "type": "string",
+        "required": true,
+        "description": "FK al tenant (SLUG)"
+      },
+      "tableName": {
+        "type": "string",
+        "required": true,
+        "description": "Nombre de la tabla sincronizada"
+      },
+      "lastSyncTimestamp": {
+        "type": "string",
+        "format": "date-time",
+        "required": true,
+        "description": "Último timestamp sincronizado"
+      },
+      "lastSyncVersion": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Versión de sincronización"
+      },
+      "lastSyncStatus": {
+        "type": "string",
+        "enum": ["success", "pending", "error"],
+        "description": "Estado de la última sincronización"
+      },
+      "pendingChanges": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Cambios pendientes por sincronizar"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de creación"
+      }
+    },
+
+    "syncConflict": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK del conflicto"
+      },
+      "tenantId": {
+        "type": "string",
+        "required": true,
+        "description": "FK al tenant"
+      },
+      "tableName": {
+        "type": "string",
+        "required": true,
+        "description": "Tabla afectada"
+      },
+      "localId": {
+        "type": "string",
+        "required": true,
+        "description": "ID del registro local"
+      },
+      "localData": {
+        "type": "object",
+        "required": true,
+        "description": "Datos locales"
+      },
+      "remoteData": {
+        "type": "object",
+        "required": true,
+        "description": "Datos remotos"
+      },
+      "strategy": {
+        "type": "string",
+        "enum": ["LWW", "SUM_MERGE", "MANUAL"],
+        "required": true,
+        "description": "Estrategia de resolución"
+      },
+      "resolvedData": {
+        "type": "object",
+        "description": "Datos resueltos"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["pending", "resolved", "manual_required"],
+        "description": "Estado del conflicto"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de detección"
+      }
+    },
+
+    "syncError": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK del error"
+      },
+      "tenantId": {
+        "type": "string",
+        "required": true,
+        "description": "FK al tenant"
+      },
+      "tableName": {
+        "type": "string",
+        "required": true,
+        "description": "Tabla afectada"
+      },
+      "localId": {
+        "type": "string",
+        "description": "ID del registro"
+      },
+      "operation": {
+        "type": "string",
+        "enum": ["create", "update", "delete"],
+        "description": "Operación que falló"
+      },
+      "errorCode": {
+        "type": "string",
+        "required": true,
+        "description": "Código del error"
+      },
+      "errorMessage": {
+        "type": "string",
+        "required": true,
+        "description": "Mensaje del error"
+      },
+      "retryable": {
+        "type": "boolean",
+        "description": "Si se puede reintentar"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha del error"
+      }
+    }
+  },
+
+  "business_rules": {
+    "sync_metadata_tenant_is_slug": {
+      "condition": "ALWAYS",
+      "appliesTo": ["saveSyncMetadata"],
+      "rule": "tenantId matches ^[a-z0-9-]+$",
+      "error": "SYNC_TENANT_ID_MUST_BE_SLUG",
+      "message": "En sync, tenantId debe ser slug, nunca UUID",
+      "enforcement": "RUNTIME"
+    },
+    "conflict_strategy_catalog_table": {
+      "condition": "ALWAYS",
+      "appliesTo": ["resolveConflict"],
+      "rule": "table IN [products, categories, warehouses, tax_rules, exchange_rates] -> strategy = LWW",
+      "error": "SYNC_CONFLICT_STRATEGY_INVALID",
+      "message": "Tablas de catálogo solo usan estrategia LWW",
+      "enforcement": "RUNTIME"
+    },
+    "conflict_strategy_transactional": {
+      "condition": "ALWAYS",
+      "appliesTo": ["resolveConflict"],
+      "rule": "table IN [sales, purchases, stock_movements] -> strategy IN [SUM_MERGE, MANUAL]",
+      "error": "SYNC_CONFLICT_STRATEGY_INVALID",
+      "message": "Tablas transactionales no pueden usar LWW",
+      "enforcement": "RUNTIME"
+    },
+    "sum_merge_quantity_precision": {
+      "condition": "ALWAYS",
+      "appliesTo": ["resolveConflict"],
+      "rule": "strategy = SUM_MERGE -> quantity decimals <= 4",
+      "error": "SYNC_SUM_MERGE_PRECISION_INVALID",
+      "message": "Suma de cantidades debe usar máximo 4 decimales",
+      "enforcement": "RUNTIME"
+    },
+    "sync_error_retry_policy": {
+      "condition": "ALWAYS",
+      "appliesTo": ["retrySyncError"],
+      "rule": "retryable = true AND attempts < 3",
+      "error": "SYNC_MAX_RETRIES_EXCEEDED",
+      "message": "Máximo de reintentos excedido",
+      "enforcement": "RUNTIME"
+    }
+  },
+
+  "conflict_strategies": {
+    "LWW": {
+      "description": "Last Write Wins - El último dato gana",
+      "validFor": ["catalog"],
+      "priority": "timestamp"
+    },
+    "SUM_MERGE": {
+      "description": "Suma de cantidades (inventarios)",
+      "validFor": ["inventory"],
+      "fields": ["quantity"]
+    },
+    "MANUAL": {
+      "description": "Requiere resolución manual",
+      "validFor": ["transactional"],
+      "requiresUser": true
+    }
+  },
+
+  "error_codes": {
+    "SYNC_TENANT_ID_MUST_BE_SLUG": {
+      "code": "SYNC_TENANT_ID_MUST_BE_SLUG",
+      "message": "En sync, tenantId debe ser slug, nunca UUID",
+      "retryable": false
+    },
+    "SYNC_TENANT_TRANSLATION_FAILED": {
+      "code": "SYNC_TENANT_TRANSLATION_FAILED",
+      "message": "No se puede resolver el UUID para el tenant",
+      "retryable": false
+    },
+    "SYNC_CONFLICT_DETECTED": {
+      "code": "SYNC_CONFLICT_DETECTED",
+      "message": "Conflicto de sincronización detectado",
+      "retryable": false
+    },
+    "SYNC_CONFLICT_STRATEGY_INVALID": {
+      "code": "SYNC_CONFLICT_STRATEGY_INVALID",
+      "message": "Estrategia de resolución inválida para esta tabla",
+      "retryable": false
+    },
+    "SYNC_SUM_MERGE_PRECISION_INVALID": {
+      "code": "SYNC_SUM_MERGE_PRECISION_INVALID",
+      "message": "Suma de cantidades debe usar máximo 4 decimales",
+      "retryable": false
+    },
+    "SYNC_MAX_RETRIES_EXCEEDED": {
+      "code": "SYNC_MAX_RETRIES_EXCEEDED",
+      "message": "Máximo de reintentos excedido",
+      "retryable": false
+    },
+    "SYNC_METADATA_NOT_FOUND": {
+      "code": "SYNC_METADATA_NOT_FOUND",
+      "message": "Metadatos de sincronización no encontrados",
+      "retryable": true
+    },
+    "SYNC_OPERATION_FAILED": {
+      "code": "SYNC_OPERATION_FAILED",
+      "message": "Operación de sincronización fallida",
+      "retryable": true
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "1.2.3 Sync Optimizado / P10",
+    "version_date": "2026-04-16"
+  }
+}

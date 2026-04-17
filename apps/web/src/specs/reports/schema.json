@@ -1,0 +1,308 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/reports/v1.0.0",
+  "title": "Reports Entity Specification",
+  "description": "Reportes Financieros - Validaciones de integridad contable",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Reports",
+
+  "fields": {
+    "balanceSheet": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK del balance"
+      },
+      "tenantId": {
+        "type": "string",
+        "required": true,
+        "description": "FK al tenant (SLUG)"
+      },
+      "reportDate": {
+        "type": "string",
+        "format": "date",
+        "required": true,
+        "description": "Fecha del reporte"
+      },
+      "currency": {
+        "type": "string",
+        "enum": ["VES", "USD"],
+        "required": true,
+        "description": "Moneda del reporte"
+      },
+      "exchangeRate": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Tasa de cambio usada"
+      },
+      "assets": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "current": { "type": "number" },
+          "nonCurrent": { "type": "number" },
+          "total": { "type": "number" }
+        },
+        "description": "Activos (corrientes + no corrientes)"
+      },
+      "liabilities": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "current": { "type": "number" },
+          "nonCurrent": { "type": "number" },
+          "total": { "type": "number" }
+        },
+        "description": "Pasivos (corrientes + no corrientes)"
+      },
+      "equity": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "capital": { "type": "number" },
+          "reserves": { "type": "number" },
+          "retainedEarnings": { "type": "number" },
+          "total": { "type": "number" }
+        },
+        "description": "Patrimonio"
+      },
+      "isBalanced": {
+        "type": "boolean",
+        "required": true,
+        "description": "Indica si Activos = Pasivos + Patrimonio"
+      },
+      "difference": {
+        "type": "number",
+        "description": "Diferencia entre Activos y Pasivos+Patrimonio"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de generación"
+      }
+    },
+
+    "incomeStatement": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK del estado de resultados"
+      },
+      "tenantId": {
+        "type": "string",
+        "required": true,
+        "description": "FK al tenant"
+      },
+      "startDate": {
+        "type": "string",
+        "format": "date",
+        "required": true,
+        "description": "Fecha inicial del período"
+      },
+      "endDate": {
+        "type": "string",
+        "format": "date",
+        "required": true,
+        "description": "Fecha final del período"
+      },
+      "currency": {
+        "type": "string",
+        "enum": ["VES", "USD"],
+        "required": true,
+        "description": "Moneda del reporte"
+      },
+      "revenue": {
+        "type": "number",
+        "description": "Ingresos totales"
+      },
+      "costOfGoodsSold": {
+        "type": "number",
+        "description": "Costo de ventas (FIFO)"
+      },
+      "grossProfit": {
+        "type": "number",
+        "description": "Utilidad bruta"
+      },
+      "operatingExpenses": {
+        "type": "number",
+        "description": "Gastos operativos"
+      },
+      "operatingIncome": {
+        "type": "number",
+        "description": "Utilidad operativa"
+      },
+      "otherIncome": {
+        "type": "number",
+        "description": "Otros ingresos"
+      },
+      "otherExpenses": {
+        "type": "number",
+        "description": "Otros gastos"
+      },
+      "netProfit": {
+        "type": "number",
+        "description": "Utilidad neta"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de generación"
+      }
+    },
+
+    "cashFlow": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK del flujo de caja"
+      },
+      "tenantId": {
+        "type": "string",
+        "required": true,
+        "description": "FK al tenant"
+      },
+      "startDate": {
+        "type": "string",
+        "format": "date",
+        "required": true,
+        "description": "Fecha inicial"
+      },
+      "endDate": {
+        "type": "string",
+        "format": "date",
+        "required": true,
+        "description": "Fecha final"
+      },
+      "currency": {
+        "type": "string",
+        "enum": ["VES", "USD"],
+        "required": true,
+        "description": "Moneda"
+      },
+      "operatingActivities": {
+        "type": "number",
+        "description": "Flujo de actividades operativas"
+      },
+      "investingActivities": {
+        "type": "number",
+        "description": "Flujo de actividades de inversión"
+      },
+      "financingActivities": {
+        "type": "number",
+        "description": "Flujo de actividades de financiamiento"
+      },
+      "netCashFlow": {
+        "type": "number",
+        "description": "Flujo neto de caja"
+      },
+      "igtfApplied": {
+        "type": "number",
+        "description": "IGTF aplicado en el período"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de generación"
+      }
+    }
+  },
+
+  "business_rules": {
+    "balance_sheet_balanced": {
+      "condition": "ALWAYS",
+      "appliesTo": ["generateBalanceSheet"],
+      "rule": "assets.total == liabilities.total + equity.total",
+      "error": "REPORT_BALANCE_SHEET_IMBALANCED",
+      "message": "El Balance General no cuadra: Activos != Pasivos + Patrimonio",
+      "enforcement": "RUNTIME"
+    },
+    "balance_sheet_precision": {
+      "condition": "ALWAYS",
+      "appliesTo": ["generateBalanceSheet"],
+      "rule": "decimals <= 4",
+      "error": "REPORT_PRECISION_EXCEEDED",
+      "message": "Los cálculos financieros deben usar máximo 4 decimales",
+      "enforcement": "RUNTIME"
+    },
+    "income_statement_gross_profit": {
+      "condition": "ALWAYS",
+      "appliesTo": ["generateIncomeStatement"],
+      "rule": "grossProfit = revenue - costOfGoodsSold",
+      "error": "REPORT_GROSS_PROFIT_MISMATCH",
+      "message": "Utilidad bruta no coincide con ingresos - costo",
+      "enforcement": "RUNTIME"
+    },
+    "income_statement_net_profit": {
+      "condition": "ALWAYS",
+      "appliesTo": ["generateIncomeStatement"],
+      "rule": "netProfit = grossProfit - operatingExpenses - otherExpenses + otherIncome",
+      "error": "REPORT_NET_PROFIT_MISMATCH",
+      "message": "Utilidad neta no coincides con el cálculo",
+      "enforcement": "RUNTIME"
+    },
+    "cash_flow_precision": {
+      "condition": "ALWAYS",
+      "appliesTo": ["generateCashFlow"],
+      "rule": "decimals <= 4",
+      "error": "REPORT_PRECISION_EXCEEDED",
+      "message": "Los cálculos de flujo de caja deben usar máximo 4 decimales",
+      "enforcement": "RUNTIME"
+    },
+    "kardex_fifo": {
+      "condition": "ALWAYS",
+      "appliesTo": ["generateKardex"],
+      "rule": "lotLayers sorted by createdAt ASC (FIFO)",
+      "error": "REPORT_KARDEX_FIFO_VIOLATION",
+      "message": "El kardex debe usar FIFO real (lote más antiguo primero)",
+      "enforcement": "RUNTIME"
+    }
+  },
+
+  "error_codes": {
+    "REPORT_BALANCE_SHEET_IMBALANCED": {
+      "code": "REPORT_BALANCE_SHEET_IMBALANCED",
+      "message": "El Balance General no cuadra: Activos != Pasivos + Patrimonio",
+      "retryable": false
+    },
+    "REPORT_PRECISION_EXCEEDED": {
+      "code": "REPORT_PRECISION_EXCEEDED",
+      "message": "Los cálculos financieros deben usar máximo 4 decimales",
+      "retryable": false
+    },
+    "REPORT_GROSS_PROFIT_MISMATCH": {
+      "code": "REPORT_GROSS_PROFIT_MISMATCH",
+      "message": "Utilidad bruta no coincide con ingresos - costo",
+      "retryable": false
+    },
+    "REPORT_NET_PROFIT_MISMATCH": {
+      "code": "REPORT_NET_PROFIT_MISMATCH",
+      "message": "Utilidad neta no coincides con el cálculo",
+      "retryable": false
+    },
+    "REPORT_KARDEX_FIFO_VIOLATION": {
+      "code": "REPORT_KARDEX_FIFO_VIOLATION",
+      "message": "El kardex debe usar FIFO real (lote más antiguo primero)",
+      "retryable": false
+    },
+    "REPORT_NOT_FOUND": {
+      "code": "REPORT_NOT_FOUND",
+      "message": "Reporte no encontrado",
+      "retryable": false
+    },
+    "REPORT_PERIOD_INVALID": {
+      "code": "REPORT_PERIOD_INVALID",
+      "message": "Período de reporte inválido",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "Reportes Financieros / P14-P16",
+    "version_date": "2026-04-16"
+  }
+}

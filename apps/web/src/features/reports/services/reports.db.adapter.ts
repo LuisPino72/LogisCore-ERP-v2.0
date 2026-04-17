@@ -1,5 +1,5 @@
 // Reports - Adaptador de base de datos para consultas de reportes
-import { db, type SecurityAuditLogRecord, type InventoryLotRecord, type ProductRecord } from "@/lib/db/dexie";
+import { db, type SecurityAuditLogRecord, type ProductRecord } from "@/lib/db/dexie";
 import type { ReportsDb } from "./reports.service";
 import type {
   BoxClosingSummary,
@@ -208,33 +208,20 @@ export class DexieReportsDbAdapter implements ReportsDb {
     const end = endDate ? new Date(endDate) : new Date();
     end.setHours(23, 59, 59, 999);
 
-    const sales = await db.sales
-      .where("tenantId")
-      .equals(tenantId)
+    const startStr = start.toISOString();
+    const endStr = end.toISOString();
+
+    const periodSales = await db.sales
+      .where("[tenantId+createdAt]")
+      .between([tenantId, startStr], [tenantId, endStr], true, true)
       .and((s) => !s.deletedAt && s.status === "completed")
       .toArray();
 
-    const periodSales = sales.filter((s) => {
-      const saleDate = new Date(s.createdAt ?? "");
-      return saleDate >= start && saleDate <= end;
-    });
-
-    const purchases = await db.purchases
-      .where("tenantId")
-      .equals(tenantId)
+    const periodPurchases = await db.purchases
+      .where("[tenantId+createdAt]")
+      .between([tenantId, startStr], [tenantId, endStr], true, true)
       .and((p) => !p.deletedAt && (p.status === "confirmed" || p.status === "received" || p.status === "partial_received"))
       .toArray();
-
-    const periodPurchases = purchases.filter((p) => {
-      const purchaseDate = new Date(p.createdAt ?? "");
-      return purchaseDate >= start && purchaseDate <= end;
-    });
-
-    const lotsMap = new Map<string, InventoryLotRecord>();
-    const allLots = await db.inventory_lots.where("tenantId").equals(tenantId).toArray();
-    for (const lot of allLots) {
-      lotsMap.set(lot.localId, lot);
-    }
 
     let totalSales = 0;
     let subtotal = 0;
@@ -437,6 +424,10 @@ const lastClosing = closings[closings.length - 1]!;
   async getCashFlowReport(tenantId: string, startDate?: string, endDate?: string): Promise<CashFlowReport[]> {
     const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
     const end = endDate ? new Date(endDate) : new Date();
+    end.setHours(23, 59, 59, 999);
+
+    const startStr = start.toISOString();
+    const endStr = end.toISOString();
 
     const allBoxClosings = await db.box_closings
       .where("tenantId")
@@ -450,16 +441,11 @@ const lastClosing = closings[closings.length - 1]!;
       initialBalance = Number(lastClosing.countedAmount ?? lastClosing.expectedAmount ?? 0);
     }
 
-    const sales = await db.sales
-      .where("tenantId")
-      .equals(tenantId)
+    const filteredSales = await db.sales
+      .where("[tenantId+createdAt]")
+      .between([tenantId, startStr], [tenantId, endStr], true, true)
       .and((s) => !s.deletedAt && s.status === "completed")
       .toArray();
-
-    const filteredSales = sales.filter((sale) => {
-      const saleDate = new Date(sale.createdAt ?? "");
-      return saleDate >= start && saleDate <= end;
-    });
 
     let salesInflows = 0;
     let igtfInflows = 0;
@@ -496,16 +482,11 @@ const lastClosing = closings[closings.length - 1]!;
       }
     }
 
-    const invoices = await db.invoices
-      .where("tenantId")
-      .equals(tenantId)
+    const filteredInvoices = await db.invoices
+      .where("[tenantId+createdAt]")
+      .between([tenantId, startStr], [tenantId, endStr], true, true)
       .and((i) => !i.deletedAt && i.status === "issued")
       .toArray();
-
-    const filteredInvoices = invoices.filter((invoice) => {
-      const invoiceDate = new Date(invoice.createdAt ?? "");
-      return invoiceDate >= start && invoiceDate <= end;
-    });
 
     for (const invoice of filteredInvoices) {
       const payments = invoice.payments ?? [];
@@ -538,16 +519,11 @@ const lastClosing = closings[closings.length - 1]!;
       }
     }
 
-    const purchases = await db.purchases
-      .where("tenantId")
-      .equals(tenantId)
+    const filteredPurchases = await db.purchases
+      .where("[tenantId+createdAt]")
+      .between([tenantId, startStr], [tenantId, endStr], true, true)
       .and((p) => !p.deletedAt && (p.status === "received" || p.status === "confirmed"))
       .toArray();
-
-    const filteredPurchases = purchases.filter((purchase) => {
-      const purchaseDate = new Date(purchase.createdAt ?? "");
-      return purchaseDate >= start && purchaseDate <= end;
-    });
 
     let purchaseOutflows = 0;
     for (const purchase of filteredPurchases) {

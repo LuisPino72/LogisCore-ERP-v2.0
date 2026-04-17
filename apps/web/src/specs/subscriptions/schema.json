@@ -1,0 +1,269 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/subscriptions/v1.0.0",
+  "title": "Subscriptions Entity Specification",
+  "description": "Planes y Suscripciones - Límites comerciales y Features del SaaS",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Subscriptions",
+
+  "fields": {
+    "plan": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK - ID del plan"
+      },
+      "name": {
+        "type": "string",
+        "enum": ["Basic", "Pro"],
+        "required": true,
+        "description": "Nombre del plan"
+      },
+      "description": {
+        "type": ["string", "null"],
+        "description": "Descripción del plan"
+      },
+      "price": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Precio mensual en USD"
+      },
+      "features": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "production": { "type": "boolean" },
+          "multi_warehouse": { "type": "boolean" },
+          "invoicing": { "type": "boolean" },
+          "reports": { "type": "boolean" }
+        },
+        "description": "Features habilitados por el plan"
+      },
+      "maxUsers": {
+        "type": "integer",
+        "minimum": 0,
+        "required": true,
+        "description": "Límite de usuarios (0 = ilimitado)"
+      },
+      "maxProducts": {
+        "type": "integer",
+        "minimum": 1,
+        "required": true,
+        "description": "Límite de productos"
+      },
+      "isActive": {
+        "type": "boolean",
+        "required": true,
+        "description": "Plan activo en el sistema"
+      },
+      "trialDays": {
+        "type": ["integer", "null"],
+        "minimum": 0,
+        "description": "Días de prueba gratuitos"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de creación"
+      }
+    },
+
+    "subscription": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "PK - ID de suscripción"
+      },
+      "tenantId": {
+        "type": "string",
+        "required": true,
+        "description": "FK al tenant (SLUG)"
+      },
+      "planId": {
+        "type": ["string", "null"],
+        "required": true,
+        "description": "FK al plan"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["active", "suspended", "expired", "trial"],
+        "required": true,
+        "description": "Estado de suscripción"
+      },
+      "startDate": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Fecha de inicio"
+      },
+      "endDate": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Fecha de fin"
+      },
+      "billingCycle": {
+        "type": "string",
+        "enum": ["monthly", "quarterly", "annual"],
+        "description": "Ciclo de facturación"
+      },
+      "features": {
+        "type": ["object", "null"],
+        "description": "Override de features heredados del plan"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de creación"
+      }
+    }
+  },
+
+  "business_rules": {
+    "plan_basic_limits": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createTenant", "createSubscription"],
+      "rule": "plan.name = 'Basic' -> maxUsers <= 3 AND features.production = false",
+      "error": "SUBSCRIPTION_BASIC_LIMITS_VIOLATED",
+      "message": "Plan Basic permite máximo 3 usuarios y sin producción",
+      "enforcement": "RUNTIME"
+    },
+    "plan_pro_limits": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createTenant", "createSubscription"],
+      "rule": "plan.name = 'Pro' -> maxUsers <= 10 AND features.production = true",
+      "error": "SUBSCRIPTION_PRO_LIMITS_VIOLATED",
+      "message": "Plan Pro permite hasta 10 usuarios con producción",
+      "enforcement": "RUNTIME"
+    },
+    "subscription_max_users_check": {
+      "condition": "BEFORE_CREATE_USER",
+      "appliesTo": ["createUser"],
+      "rule": "currentUsers < plan.maxUsers OR plan.maxUsers = 0",
+      "error": "SUBSCRIPTION_MAX_USERS_EXCEEDED",
+      "message": "Ha alcanzado el límite de usuarios de su plan",
+      "enforcement": "RUNTIME",
+      "triggers_event": "SUBSCRIPTION.BLOCKED"
+    },
+    "subscription_max_products_check": {
+      "condition": "BEFORE_CREATE_PRODUCT",
+      "appliesTo": ["createProduct"],
+      "rule": "currentProducts < plan.maxProducts",
+      "error": "SUBSCRIPTION_MAX_PRODUCTS_EXCEEDED",
+      "message": "Ha alcanzado el límite de productos de su plan",
+      "enforcement": "RUNTIME",
+      "triggers_event": "SUBSCRIPTION.BLOCKED"
+    },
+    "subscription_production_blocked": {
+      "condition": "BEFORE_ACCESS_PRODUCTION",
+      "appliesTo": ["accessProduction"],
+      "rule": "plan.features.production = true",
+      "error": "SUBSCRIPTION_PRODUCTION_BLOCKED",
+      "message": "Producción no disponible en plan Basic",
+      "enforcement": "RUNTIME",
+      "triggers_event": "SUBSCRIPTION.BLOCKED"
+    },
+    "subscription_status_active": {
+      "condition": "ALWAYS",
+      "appliesTo": ["tenant_access"],
+      "rule": "subscription.status IN ['active', 'trial']",
+      "error": "SUBSCRIPTION_EXPIRED",
+      "message": "Suscripción vencida o suspendida",
+      "enforcement": "RUNTIME",
+      "triggers_event": "SUBSCRIPTION.BLOCKED"
+    },
+    "subscription_trial_dates": {
+      "condition": "ON_CREATE",
+      "appliesTo": ["createSubscription"],
+      "rule": "trialDays > 0 -> endDate = startDate + trialDays",
+      "error": "SUBSCRIPTION_TRIAL_dates_INVALID",
+      "message": "Período de trial debe tener fechas válidas",
+      "enforcement": "RUNTIME"
+    }
+  },
+
+  "plans_definition": {
+    "Basic": {
+      "maxUsers": 3,
+      "maxProducts": 500,
+      "features": {
+        "production": false,
+        "multi_warehouse": false,
+        "invoicing": true,
+        "reports": true
+      },
+      "trialDays": 15
+    },
+    "Pro": {
+      "maxUsers": 10,
+      "maxProducts": 5000,
+      "features": {
+        "production": true,
+        "multi_warehouse": true,
+        "invoicing": true,
+        "reports": true
+      },
+      "trialDays": 30
+    }
+  },
+
+  "error_codes": {
+    "SUBSCRIPTION_NOT_FOUND": {
+      "code": "SUBSCRIPTION_NOT_FOUND",
+      "message": "Suscripción no encontrada",
+      "retryable": false
+    },
+    "SUBSCRIPTION_MAX_USERS_EXCEEDED": {
+      "code": "SUBSCRIPTION_MAX_USERS_EXCEEDED",
+      "message": "Ha alcanzado el límite de usuarios de su plan",
+      "retryable": false
+    },
+    "SUBSCRIPTION_MAX_PRODUCTS_EXCEEDED": {
+      "code": "SUBSCRIPTION_MAX_PRODUCTS_EXCEEDED",
+      "message": "Ha alcanzado el límite de productos de su plan",
+      "retryable": false
+    },
+    "SUBSCRIPTION_PRODUCTION_BLOCKED": {
+      "code": "SUBSCRIPTION_PRODUCTION_BLOCKED",
+      "message": "Producción no disponible en plan Basic",
+      "retryable": false
+    },
+    "SUBSCRIPTION_EXPIRED": {
+      "code": "SUBSCRIPTION_EXPIRED",
+      "message": "Suscripción vencida o suspendida",
+      "retryable": false
+    },
+    "SUBSCRIPTION_TRIAL_DATES_INVALID": {
+      "code": "SUBSCRIPTION_TRIAL_DATES_INVALID",
+      "message": "Período de trial inválido",
+      "retryable": false
+    },
+    "SUBSCRIPTION_BASIC_LIMITS_VIOLATED": {
+      "code": "SUBSCRIPTION_BASIC_LIMITS_VIOLATED",
+      "message": "Límites de plan Basic violados",
+      "retryable": false
+    },
+    "SUBSCRIPTION_PRO_LIMITS_VIOLATED": {
+      "code": "SUBSCRIPTION_PRO_LIMITS_VIOLATED",
+      "message": "Límites de plan Pro violados",
+      "retryable": false
+    },
+    "PLAN_NOT_FOUND": {
+      "code": "PLAN_NOT_FOUND",
+      "message": "Plan no encontrado",
+      "retryable": false
+    },
+    "PLAN_INACTIVE": {
+      "code": "PLAN_INACTIVE",
+      "message": "Plan inactivo",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "2.3.7 Auditoría / Plans & Subscriptions",
+    "version_date": "2026-04-16"
+  }
+}
