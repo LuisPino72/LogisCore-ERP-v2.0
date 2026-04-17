@@ -145,9 +145,17 @@ describe("core bootstrap integration", () => {
       attempts: 0
     });
 
+    // Use fake timers to skip the await new Promise(setTimeout)
+    const { vi } = await import("vitest");
+    vi.useFakeTimers();
+
     for (let i = 0; i < 5; i += 1) {
-      await syncEngine.processNext();
+      const promise = syncEngine.processNext();
+      await vi.runAllTimersAsync();
+      await promise;
     }
+
+    vi.useRealTimers();
 
     expect(queue).toHaveLength(0);
     expect(syncErrors).toHaveLength(1);

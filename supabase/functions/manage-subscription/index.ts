@@ -1,12 +1,12 @@
 import { createClient } from "jsr:@supabase/supabase-js@2.49.1";
 import { createRbacMiddleware } from "../_shared/rbac-middleware";
 
-const jsonHeaders = {
+const jsonHeaders = (origin: string) => ({
   "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ["http://localhost:5173", "https://logiscore-erp.vercel.app"].includes(origin) ? origin : "https://logiscore-erp.vercel.app",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-action-context, x-user-permissions",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
-};
+});
 
 interface RenewSubscriptionInput {
   subscriptionId: string;

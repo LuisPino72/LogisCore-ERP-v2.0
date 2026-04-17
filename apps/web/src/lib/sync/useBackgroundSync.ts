@@ -17,22 +17,20 @@ export function useBackgroundSync(options: UseBackgroundSyncOptions = {}): UseBa
   const [isRegistered, setIsRegistered] = useState(false);
   const [lastSyncResult, setLastSyncResult] = useState<{ tag: string; timestamp: string } | null>(null);
 
-  const isSupported = typeof window !== "undefined" && "serviceWorker" in navigator && "sync" in window;
+  const isSupported = typeof window !== "undefined" && "serviceWorker" in navigator && "SyncManager" in window;
 
   useEffect(() => {
     if (!isSupported) return;
 
     async function registerServiceWorker() {
       try {
-        const registration = await navigator.serviceWorker.register("/sw.js", {
+        const existing = await navigator.serviceWorker.getRegistration("/");
+        const registration = existing ?? await navigator.serviceWorker.register("/sw.js", {
           scope: "/"
         });
 
-        console.log("Service Worker registered:", registration.scope);
-
         if ("sync" in registration) {
           setIsRegistered(true);
-          console.log("Background Sync supported and registered");
         }
       } catch (error) {
         console.error("Service Worker registration failed:", error);
@@ -45,13 +43,15 @@ export function useBackgroundSync(options: UseBackgroundSyncOptions = {}): UseBa
   useEffect(() => {
     if (!isSupported) return;
 
+    const stableOnSyncComplete = onSyncComplete;
+
     function handleMessage(event: MessageEvent) {
       if (event.data?.type === "BACKGROUND_SYNC") {
         setLastSyncResult({
           tag: event.data.tag,
           timestamp: event.data.timestamp
         });
-        onSyncComplete?.(event.data.tag);
+        stableOnSyncComplete?.(event.data.tag);
       }
     }
 
@@ -77,8 +77,6 @@ export function useBackgroundSync(options: UseBackgroundSyncOptions = {}): UseBa
           return true;
         }
         return false;
-        console.log(`Background sync registered for: ${tag}`);
-        return true;
       }
       return false;
     } catch (error) {

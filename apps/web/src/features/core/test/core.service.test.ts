@@ -178,4 +178,61 @@ describe("core.service", () => {
     const result = await service.pullCatalogs("tenant-demo");
     expect(result.ok).toBe(true);
   });
+
+  describe("Performance Benchmarks - SLA v6.1", () => {
+    const SLA_BOOTSTRAP_100_PRODUCTS_MS = 1000;
+
+    it("bootstrapSession completa en < 1s con 100 productos simulados", async () => {
+      const eventBus = new InMemoryEventBus();
+
+      const catalogsDb = {
+        bulkPut: vi.fn(async () => undefined)
+      };
+
+      const service = createCoreService({
+        db: createDbMock(),
+        syncEngine: createSyncEngineMock(),
+        supabase: createSupabaseMock(true),
+        eventBus,
+        catalogsDb,
+        clock: () => new Date("2026-01-01T00:00:00.000Z"),
+        uuid: () => "uuid-1"
+      });
+
+      const start = performance.now();
+      const result = await service.bootstrapSession();
+      const elapsed = performance.now() - start;
+
+      expect(result.ok).toBe(true);
+      expect(elapsed).toBeLessThan(SLA_BOOTSTRAP_100_PRODUCTS_MS);
+    });
+
+    it("getSlaMetrics devuelve estadísticas correctas después de bootstrap", async () => {
+      const eventBus = new InMemoryEventBus();
+
+      const catalogsDb = {
+        bulkPut: vi.fn(async () => undefined)
+      };
+
+      const service = createCoreService({
+        db: createDbMock(),
+        syncEngine: createSyncEngineMock(),
+        supabase: createSupabaseMock(true),
+        eventBus,
+        catalogsDb,
+        clock: () => new Date("2026-01-01T00:00:00.000Z"),
+        uuid: () => "uuid-1"
+      });
+
+      await service.bootstrapSession();
+
+      const timingMetrics = service.getTimingMetrics();
+      const slaMetrics = service.getSlaMetrics();
+
+      expect(timingMetrics).toBeDefined();
+      expect(slaMetrics).toBeDefined();
+      expect(Array.isArray(timingMetrics)).toBe(true);
+      expect(Array.isArray(slaMetrics)).toBe(true);
+    });
+  });
 });

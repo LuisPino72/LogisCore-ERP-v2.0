@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "jsr:@supabase/supabase-js@2.49.1";
 import { z } from "npm:zod@3.23.8";
 
 const TableSchema = z.enum([
@@ -33,9 +33,11 @@ const InputSchema = z.object({
   payload: z.record(z.unknown()).optional()
 });
 
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://logiscore-erp.vercel.app";
+
 const jsonHeaders = {
   "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
@@ -106,12 +108,13 @@ const insertRecord = async (
 ): Promise<{ success: boolean; error?: string }> => {
   const sanitizedPayload = sanitizeMutationPayload(payload);
 
-  const insertData: Record<string, any> = {
+  const now = new Date().toISOString();
+  const insertData: Record<string, unknown> = {
     ...sanitizedPayload,
     local_id: localId,
     tenant_id: tenantId,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    created_at: now,
+    updated_at: now
   };
 
   // Default values for products table to avoid "not-null" violations
@@ -127,7 +130,7 @@ const insertRecord = async (
     insertData.tenant_slug = tenantSlug;
   }
 
-  console.log(`[SYNC] Attempting insert into ${table}. Data keys:`, Object.keys(insertData));
+  console.log(`[SYNC] Inserting into ${table}`);
   
   const result = await client
     .from(table)
@@ -156,7 +159,7 @@ const updateRecord = async (
 ): Promise<{ success: boolean; error?: string }> => {
   const sanitizedPayload = sanitizeMutationPayload(payload);
 
-  console.log(`[SYNC] Updating ${table} (${localId}) for tenant ${tenantId}`);
+  console.log(`[SYNC] Updating ${table} (${localId})`);
 
   const result = await client
     .from(table)
@@ -182,7 +185,7 @@ const deleteRecord = async (
   tenantId: string,
   localId: string
 ): Promise<{ success: boolean; error?: string }> => {
-  console.log(`[SYNC] Deleting (soft) ${table} (${localId}) for tenant ${tenantId}`);
+  console.log(`[SYNC] Soft-deleting ${table} (${localId})`);
   
   const result = await client
     .from(table)
@@ -245,7 +248,7 @@ Deno.serve(async (request) => {
       );
     }
 
-    let parsedBody: any = {};
+    let parsedBody: Record<string, unknown> = {};
     try {
       parsedBody = await request.json();
     } catch {
@@ -262,8 +265,7 @@ Deno.serve(async (request) => {
     }
 
     const { table, operation, localId, payload } = parsedInput.data;
-    console.log(`[SYNC] Operation: ${operation} on Table: ${table}. LocalId: ${localId}`);
-    console.log("[SYNC] Raw Payload:", JSON.stringify(payload));
+    console.log(`[SYNC] ${operation} on ${table} (${localId})`);
 
     const userId = authResult.data.user.id;
     const tokenPayload = decodeJwtPayload(token);
@@ -440,14 +442,10 @@ Deno.serve(async (request) => {
       }),
       { status: 200, headers: jsonHeaders }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Critical Function Error:", err);
     return new Response(
-      JSON.stringify({ 
-        error: "INTERNAL_SERVER_ERROR", 
-        message: err.message,
-        stack: err.stack 
-      }),
+      JSON.stringify({ error: "INTERNAL_SERVER_ERROR" }),
       { status: 500, headers: jsonHeaders }
     );
   }

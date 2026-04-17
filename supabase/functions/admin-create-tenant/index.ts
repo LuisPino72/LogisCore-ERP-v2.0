@@ -53,7 +53,7 @@ const DEFAULT_CATEGORIES_BY_BUSINESS: Record<string, string[]> = {
 
 const jsonHeaders = {
   "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "https://logiscore-erp.vercel.app",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };

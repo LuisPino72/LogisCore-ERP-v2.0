@@ -130,13 +130,14 @@ export class DefaultSyncEngine implements SyncEngine {
     }
 
     if (isConflict && isCatalog) {
-      const retryAfter = this.computeBackoffDelay(nextItem.attempts);
       await this.storage.removeQueueItem(nextItem.id);
       this.eventBus.emit("SYNC.CATALOG_CONFLICT_LWW", {
         itemId: nextItem.id,
         table: nextItem.table,
-        retryAfter
+        resolution: "remote_wins"
       });
+      // Emit refresh so frontend pulls latest remote data
+      this.eventBus.emit("SYNC.REFRESH_TABLE", { table: nextItem.table });
       this.status = "idle";
       this.eventBus.emit("SYNC.STATUS_CHANGED", { status: this.status });
       return ok<"processed" | "skipped">("processed");
@@ -163,6 +164,8 @@ export class DefaultSyncEngine implements SyncEngine {
 
     await this.storage.updateQueueAttempts(nextItem.id, nextAttempts);
     const retryAfter = this.computeBackoffDelay(nextItem.attempts);
+    // SYNC-003: Apply real backoff delay before returning
+    await new Promise(resolve => setTimeout(resolve, retryAfter));
     this.eventBus.emit("SYNC.RETRY_SCHEDULED", {
       itemId: nextItem.id,
       attempts: nextAttempts,
@@ -181,8 +184,27 @@ export class DefaultSyncEngine implements SyncEngine {
     this.eventBus.emit("SYNC.STATUS_CHANGED", { status: this.status });
 
     this.intervalHandle = setInterval(() => {
-      void this.processNext();
+      void this.processBatch();
     }, intervalMs);
+  }
+
+  /**
+   * SYNC-002: Process multiple queue items in a single cycle.
+   * Returns the count of processed/error items.
+   */
+  async processBatch(batchSize = 10): Promise<{ processed: number; errors: number }> {
+    let processed = 0;
+    let errors = 0;
+    while (processed + errors < batchSize) {
+      const result = await this.processNext();
+      if (!result.ok) {
+        errors++;
+        continue;
+      }
+      if (result.data === "skipped") break;
+      processed++;
+    }
+    return { processed, errors };
   }
 
   stopPeriodicSync(): void {

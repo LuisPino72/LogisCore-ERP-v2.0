@@ -84,7 +84,7 @@ interface ProductsCatalogProps {
   tenantSlug: string;
   actor: ProductsActorContext;
   exchangeRate?: number;
-  businessTypeId?: string;
+  businessTypeId?: string | undefined;
   maxProducts?: number | undefined;
   features?: Record<string, boolean> | undefined;
 }

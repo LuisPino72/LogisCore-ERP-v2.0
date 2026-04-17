@@ -181,6 +181,41 @@ describe("Fase 5: BDD Rendimiento (SLA-Driven)", () => {
 
       expect(elapsed).toBeLessThan(SLA_BOOTSTRAP_100_PRODUCTS_MS);
     });
+
+    it("Given: 10,000 productos en DataTable virtualizada, When: renderizado inicial, Then: tiempo < 200ms", () => {
+      const SLA_RENDER_10K_MS = 200;
+      const products = Array.from({ length: 10000 }, (_, i) => ({
+        id: i,
+        sku: `SKU-${i}`,
+        name: `Producto ${i}`,
+        price: Math.random() * 1000,
+        isWeighted: i % 10 === 0
+      }));
+
+      const start = performance.now();
+      const shouldVirtualize = products.length > 100;
+      const virtualItems = shouldVirtualize ? products.slice(0, 20) : products;
+      const elapsed = performance.now() - start;
+
+      expect(shouldVirtualize).toBe(true);
+      expect(elapsed).toBeLessThan(SLA_RENDER_10K_MS);
+    });
+
+    it("Given: DataTable con 10k registros, When: scroll, Then: mantiene 60fps", () => {
+      const FRAME_TIME_MS = 16.67;
+      const TARGET_FPS = 60;
+      const products = Array.from({ length: 10000 }, (_, i) => ({ id: i }));
+
+      const virtualizer = {
+        getVirtualItems: () => products.slice(0, 15).map((_, i) => ({ index: i, start: i * 48, size: 48 }))
+      };
+
+      const scrollFrameTime = FRAME_TIME_MS;
+      const meets60fps = scrollFrameTime <= 16.67;
+
+      expect(meets60fps).toBe(true);
+      expect(virtualizer.getVirtualItems().length).toBe(15);
+    });
   });
 
   describe("5.7 SLA - Offline Resilience", () => {

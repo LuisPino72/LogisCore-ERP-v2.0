@@ -108,9 +108,15 @@ describe("DefaultSyncEngine", () => {
       attempts: 0
     });
 
+    vi.useFakeTimers();
+
     for (let i = 0; i < 5; i += 1) {
-      await engine.processNext();
+      const promise = engine.processNext();
+      await vi.runAllTimersAsync();
+      await promise;
     }
+
+    vi.useRealTimers();
 
     expect(queue).toHaveLength(0);
     expect(syncErrors).toHaveLength(1);
@@ -217,7 +223,11 @@ describe("DefaultSyncEngine", () => {
       attempts: 0
     });
 
-    await engine.processNext();
+    vi.useFakeTimers();
+    const promise = engine.processNext();
+    await vi.runAllTimersAsync();
+    await promise;
+    vi.useRealTimers();
 
     expect(retrySpy).toHaveBeenCalledTimes(1);
     expect(retrySpy.mock.calls[0][0].attempts).toBe(1);
