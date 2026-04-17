@@ -26,6 +26,7 @@ export class DefaultSyncEngine implements SyncEngine {
   private readonly baseDelayMs: number;
   private status: SyncStatus = "idle";
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
+  private nextAllowedSyncTime: number = 0;
   private readonly transactionalTables = new Set([
     "sales",
     "stock_movements",
@@ -85,6 +86,10 @@ export class DefaultSyncEngine implements SyncEngine {
   }
 
   async processNext() {
+    if (Date.now() < this.nextAllowedSyncTime) {
+      return ok<"processed" | "skipped">("skipped");
+    }
+
     const nextItem = await this.storage.getNextQueueItem();
     if (!nextItem) {
       return ok<"processed" | "skipped">("skipped");
@@ -164,8 +169,9 @@ export class DefaultSyncEngine implements SyncEngine {
 
     await this.storage.updateQueueAttempts(nextItem.id, nextAttempts);
     const retryAfter = this.computeBackoffDelay(nextItem.attempts);
-    // SYNC-003: Apply real backoff delay before returning
-    await new Promise(resolve => setTimeout(resolve, retryAfter));
+    
+    // SYNC-003: Apply non-blocking backoff delay
+    this.nextAllowedSyncTime = Date.now() + retryAfter;
     this.eventBus.emit("SYNC.RETRY_SCHEDULED", {
       itemId: nextItem.id,
       attempts: nextAttempts,

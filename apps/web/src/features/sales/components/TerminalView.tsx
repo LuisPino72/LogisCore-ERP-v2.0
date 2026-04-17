@@ -147,32 +147,12 @@ export function TerminalView({
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                 {filteredProducts.map((product) => (
-                  <button
-                    key={product.localId}
-                    onClick={() => handleAddProduct(product)}
-                    className="p-3 rounded-lg border border-surface-200 hover:border-brand-300 hover:shadow-md transition-all text-left bg-white"
-                  >
-                    <div className="flex items-start justify-between">
-                      <span className="font-medium text-sm text-content-primary truncate flex-1">
-                        {product.name}
-                      </span>
-                      {product.isWeighted && (
-                        <Scale className="w-3 h-3 text-brand-600 shrink-0 ml-1" />
-                      )}
-                    </div>
-                    <div className="text-xs text-content-secondary mt-1">
-                  {(product as { price?: number }).price !== undefined ? (
-                      formatCurrencyDual((product as { price?: number }).price ?? 0, exchangeRate)
-                    ) : (
-                      <span className="text-xs text-content-tertiary">Sin precio</span>
-                    )}
-                    </div>
-                    {product.sku && (
-                      <div className="text-xs text-content-tertiary mt-1">
-                        SKU: {product.sku}
-                      </div>
-                    )}
-                  </button>
+                  <ProductButton 
+                    key={product.localId} 
+                    product={product} 
+                    exchangeRate={exchangeRate} 
+                    onAdd={handleAddProduct} 
+                  />
                 ))}
               </div>
             )}
@@ -418,5 +398,47 @@ export function TerminalView({
         </div>
       )}
     </div>
+  );
+}
+
+// Extracted Sub-Components for Performance and Vercel Best Practices (rendering-no-inline-components)
+
+function ProductButton({ 
+  product, 
+  exchangeRate, 
+  onAdd 
+}: { 
+  product: Product; 
+  exchangeRate: number; 
+  onAdd: (p: Product) => void;
+}) {
+  const handleClick = useCallback(() => onAdd(product), [onAdd, product]);
+
+  return (
+    <button
+      onClick={handleClick}
+      className="p-3 rounded-lg border border-surface-200 hover:border-brand-300 hover:shadow-md transition-all text-left bg-white"
+    >
+      <div className="flex items-start justify-between">
+        <span className="font-medium text-sm text-content-primary truncate flex-1">
+          {product.name}
+        </span>
+        {product.isWeighted && (
+          <Scale className="w-3 h-3 text-brand-600 shrink-0 ml-1" />
+        )}
+      </div>
+      <div className="text-xs text-content-secondary mt-1">
+        {(product as { price?: number }).price !== undefined ? (
+          formatCurrencyDual((product as { price?: number }).price ?? 0, exchangeRate)
+        ) : (
+          <span className="text-xs text-content-tertiary">Sin precio</span>
+        )}
+      </div>
+      {product.sku && (
+        <div className="text-xs text-content-tertiary mt-1">
+          SKU: {product.sku}
+        </div>
+      )}
+    </button>
   );
 }
