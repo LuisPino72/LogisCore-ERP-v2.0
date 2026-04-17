@@ -74,25 +74,38 @@ export function createRecipeError(
 }
 
 export function createProductionOrderError(
-  code: ProductionOrderErrorCode,
+  code: string,
   context?: ProductionErrorContext
 ): AppError {
-  const messages: Record<ProductionOrderErrorCode, string> = {
-    [PRODUCTION_ORDER_ERROR_CODES.NOT_FOUND]: "La orden de producción no existe",
-    [PRODUCTION_ORDER_ERROR_CODES.NOT_DRAFT]: "Solo se pueden editar órdenes en estado borrador",
-    [PRODUCTION_ORDER_ERROR_CODES.NOT_IN_PROGRESS]: "Solo se pueden completar órdenes en progreso",
-    [PRODUCTION_ORDER_ERROR_CODES.ALREADY_COMPLETED]: "La orden ya fue completada",
-    [PRODUCTION_ORDER_ERROR_CODES.ALREADY_CANCELLED]: "La orden ya fue cancelada",
-    [PRODUCTION_ORDER_ERROR_CODES.STATUS_INVALID]: "Estado inválido para esta operación",
-    [PRODUCTION_ORDER_ERROR_CODES.INGREDIENT_STOCK_INSUFFICIENT]: "Stock insuficiente de ingredientes para iniciar producción",
-    [PRODUCTION_ORDER_ERROR_CODES.VARIANCE_EXCEEDED]: "Variación excede el tolerance configurado",
-    [PRODUCTION_ORDER_ERROR_CODES.TOTALS_MISMATCH]: "Totales no coinciden con ingredientes utilizados",
-    [PRODUCTION_ORDER_ERROR_CODES.TENANT_ID_MUST_BE_SLUG]: "En Dexie, tenant_id debe ser slug, nunca UUID",
+  const codeMap: Record<string, string> = {
+    NOT_FOUND: "PRODUCTION_ORDER_NOT_FOUND",
+    NOT_DRAFT: "PRODUCTION_NOT_DRAFT",
+    NOT_IN_PROGRESS: "PRODUCTION_NOT_IN_PROGRESS",
+    ALREADY_COMPLETED: "PRODUCTION_ALREADY_COMPLETED",
+    ALREADY_CANCELLED: "PRODUCTION_ALREADY_CANCELLED",
+    STATUS_INVALID: "PRODUCTION_STATUS_INVALID",
+    INGREDIENT_STOCK_INSUFFICIENT: "PRODUCTION_INGREDIENT_STOCK_INSUFFICIENT",
+    VARIANCE_EXCEEDED: "PRODUCTION_VARIANCE_EXCEEDED",
+    TOTALS_MISMATCH: "PRODUCTION_TOTALS_MISMATCH",
+    TENANT_ID_MUST_BE_SLUG: "PRODUCTION_TENANT_ID_MUST_BE_SLUG",
+  };
+
+  const messages: Record<string, string> = {
+    NOT_FOUND: "La orden de producción no existe",
+    NOT_DRAFT: "Solo se pueden editar órdenes en estado borrador",
+    NOT_IN_PROGRESS: "Solo se pueden completar órdenes en progreso",
+    ALREADY_COMPLETED: "La orden ya fue completada",
+    ALREADY_CANCELLED: "La orden ya fue cancelada",
+    STATUS_INVALID: "Estado inválido para esta operación",
+    INGREDIENT_STOCK_INSUFFICIENT: "Stock insuficiente de ingredientes para iniciar producción",
+    VARIANCE_EXCEEDED: "Variación excede el tolerance configurado",
+    TOTALS_MISMATCH: "Totales no coinciden con ingredientes utilizados",
+    TENANT_ID_MUST_BE_SLUG: "En Dexie, tenant_id debe ser slug, nunca UUID",
   };
 
   return {
-    code,
-    message: messages[code],
+    code: codeMap[code] || code,
+    message: messages[code] || "Error de producción",
     retryable: false,
     context: context as Record<string, unknown>,
   };
@@ -100,7 +113,7 @@ export function createProductionOrderError(
 
 export function createWarehouseError(
   code: WarehouseErrorCode,
-  context?: Record<string, unknown>
+  context: Record<string, unknown> = {}
 ): AppError {
   const messages: Record<WarehouseErrorCode, string> = {
     [WAREHOUSE_ERROR_CODES.NOT_FOUND]: "La bodega no existe",
@@ -154,17 +167,17 @@ export const PRODUCTION_VARIANCE_DEFAULT_TOLERANCE = 10;
 
 export const DEFAULT_VARIANCE_TOLERANCE = 10;
 
-export const STATUS_TRANSITIONS = {
+export const STATUS_TRANSITIONS: Record<string, string[]> = {
   draft: ["in_progress", "cancelled"],
   in_progress: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
-} as const;
+};
 
 export function isValidStatusTransition(
   fromStatus: string,
   toStatus: string
 ): boolean {
-  const allowed = STATUS_TRANSITIONS[fromStatus as keyof typeof STATUS_TRANSITIONS];
+  const allowed = STATUS_TRANSITIONS[fromStatus];
   return allowed?.includes(toStatus) ?? false;
 }

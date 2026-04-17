@@ -28,22 +28,22 @@ export interface SalesErrorContext {
 }
 
 export function createSalesError(
-  code: SalesErrorCode,
+  code: string,
   context?: SalesErrorContext
 ): AppError {
-  const messages: Record<SalesErrorCode, string> = {
-    SALE_IGTF_INVALID: "IGTF calculado no coincide con el registrado",
-    SALE_CENTS_ADJUSTMENT_NEEDED: "Ajuste de céntimos necesario para cerrar la venta",
-    SALES_TENANT_ID_MUST_BE_SLUG: "En Dexie, tenant_id debe ser slug, nunca UUID",
-    SALE_STOCK_INSUFFICIENT: "Stock insuficiente para completar la venta",
-    SALE_PAYMENT_INSUFFICIENT: "Monto pagado es menor al total de la venta",
-    SALE_CHANGE_EXCEEDS_CASH: "No hay suficiente efectivo en caja para dar cambio",
-    SALE_EXCHANGE_RATE_SNAPSHOT_MISSING: "Exchange rate snapshot es requerido para trazabilidad histórica",
-    SALE_MAX_SUSPENDED_EXCEEDED: "Máximo 10 ventas suspendidas por terminal",
+  const messages: Record<string, string> = {
+    IGTF_INVALID: "IGTF calculado no coincide con el registrado",
+    CENTS_ADJUSTMENT_NEEDED: "Ajuste de céntimos necesario para cerrar la venta",
+    TENANT_ID_MUST_BE_SLUG: "En Dexie, tenant_id debe ser slug, nunca UUID",
+    STOCK_INSUFFICIENT: "Stock insuficiente para completar la venta",
+    PAYMENT_INSUFFICIENT: "Monto pagado es menor al total de la venta",
+    CHANGE_EXCEEDS_CASH: "No hay suficiente efectivo en caja para dar cambio",
+    EXCHANGE_RATE_SNAPSHOT_MISSING: "Exchange rate snapshot es requerido para trazabilidad histórica",
+    MAX_SUSPENDED_EXCEEDED: "Máximo 10 ventas suspendidas por terminal",
   };
 
   return {
-    code: SALES_ERROR_CODES[code],
+    code: SALES_ERROR_CODES[code as SalesErrorCode] || code,
     message: messages[code] || "Error de venta",
     retryable: false,
     context: context as Record<string, unknown>,

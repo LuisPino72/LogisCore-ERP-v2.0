@@ -30,9 +30,9 @@ export function createInventoryError(
     WEIGHTED_MOVEMENT_QUANTITY_INVALID: "Producto pesable debe usar máximo 4 decimales en cantidades",
     UNIT_COST_PRECISION_INVALID: "Costo unitario debe usar máximo 4 decimales (NUMERIC(19,4))",
     STOCK_NEGATIVE_FORBIDDEN: "Stock negativo no permitido",
-    INVENTORY_TENANT_ID_MUST_BE_SLUG: "En Dexie, tenant_id debe ser slug, nunca UUID",
-    INVENTORY_LOT_NOT_FOUND: "Lote de inventario no encontrado",
-    INVENTORY_WAREHOUSE_NOT_FOUND: "Almacén no encontrado",
+    TENANT_ID_MUST_BE_SLUG: "En Dexie, tenant_id debe ser slug, nunca UUID",
+    LOT_NOT_FOUND: "Lote de inventario no encontrado",
+    WAREHOUSE_NOT_FOUND: "Almacén no encontrado",
     STOCK_MOVEMENT_QUANTITY_INVALID: "La cantidad debe ser mayor a cero",
     NEGATIVE_STOCK_FORBIDDEN: "El movimiento genera stock negativo y está prohibido",
   };
@@ -59,4 +59,8 @@ export function canBeRoundedTo4Decimals(n: number): boolean {
 
 export function validateWeightedQuantity(quantity: number): boolean {
   return !hasMoreThan4Decimals(quantity);
+}
+
+export function validateTenantId(tenantId: string): boolean {
+  return /^[a-z0-9-]+$/.test(tenantId);
 }

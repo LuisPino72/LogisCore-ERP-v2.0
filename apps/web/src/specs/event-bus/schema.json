@@ -1,0 +1,206 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscore.erp/event-bus/schema.json",
+  "title": "EventBus Contract Schema",
+  "description": "Contrato formal para la validación de eventos del EventBus en LogisCore ERP. Define la estructura de payloads para cada tipo de evento MODULO.ACCION.",
+  "type": "object",
+  "additionalProperties": {
+    "$ref": "#/definitions/EventPayload"
+  },
+  "definitions": {
+    "EventPayload": {
+      "type": "object",
+      "properties": {
+        "tenantId": {
+          "type": "string",
+          "description": "Slug del tenant que origina el evento"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp del evento"
+        },
+        "correlationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID de correlación para trazabilidad trans-modular"
+        }
+      },
+      "required": ["tenantId", "timestamp"]
+    },
+    "PRODUCT_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "productLocalId": { "type": "string", "format": "uuid" },
+        "productName": { "type": "string", "minLength": 1 },
+        "sku": { "type": "string" },
+        "isWeighted": { "type": "boolean" },
+        "categoryId": { "type": "string", "format": "uuid" }
+      },
+      "required": ["productLocalId", "productName"]
+    },
+    "SALE_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "saleLocalId": { "type": "string", "format": "uuid" },
+        "saleNumber": { "type": "string" },
+        "total": { "type": "number", "minimum": 0 },
+        "currency": { "type": "enum", "enum": ["VES", "USD"] },
+        "warehouseLocalId": { "type": "string", "format": "uuid" },
+        "cashierUserId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "igtfAmount": { "type": "number", "minimum": 0 },
+        "itemsCount": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["saleLocalId", "saleNumber", "total"]
+    },
+    "POS_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "boxLocalId": { "type": "string", "format": "uuid" },
+        "warehouseLocalId": { "type": "string", "format": "uuid" },
+        "openedBy": { "type": "string" },
+        "openingAmount": { "type": "number", "minimum": 0 },
+        "status": { "type": "enum", "enum": ["open", "closed"] }
+      },
+      "required": ["boxLocalId", "warehouseLocalId", "status"]
+    },
+    "INVENTORY_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "warehouseLocalId": { "type": "string", "format": "uuid" },
+        "productLocalId": { "type": "string", "format": "uuid" },
+        "quantity": { "type": "number" },
+        "unitCost": { "type": "number", "minimum": 0 },
+        "movementType": {
+          "type": "enum",
+          "enum": [
+            "purchase_in",
+            "sale_out",
+            "adjustment_in",
+            "adjustment_out",
+            "production_in",
+            "production_out",
+            "transfer_in",
+            "transfer_out",
+            "count_adjustment"
+          ]
+        },
+        "lotLocalId": { "type": "string", "format": "uuid" }
+      },
+      "required": ["warehouseLocalId", "productLocalId", "quantity", "movementType"]
+    },
+    "PURCHASES_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "purchaseLocalId": { "type": "string", "format": "uuid" },
+        "supplierLocalId": { "type": "string", "format": "uuid" },
+        "supplierName": { "type": "string", "minLength": 1 },
+        "total": { "type": "number", "minimum": 0 },
+        "status": {
+          "type": "enum",
+          "enum": ["draft", "confirmed", "partial_received", "received", "cancelled"]
+        },
+        "itemsCount": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["purchaseLocalId", "supplierName", "status"]
+    },
+    "PRODUCTION_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "orderLocalId": { "type": "string", "format": "uuid" },
+        "recipeLocalId": { "type": "string", "format": "uuid" },
+        "productLocalId": { "type": "string", "format": "uuid" },
+        "plannedQty": { "type": "number", "minimum": 0 },
+        "producedQty": { "type": "number", "minimum": 0 },
+        "status": {
+          "type": "enum",
+          "enum": ["draft", "in_progress", "completed", "cancelled"]
+        },
+        "variancePercent": { "type": "number" }
+      },
+      "required": ["orderLocalId", "recipeLocalId", "status"]
+    },
+    "INVOICE_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "invoiceLocalId": { "type": "string", "format": "uuid" },
+        "invoiceNumber": { "type": "string" },
+        "controlNumber": { "type": "string" },
+        "customerRif": { "type": "string", "pattern": "^[VJEGP]\\d{9}$" },
+        "customerName": { "type": "string", "minLength": 1 },
+        "total": { "type": "number", "minimum": 0 },
+        "igtfAmount": { "type": "number", "minimum": 0 },
+        "exchangeRateSnapshot": {
+          "type": "object",
+          "properties": {
+            "rate": { "type": "number", "minimum": 0 },
+            "capturedAt": { "type": "string", "format": "date-time" },
+            "source": { "type": "string" }
+          },
+          "required": ["rate", "capturedAt"]
+        },
+        "status": { "type": "enum", "enum": ["draft", "issued", "voided"] }
+      },
+      "required": ["invoiceLocalId", "invoiceNumber", "total"]
+    },
+    "ADMIN_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tenantId": { "type": "string" },
+        "tenantName": { "type": "string", "minLength": 1 },
+        "rif": { "type": "string", "pattern": "^[VJEGP]\\d{9}$" },
+        "subscriptionStatus": {
+          "type": "enum",
+          "enum": ["active", "suspended", "expired", "trial"]
+        },
+        "userId": { "type": "string", "format": "uuid" },
+        "userEmail": { "type": "string", "format": "email" }
+      },
+      "required": ["tenantId", "tenantName"]
+    },
+    "AUTH_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "userId": { "type": "string", "format": "uuid" },
+        "tenantSlug": { "type": "string" },
+        "role": { "type": "string" },
+        "scope": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["userId", "tenantSlug"]
+    },
+    "SYNC_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tableName": { "type": "string" },
+        "localId": { "type": "string", "format": "uuid" },
+        "conflictType": {
+          "type": "enum",
+          "enum": ["LWW", "SUM_MERGE", "MANUAL", "DLQ"]
+        },
+        "resolution": { "type": "string" }
+      },
+      "required": ["tableName", "localId"]
+    },
+    "CORE_EVENTS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "phase": { "type": "string" },
+        "catalogsLoaded": { "type": "array", "items": { "type": "string" } },
+        "error": { "type": "string" }
+      },
+      "required": ["phase"]
+    }
+  }
+}

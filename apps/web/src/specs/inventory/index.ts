@@ -14,7 +14,7 @@ import {
   canBeRoundedTo4Decimals,
 } from "./errors";
 
-export { INVENTORY_ERROR_CODES, createInventoryError };
+export { INVENTORY_ERROR_CODES, createInventoryError, hasMoreThan4Decimals, canBeRoundedTo4Decimals };
 
 export const MOVEMENT_TYPES = [
   "purchase_in",

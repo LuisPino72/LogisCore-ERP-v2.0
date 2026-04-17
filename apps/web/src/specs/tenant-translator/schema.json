@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscore.erp/tenant-translator/schema.json",
+  "title": "TenantTranslator Contract Schema",
+  "description": "Contrato formal para la validación de la resolución de identidad de tenant (slug -> UUID). Garantiza el aislamiento multi-tenant según la Regla de Oro #5.",
+  "type": "object",
+  "definitions": {
+    "TenantMapping": {
+      "type": "object",
+      "description": "Resultado de la traducción de slug a UUID",
+      "properties": {
+        "tenantSlug": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Slug del tenant para Dexie (local)"
+        },
+        "tenantUuid": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUID del tenant para Supabase (cloud)"
+        },
+        "tenantName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Nombre legible del tenant"
+        },
+        "ownerUserId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID del propietario del tenant"
+        }
+      },
+      "required": ["tenantSlug", "tenantUuid", "tenantName"]
+    },
+    "TranslationInput": {
+      "type": "object",
+      "description": "Input para la traducción de payload",
+      "properties": {
+        "tenantSlug": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Payload a enriquecer con tenant_id"
+        }
+      },
+      "required": ["tenantSlug"]
+    },
+    "TranslationOutput": {
+      "type": "object",
+      "description": "Output con el tenant_id UUID añadido"
+    },
+    "TenantValidationInput": {
+      "type": "object",
+      "description": "Input para validación de match de tenant",
+      "properties": {
+        "payloadTenantSlug": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "sessionTenantSlug": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        }
+      },
+      "required": ["payloadTenantSlug", "sessionTenantSlug"]
+    }
+  }
+}

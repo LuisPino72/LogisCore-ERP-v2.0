@@ -30,27 +30,27 @@ export interface InvoicingErrorContext {
 }
 
 export function createInvoicingError(
-  code: InvoicingErrorCode,
+  code: string,
   context?: InvoicingErrorContext
 ): AppError {
-  const messages: Record<InvoicingErrorCode, string> = {
-    INVOICE_RIF_INVALID: "RIF inválido. Formato requerido: V012345678, J012345678, G012345678, E012345678, P012345678 (10 caracteres)",
-    INVOICE_RANGE_EXHAUSTED: "Rango de facturas agotado. Solicite un nuevo talonario.",
-    INVOICE_IGTF_MISMATCH: "IGTF calculado no coincide con el registrado",
-    INVOICE_CENTS_ADJUSTMENT_NEEDED: "Ajuste de céntimos necesario en el total",
-    INVOICE_EXCHANGE_RATE_SNAPSHOT_MISSING: "Exchange rate snapshot es requerido para trazabilidad histórica",
-    INVOICING_TENANT_ID_MUST_BE_SLUG: "En Dexie, tenant_id debe ser slug, nunca UUID",
-    INVOICE_ALREADY_VOIDED: "La factura ya está anulada",
+  const messages: Record<string, string> = {
+    RIF_INVALID: "RIF inválido. Formato requerido: V012345678, J012345678, G012345678, E012345678, P012345678 (10 caracteres)",
+    RANGE_EXHAUSTED: "Rango de facturas agotado. Solicite un nuevo talonario.",
+    IGTF_MISMATCH: "IGTF calculado no coincide con el registrado",
+    CENTS_ADJUSTMENT_NEEDED: "Ajuste de céntimos necesario en el total",
+    EXCHANGE_RATE_SNAPSHOT_MISSING: "Exchange rate snapshot es requerido para trazabilidad histórica",
+    TENANT_ID_MUST_BE_SLUG: "En Dexie, tenant_id debe ser slug, nunca UUID",
+    ALREADY_VOIDED: "La factura ya está anulada",
     HARD_DELETE_NOT_ALLOWED: "Soft delete obligatorio. Usar deleted_at en lugar de eliminar el registro",
-    INVOICE_CONTROL_NUMBER_INVALID: "Número de control inválido",
-    INVOICE_RANGE_NUMBERS_INVALID: "start_number debe ser menor o igual a end_number",
-    INVOICE_RANGE_CURRENT_INVALID: "current_number debe estar entre start_number y end_number",
-    INVOICE_RANGE_DUPLICATE: "Ya existe un talonario con ese prefijo para este tenant",
-    INVOICE_RANGE_PREFIX_INVALID: "El prefijo debe contener solo caracteres alfanuméricos",
+    CONTROL_NUMBER_INVALID: "Número de control inválido",
+    RANGE_NUMBERS_INVALID: "start_number debe ser menor o igual a end_number",
+    RANGE_CURRENT_INVALID: "current_number debe estar entre start_number y end_number",
+    RANGE_DUPLICATE: "Ya existe un talonario con ese prefijo para este tenant",
+    RANGE_PREFIX_INVALID: "El prefijo debe contener solo caracteres alfanuméricos",
   };
 
   return {
-    code: INVOICING_ERROR_CODES[code],
+    code: INVOICING_ERROR_CODES[code as InvoicingErrorCode] || code,
     message: messages[code] || "Error de facturación",
     retryable: false,
     context: context as Record<string, unknown>,

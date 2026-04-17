@@ -38,6 +38,11 @@ export {
   calculateVariance,
   isVarianceInTolerance,
   isValidStatusTransition,
+  createRecipeError,
+  createProductionOrderError,
+  createWarehouseError,
+  validateWeightedQuantity,
+  validateTenantId,
 };
 
 const SLUG_REGEX = /^[a-z0-9-]+$/;
