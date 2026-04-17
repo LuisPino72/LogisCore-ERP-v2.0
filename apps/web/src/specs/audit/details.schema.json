@@ -1,0 +1,249 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/audit/details/v1.0.0",
+  "title": "Audit Details Schema",
+  "description": "Mapeador de esquemas para el campo details de audit_log_entries",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "AuditDetails",
+
+  "event_schemas": {
+    "SENSITIVE_ACTION": {
+      "type": "object",
+      "required": ["oldValue", "newValue", "reason"],
+      "properties": {
+        "oldValue": {
+          "description": "Valor anterior"
+        },
+        "newValue": {
+          "description": "Nuevo valor"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Motivo del cambio"
+        }
+      }
+    },
+
+    "TENANT_CHANGE": {
+      "type": "object",
+      "required": ["fromTenant", "toTenant", "authorizedBy"],
+      "properties": {
+        "fromTenant": {
+          "type": "string",
+          "description": "Tenant de origen"
+        },
+        "toTenant": {
+          "type": "string",
+          "description": "Tenant de destino"
+        },
+        "authorizedBy": {
+          "type": "string",
+          "description": "Usuario que autorizó el cambio"
+        }
+      }
+    },
+
+    "PLAN_UPGRADE": {
+      "type": "object",
+      "required": ["oldPlan", "newPlan", "transactionId"],
+      "properties": {
+        "oldPlan": {
+          "type": "string",
+          "description": "Plan anterior"
+        },
+        "newPlan": {
+          "type": "string",
+          "description": "Nuevo plan"
+        },
+        "transactionId": {
+          "type": "string",
+          "description": "ID de transacción de pago"
+        }
+      }
+    },
+
+    "PRICE_CHANGE": {
+      "type": "object",
+      "required": ["productId", "oldPrice", "newPrice"],
+      "properties": {
+        "productId": {
+          "type": "string",
+          "description": "ID del producto"
+        },
+        "oldPrice": {
+          "type": "number",
+          "description": "Precio anterior"
+        },
+        "newPrice": {
+          "type": "number",
+          "description": "Nuevo precio"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Motivo del cambio"
+        }
+      }
+    },
+
+    "USER_DELETED": {
+      "type": "object",
+      "required": ["userId", "deletedBy", "role"],
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "ID del usuario eliminado"
+        },
+        "deletedBy": {
+          "type": "string",
+          "description": "Usuario que eliminó"
+        },
+        "role": {
+          "type": "string",
+          "description": "Rol del usuario eliminado"
+        }
+      }
+    },
+
+    "INVOICE_VOID": {
+      "type": "object",
+      "required": ["invoiceId", "reason", "voidedBy"],
+      "properties": {
+        "invoiceId": {
+          "type": "string",
+          "description": "ID de factura anulada"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Motivo de anulación"
+        },
+        "voidedBy": {
+          "type": "string",
+          "description": "Usuario que anuló"
+        },
+        "originalTotal": {
+          "type": "number",
+          "description": "Total original de la factura"
+        }
+      }
+    },
+
+    "INVENTORY_ADJUSTMENT": {
+      "type": "object",
+      "required": ["lotId", "oldQuantity", "newQuantity", "adjustedBy"],
+      "properties": {
+        "lotId": {
+          "type": "string",
+          "description": "ID del lote"
+        },
+        "oldQuantity": {
+          "type": "number",
+          "description": "Cantidad anterior"
+        },
+        "newQuantity": {
+          "type": "number",
+          "description": "Nueva cantidad"
+        },
+        "adjustedBy": {
+          "type": "string",
+          "description": "Usuario que ajustó"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Motivo del ajuste"
+        }
+      }
+    },
+
+    "LOGIN_SUCCESS": {
+      "type": "object",
+      "required": ["userId", "ipAddress"],
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "ID del usuario"
+        },
+        "ipAddress": {
+          "type": "string",
+          "description": "Dirección IP"
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "User agent del navegador"
+        }
+      }
+    },
+
+    "LOGIN_FAILED": {
+      "type": "object",
+      "required": ["email", "reason"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Email intentado"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["invalid_credentials", "account_locked", "account_inactive"],
+          "description": "Razón del fallo"
+        },
+        "ipAddress": {
+          "type": "string",
+          "description": "Dirección IP"
+        }
+      }
+    }
+  },
+
+  "business_rules": {
+    "details_must_match_event": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createAuditLog"],
+      "rule": "eventType IN event_schemas.keys AND details CONFORMS TO event_schemas[eventType]",
+      "error": "AUDIT_DETAILS_MISMATCH",
+      "message": "El campo details no coincide con el esquema del evento",
+      "enforcement": "RUNTIME"
+    },
+    "reason_required_for_sensitive": {
+      "condition": "ALWAYS",
+      "appliesTo": ["SENSITIVE_ACTION", "PRICE_CHANGE", "INVOICE_VOID", "INVENTORY_ADJUSTMENT"],
+      "rule": "details.reason IS NOT NULL AND details.reason.length > 0",
+      "error": "AUDIT_REASON_REQUIRED",
+      "message": "Motivo requerido para acciones sensibles",
+      "enforcement": "RUNTIME"
+    },
+    "actor_required": {
+      "condition": "ALWAYS",
+      "appliesTo": ["createAuditLog"],
+      "rule": "actorId IS NOT NULL",
+      "error": "AUDIT_ACTOR_REQUIRED",
+      "message": "Actor requerido para log de auditoría",
+      "enforcement": "RUNTIME"
+    }
+  },
+
+  "error_codes": {
+    "AUDIT_DETAILS_MISMATCH": {
+      "code": "AUDIT_DETAILS_MISMATCH",
+      "message": "El campo details no coincide con el esquema del evento",
+      "retryable": false
+    },
+    "AUDIT_REASON_REQUIRED": {
+      "code": "AUDIT_REASON_REQUIRED",
+      "message": "Motivo requerido para acciones sensibles",
+      "retryable": false
+    },
+    "AUDIT_ACTOR_REQUIRED": {
+      "code": "AUDIT_ACTOR_REQUIRED",
+      "message": "Actor requerido para log de auditoría",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "2.3.7 Auditoría",
+    "version_date": "2026-04-16"
+  }
+}

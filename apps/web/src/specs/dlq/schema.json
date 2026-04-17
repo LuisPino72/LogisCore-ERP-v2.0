@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/dlq/v1.0.0",
+  "title": "Dead Letter Queue Specification",
+  "description": "Esquema para errores de sync permanentes con contexto de depuración inmutable",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "DLQ",
+
+  "fields": {
+    "entry": {
+      "messageId": {
+        "type": "string",
+        "uuid": true,
+        "required": true,
+        "description": "ID único del mensaje encolado"
+      },
+      "originalPayload": {
+        "type": "object",
+        "required": true,
+        "description": "Payload original que falló"
+      },
+      "error": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "code": { "type": "string", "required": true },
+          "message": { "type": "string", "required": true },
+          "stack": { "type": "string" }
+        }
+      },
+      "retryCount": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 5,
+        "required": true,
+        "description": "Intentos de reintento (max 5)"
+      },
+      "createdAt": {
+        "type": "string",
+        "datetime": true,
+        "required": true
+      },
+      "resolvedAt": {
+        "type": ["string", "null"],
+        "datetime": true,
+        "description": "Timestamp de resolución"
+      },
+      "tenantId": {
+        "type": "string",
+        "required": true,
+        "description": "Tenant asociado"
+      },
+      "tableName": {
+        "type": "string",
+        "required": true,
+        "description": "Tabla afectada"
+      },
+      "operation": {
+        "type": "string",
+        "enum": ["CREATE", "UPDATE", "DELETE", "SYNC"],
+        "required": true
+      }
+    }
+  },
+
+  "business_rules": {
+    "max_retry_limit": {
+      "condition": "ON_RETRY",
+      "rule": "retryCount < 5",
+      "error": "DLQ_MAX_RETRIES_EXCEEDED",
+      "message": "Máximo de reintentos alcanzado"
+    },
+    "immutable_after_resolved": {
+      "condition": "ON_RESOLVE",
+      "rule": "resolvedAt IS NOT NULL -> entry IS immutable",
+      "error": "DLQ_ALREADY_RESOLVED",
+      "message": "Entrada ya resuelta, no puede modificarse"
+    },
+    "context_required": {
+      "condition": "ON_CREATE",
+      "rule": "tenantId IS NOT NULL AND originalPayload IS NOT NULL",
+      "error": "DLQ_CONTEXT_MISSING",
+      "message": "Contexto requerido (tenantId, payload)"
+    }
+  },
+
+  "error_codes": {
+    "DLQ_MAX_RETRIES_EXCEEDED": {
+      "code": "DLQ_MAX_RETRIES_EXCEEDED",
+      "message": "Máximo de reintentos alcanzado",
+      "retryable": false
+    },
+    "DLQ_ALREADY_RESOLVED": {
+      "code": "DLQ_ALREADY_RESOLVED",
+      "message": "Entrada ya resuelta",
+      "retryable": false
+    },
+    "DLQ_CONTEXT_MISSING": {
+      "code": "DLQ_CONTEXT_MISSING",
+      "message": "Contexto requerido",
+      "retryable": false
+    },
+    "DLQ_SYNC_FAILED": {
+      "code": "DLQ_SYNC_FAILED",
+      "message": "Error en sincronización",
+      "retryable": true
+    }
+  }
+}

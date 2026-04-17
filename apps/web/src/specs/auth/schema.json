@@ -1,0 +1,294 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logiscorerp.com/specs/auth/v1.0.0",
+  "title": "Auth & Session Specification",
+  "description": "Autenticación y Gestión de Sesiones - Blindaje de entrada",
+  "type": "object",
+  "version": "1.0.0",
+  "entity": "Auth",
+
+  "fields": {
+    "session": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "description": "PK - ID de sesión"
+      },
+      "accessToken": {
+        "type": "string",
+        "required": true,
+        "minLength": 1,
+        "description": "Token JWT de acceso"
+      },
+      "refreshToken": {
+        "type": ["string", "null"],
+        "description": "Token de refresh"
+      },
+      "expiresIn": {
+        "type": "integer",
+        "required": true,
+        "minimum": 60,
+        "maximum": 604800,
+        "description": "Segundos hasta expiración (1min - 7días)"
+      },
+      "expiresAt": {
+        "type": "number",
+        "required": true,
+        "description": "Timestamp Unix de expiración"
+      },
+      "userId": {
+        "type": "string",
+        "format": "uuid",
+        "required": true,
+        "description": "FK al usuario"
+      },
+      "email": {
+        "type": ["string", "null"],
+        "format": "email",
+        "description": "Email del usuario"
+      },
+      "scopes": {
+        "type": "array",
+        "required": true,
+        "items": {
+          "type": "string",
+          "enum": ["read", "write", "admin", "audit", "billing"]
+        },
+        "description": "Permisos de la sesión"
+      },
+      "tenantContext": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "required": true,
+            "description": "Slug del tenant"
+          },
+          "tenantIdUuid": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "UUID del tenant (Supabase)"
+          },
+          "role": {
+            "type": "string",
+            "required": true,
+            "enum": ["owner", "admin", "manager", "cashier", "viewer"],
+            "description": "Rol en el tenant"
+          },
+          "permissions": {
+            "type": "array",
+            "required": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "Permisos específicos del rol"
+          }
+        },
+        "description": "Contexto del tenant activo"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de creación"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de última actualización"
+      }
+    },
+
+    "user": {
+      "id": {
+        "type": "string",
+        "format": "uuid",
+        "description": "PK - ID de usuario"
+      },
+      "email": {
+        "type": "string",
+        "format": "email",
+        "required": true,
+        "description": "Email único"
+      },
+      "role": {
+        "type": "string",
+        "enum": ["owner", "admin", "manager", "cashier", "viewer"],
+        "required": true,
+        "description": "Rol del usuario"
+      },
+      "isActive": {
+        "type": "boolean",
+        "required": true,
+        "description": "Usuario activo"
+      },
+      "lastLoginAt": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Último login"
+      },
+      "failedAttempts": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Intentos de login fallidos"
+      },
+      "lockedUntil": {
+        "type": ["number", "null"],
+        "description": "Timestamp de desbloqueo"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fecha de creación"
+      }
+    }
+  },
+
+  "business_rules": {
+    "session_expiry_check": {
+      "condition": "BEFORE_ANY_ACTION",
+      "appliesTo": ["getSession", "refreshSession", "signOut"],
+      "rule": "currentTimestamp < session.expiresAt",
+      "error": "AUTH_SESSION_EXPIRED",
+      "message": "Sesión ha expirado, debe iniciar sesión nuevamente",
+      "enforcement": "RUNTIME",
+      "triggers_event": "AUTH.EXPIRED"
+    },
+    "token_format_validation": {
+      "condition": "ALWAYS",
+      "appliesTo": ["signIn", "refreshSession"],
+      "rule": "accessToken startsWith 'eyJ' AND expiresIn >= 60",
+      "error": "AUTH_TOKEN_INVALID",
+      "message": "Token inválido o malformado",
+      "enforcement": "RUNTIME"
+    },
+    "refresh_token_check": {
+      "condition": "BEFORE_REFRESH",
+      "appliesTo": ["refreshSession"],
+      "rule": "refreshToken IS NOT NULL AND currentTimestamp < lockedUntil",
+      "error": "AUTH_REFRESH_FAILED",
+      "message": "No se pudo refrescar la sesión",
+      "enforcement": "RUNTIME",
+      "triggers_event": "AUTH.REFRESH_FAILED"
+    },
+    "scope_validation": {
+      "condition": "BEFORE_ACTION",
+      "appliesTo": ["executeAction"],
+      "rule": "session.scopes INCLUDES requiredScope",
+      "error": "AUTH_SCOPE_DENIED",
+      "message": "No tiene el permiso requerido para esta acción",
+      "enforcement": "RUNTIME",
+      "triggers_event": "AUTH.SCOPE_DENIED"
+    },
+    "tenant_context_required": {
+      "condition": "ALWAYS",
+      "appliesTo": ["tenantAction"],
+      "rule": "session.tenantContext IS NOT NULL",
+      "error": "AUTH_TENANT_CONTEXT_MISSING",
+      "message": "Contexto de tenant requerido",
+      "enforcement": "RUNTIME"
+    },
+    "failed_attempts_limit": {
+      "condition": "ON_LOGIN_FAILED",
+      "appliesTo": ["signIn"],
+      "rule": "failedAttempts >= 5 -> lockedUntil = currentTimestamp + 900000",
+      "error": "AUTH_ACCOUNT_LOCKED",
+      "message": "Cuenta bloqueada por 15 minutos por múltiples intentos fallidos",
+      "enforcement": "RUNTIME",
+      "triggers_event": "AUTH.ACCOUNT_LOCKED"
+    },
+    "refresh_token_format": {
+      "condition": "ALWAYS",
+      "appliesTo": ["refreshSession"],
+      "rule": "refreshToken IS NOT NULL AND refreshToken.length > 10",
+      "error": "AUTH_REFRESH_TOKEN_INVALID",
+      "message": "Token de refresh inválido",
+      "enforcement": "RUNTIME"
+    }
+  },
+
+  "plans_definition": {
+    "Basic": {
+      "maxRefreshTokenAge": 86400,
+      "maxConcurrentSessions": 1
+    },
+    "Pro": {
+      "maxRefreshTokenAge": 604800,
+      "maxConcurrentSessions": 3
+    }
+  },
+
+  "error_codes": {
+    "AUTH_SESSION_EXPIRED": {
+      "code": "AUTH_SESSION_EXPIRED",
+      "message": "Sesión ha expirado, debe iniciar sesión nuevamente",
+      "retryable": true
+    },
+    "AUTH_TOKEN_INVALID": {
+      "code": "AUTH_TOKEN_INVALID",
+      "message": "Token inválido o malformado",
+      "retryable": false
+    },
+    "AUTH_REFRESH_FAILED": {
+      "code": "AUTH_REFRESH_FAILED",
+      "message": "No se pudo refrescar la sesión",
+      "retryable": true
+    },
+    "AUTH_SCOPE_DENIED": {
+      "code": "AUTH_SCOPE_DENIED",
+      "message": "No tiene el permiso requerido para esta acción",
+      "retryable": false
+    },
+    "AUTH_TENANT_CONTEXT_MISSING": {
+      "code": "AUTH_TENANT_CONTEXT_MISSING",
+      "message": "Contexto de tenant requerido",
+      "retryable": false
+    },
+    "AUTH_ACCOUNT_LOCKED": {
+      "code": "AUTH_ACCOUNT_LOCKED",
+      "message": "Cuenta bloqueada por 15 minutos",
+      "retryable": true
+    },
+    "AUTH_REFRESH_TOKEN_INVALID": {
+      "code": "AUTH_REFRESH_TOKEN_INVALID",
+      "message": "Token de refresh inválido",
+      "retryable": false
+    },
+    "AUTH_SIGNIN_FAILED": {
+      "code": "AUTH_SIGNIN_FAILED",
+      "message": "Credenciales inválidas",
+      "retryable": false
+    },
+    "AUTH_SIGNOUT_FAILED": {
+      "code": "AUTH_SIGNOUT_FAILED",
+      "message": "Error al cerrar sesión",
+      "retryable": true
+    },
+    "AUTH_RESET_PASSWORD_FAILED": {
+      "code": "AUTH_RESET_PASSWORD_FAILED",
+      "message": "Error al recuperar contraseña",
+      "retryable": true
+    },
+    "AUTH_UPDATE_PASSWORD_FAILED": {
+      "code": "AUTH_UPDATE_PASSWORD_FAILED",
+      "message": "Error al actualizar contraseña",
+      "retryable": false
+    },
+    "AUTH_USER_NOT_FOUND": {
+      "code": "AUTH_USER_NOT_FOUND",
+      "message": "Usuario no encontrado",
+      "retryable": false
+    },
+    "AUTH_USER_INACTIVE": {
+      "code": "AUTH_USER_INACTIVE",
+      "message": "Usuario inactivo",
+      "retryable": false
+    }
+  },
+
+  "references": {
+    "architecture_doc": "Memoria/ARCHITECTURE.md",
+    "section": "2.1 Auth & Session",
+    "version_date": "2026-04-16"
+  }
+}
