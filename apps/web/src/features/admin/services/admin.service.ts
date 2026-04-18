@@ -1175,7 +1175,7 @@ export const createAdminService = ({
     try {
       let query = supabase
         .from("products")
-        .select("*, business_types(name), categories(name)")
+        .select("*, business_types(name), categories(name), product_presentations(*)")
         .eq("is_global", true)
         .is("deleted_at", null)
         .order("name", { ascending: true });
@@ -1188,49 +1188,45 @@ export const createAdminService = ({
 
       if (error) throw error;
 
-      // Obtener presentaciones para cada producto
-      const products: GlobalProduct[] = await Promise.all(
-        (productsData || []).map(async (product: Record<string, unknown>) => {
-          const { data: presentationsData } = await supabase
-            .from("product_presentations")
-            .select("*")
-            .eq("product_local_id", product.local_id)
-            .is("deleted_at", null);
+      const products: GlobalProduct[] = (productsData || []).map((product: Record<string, unknown>) => {
+        const presentationsRaw = (product.product_presentations as Record<string, unknown>[] | null) || [];
+        const presentations = presentationsRaw
+          .filter((p) => !p.deleted_at)
+          .map((p: Record<string, unknown>) => ({
+            id: p.id as string,
+            name: p.name as string,
+            factor: Number(p.factor),
+            price: Number(p.price),
+            isDefault: p.is_default as boolean,
+            barcode: p.barcode as string | undefined
+          }));
 
-          return {
-            id: product.id as string,
-            localId: product.local_id as string,
-            name: product.name as string,
-            sku: product.sku as string,
-            description: product.description as string | undefined,
-            businessTypeId: product.business_type_id as string,
-            businessTypeName: (product.business_types as { name: string } | null)?.name || "",
-            categoryId: product.category_id as string | undefined,
-            categoryName: (product.categories as { name: string } | null)?.name || undefined,
-            isWeighted: product.is_weighted as boolean,
-            unitOfMeasure: (product.unit_of_measure as string) || "unidad",
-            isTaxable: product.is_taxable as boolean,
-            isSerialized: product.is_serialized as boolean,
-            weight: product.weight as number | undefined,
-            length: product.length as number | undefined,
-            width: product.width as number | undefined,
-            height: product.height as number | undefined,
-            visible: product.visible as boolean,
-            defaultPresentationId: product.default_presentation_id as string | undefined,
-            presentations: (presentationsData || []).map((p: Record<string, unknown>) => ({
-              id: p.id as string,
-              name: p.name as string,
-              factor: Number(p.factor),
-              price: Number(p.price),
-              isDefault: p.is_default as boolean,
-              barcode: p.barcode as string | undefined
-            })),
-            sizeColors: [],
-            createdAt: product.created_at as string,
-            updatedAt: product.updated_at as string
-          };
-        })
-      );
+        return {
+          id: product.id as string,
+          localId: product.local_id as string,
+          name: product.name as string,
+          sku: product.sku as string,
+          description: product.description as string | undefined,
+          businessTypeId: product.business_type_id as string,
+          businessTypeName: (product.business_types as { name: string } | null)?.name || "",
+          categoryId: product.category_id as string | undefined,
+          categoryName: (product.categories as { name: string } | null)?.name || undefined,
+          isWeighted: product.is_weighted as boolean,
+          unitOfMeasure: (product.unit_of_measure as string) || "unidad",
+          isTaxable: product.is_taxable as boolean,
+          isSerialized: product.is_serialized as boolean,
+          weight: product.weight as number | undefined,
+          length: product.length as number | undefined,
+          width: product.width as number | undefined,
+          height: product.height as number | undefined,
+          visible: product.visible as boolean,
+          defaultPresentationId: product.default_presentation_id as string | undefined,
+          presentations,
+          sizeColors: [],
+          createdAt: product.created_at as string,
+          updatedAt: product.updated_at as string
+        };
+      });
 
       return ok(products);
     } catch (error) {

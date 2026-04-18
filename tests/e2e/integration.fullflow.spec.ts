@@ -16,32 +16,30 @@ async function loginAndBootstrap(page: import('@playwright/test').Page): Promise
     await emailInput.fill(TEST_USER_EMAIL);
     await page.locator('#password, input[type="password"]').first().fill(TEST_USER_PASSWORD);
     await page.locator('button[type="submit"]').click();
-    await page.waitForTimeout(15000);
+    await page.waitForURL('**/dashboard**', { timeout: 20000 }).catch(() => {});
   }
   
   await page.waitForFunction(() => {
     return (window as unknown as { logiscoreDb?: unknown }).logiscoreDb !== undefined;
   }, { timeout: 15000 });
   
-  await page.waitForTimeout(3000);
   return dbUtil;
 }
 
 async function createPurchaseReceiving(page: import('@playwright/test').Page, dbUtil: DexieUtil, productLocalId: string, warehouseLocalId: string, quantity: number, unitCost: number) {
   await page.goto('/purchases');
   await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(3000);
   
   const receivingsTab = page.locator('button:has-text("Recepciones")').first();
   if (await receivingsTab.isVisible({ timeout: 5000 })) {
     await receivingsTab.click();
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('text=Recibir', { timeout: 5000 }).catch(() => {});
   }
   
   const newReceiverBtn = page.locator('button:has-text("Nueva"), button:has-text("Recibir")').first();
   if (await newReceiverBtn.isVisible({ timeout: 3000 })) {
     await newReceiverBtn.click();
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('select[name="productId"]', { timeout: 5000 }).catch(() => {});
     
     const productSelect = page.locator('select[name="productId"], select#product').first();
     const warehouseSelect = page.locator('select[name="warehouseId"], select#warehouse').first();
@@ -64,7 +62,12 @@ async function createPurchaseReceiving(page: import('@playwright/test').Page, db
     
     if (await receiveBtn.isVisible()) {
       await receiveBtn.click();
-      await page.waitForTimeout(5000);
+      await page.waitForFunction(async () => {
+        const db = (window as any).logiscoreDb;
+        if (!db || !db.inventory_lots) return false;
+        const lots = await db.inventory_lots.toArray();
+        return lots.length > 0;
+      }, { timeout: 10000 }).catch(() => {});
     }
   }
   
@@ -75,12 +78,11 @@ async function createPurchaseReceiving(page: import('@playwright/test').Page, db
 async function createSaleWithPayment(page: import('@playwright/test').Page, paymentMethod: 'efectivo' | 'usd', amount: number) {
   await page.goto('/sales');
   await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(3000);
   
   const newSaleBtn = page.locator('button:has-text("Nueva"), button:has-text("Venta")').first();
   if (await newSaleBtn.isVisible({ timeout: 5000 })) {
     await newSaleBtn.click();
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('button:has-text("USD"), button:has-text("Efectivo")', { timeout: 5000 }).catch(() => {});
     
     if (paymentMethod === 'usd') {
       const usdBtn = page.locator('button:has-text("USD"), [class*="usd"]').first();
@@ -94,12 +96,15 @@ async function createSaleWithPayment(page: import('@playwright/test').Page, paym
       }
     }
     
-    await page.waitForTimeout(1000);
-    
     const completeBtn = page.locator('button:has-text("Completar"), button:has-text("Finalizar")').first();
     if (await completeBtn.isVisible()) {
       await completeBtn.click();
-      await page.waitForTimeout(5000);
+      await page.waitForFunction(async () => {
+        const db = (window as any).logiscoreDb;
+        if (!db || !db.sales) return false;
+        const sales = await db.sales.toArray();
+        return sales.length > 0;
+      }, { timeout: 10000 }).catch(() => {});
     }
   }
 }
@@ -121,11 +126,79 @@ test.describe('Integration Tests - Full Business Flow', () => {
     
     console.log(`Initial state - Products: ${initialProducts.length}, Warehouses: ${initialWarehouses.length}, Lots: ${initialLots.length}`);
     
-    expect(initialProducts.length).toBeGreaterThan(0);
-    expect(initialWarehouses.length).toBeGreaterThan(0);
+    // Ensure at least one warehouse exists
+    let warehouseLocalId: string;
+    if (initialWarehouses.length > 0) {
+      warehouseLocalId = (initialWarehouses[0] as Record<string, unknown>).localId as string;
+    } else {
+      console.log('Creating test warehouse via sidebar...');
+      
+      // Click "Inventario" button in sidebar (this is a SPA, not using URLs)
+      const inventoryBtn = page.locator('button:has-text("Inventario")').first();
+      await inventoryBtn.click();
+      await page.waitForLoadState('networkidle');
+      
+      // Wait for inventory content to load
+      await page.waitForSelector('text=Nueva Bodega', { timeout: 15000 }).catch(() => {});
+      
+      const warehousesTab = page.locator('button:has-text("Bodegas")').first();
+      await warehousesTab.click();
+      
+      const newWarehouseBtn = page.locator('button:has-text("Nueva Bodega")').first();
+      await newWarehouseBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await newWarehouseBtn.click();
+      
+      // Use id instead of name
+      await page.locator('input[id="warehouseName"]').fill('Warehouse Test E2E');
+      await page.locator('button:has-text("Crear Bodega")').click();
+      
+      await page.waitForFunction(async () => {
+        const db = (window as any).logiscoreDb;
+        if (!db || !db.warehouses) return false;
+        const w = await db.warehouses.toArray();
+        return w.length > 0;
+      }, { timeout: 10000 });
+      
+      const updatedWarehouses = await dbUtil.getWarehouses(TEST_TENANT_SLUG);
+      warehouseLocalId = (updatedWarehouses[0] as Record<string, unknown>).localId as string;
+    }
     
-    const warehouse = initialWarehouses[0] as Record<string, unknown>;
-    const warehouseLocalId = warehouse.localId as string;
+    // Ensure at least one product exists
+    let testProduct: {localId: string, name: string};
+    if (initialProducts.length > 0) {
+      testProduct = { localId: initialProducts[0].localId as string, name: initialProducts[0].name as string };
+    } else {
+      console.log('Creating test product via sidebar...');
+      
+      // Navigate via sidebar - this is a SPA
+      const productsBtn = page.locator('button:has-text("Productos")').first();
+      await productsBtn.click();
+      await page.waitForLoadState('networkidle');
+      
+      // Wait for products content
+      await page.waitForSelector('button:has-text("Nuevo Producto"), button:has-text("Agregar")', { timeout: 15000 }).catch(() => {});
+      
+      const addProductBtn = page.locator('button:has-text("Nuevo Producto"), button:has-text("Agregar")').first();
+      await addProductBtn.click();
+      await page.waitForSelector('input[id="productName"], input[name="name"]', { timeout: 5000 }).catch(() => {});
+      
+      await page.locator('input[id="productName"], input[name="name"]').fill('Product Test E2E');
+      await page.locator('input[id="productSku"]').fill(`SKU-E2E-${Date.now()}`);
+      await page.locator('input[type="checkbox"]').check();
+      await page.locator('button:has-text("Guardar")').click();
+      
+      await page.waitForFunction(async () => {
+        const db = (window as any).logiscoreDb;
+        if (!db || !db.products) return false;
+        const p = await db.products.toArray();
+        return p.length > 0;
+      }, { timeout: 10000 });
+      
+      const updatedProducts = await dbUtil.getByIndex('products', 'tenantId', TEST_TENANT_SLUG);
+      testProduct = { localId: updatedProducts[0].localId as string, name: updatedProducts[0].name as string };
+    }
+    
+    const testWarehouse = warehouseLocalId;
     
     const productsWithStock: Array<{localId: string, name: string}> = [];
     for (const product of initialProducts) {
@@ -135,22 +208,16 @@ test.describe('Integration Tests - Full Business Flow', () => {
       }
     }
     
-    let testProduct: {localId: string, name: string};
-    const testWarehouse = warehouseLocalId;
-    
     if (productsWithStock.length > 0) {
       testProduct = productsWithStock[0];
       console.log(`\n=== Using existing product with stock: ${testProduct.name} ===`);
     } else {
-      testProduct = { localId: initialProducts[0].localId as string, name: initialProducts[0].name as string };
       console.log(`\n=== STEP 2: Creating Purchase Receiving for ${testProduct.name} ===`);
       
       const existingLotsBefore = await dbUtil.getActiveInventoryLots(testProduct.localId, testWarehouse);
       console.log(`Lots before receiving: ${existingLotsBefore.length}`);
       
       await createPurchaseReceiving(page, dbUtil, testProduct.localId, testWarehouse, 10, 50.00);
-      
-      await page.waitForTimeout(3000);
       
       const lotsAfter = await dbUtil.getActiveInventoryLots(testProduct.localId, testWarehouse);
       console.log(`Lots after receiving: ${lotsAfter.length}`);
@@ -176,8 +243,6 @@ test.describe('Integration Tests - Full Business Flow', () => {
     
     console.log(`\n=== STEP 4: Create Sale with USD Payment ===`);
     await createSaleWithPayment(page, 'usd', 100);
-    
-    await page.waitForTimeout(3000);
     
     const sales = await dbUtil.getByIndex('sales', 'tenantId', TEST_TENANT_SLUG);
     console.log(`Total sales after: ${sales.length}`);
@@ -285,12 +350,11 @@ test.describe('Integration Tests - Full Business Flow', () => {
       const inventoryPage = '/inventory';
       await page.goto(inventoryPage);
       await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(3000);
       
       const addProductBtn = page.locator('button:has-text("Nuevo"), button:has-text("Agregar")').first();
       if (await addProductBtn.isVisible({ timeout: 3000 })) {
         await addProductBtn.click();
-        await page.waitForTimeout(2000);
+        await page.waitForSelector('input[name="name"], input#name', { timeout: 5000 }).catch(() => {});
         
         const nameInput = page.locator('input[name="name"], input#name').first();
         const skuInput = page.locator('input[name="sku"], input#sku').first();
@@ -307,7 +371,12 @@ test.describe('Integration Tests - Full Business Flow', () => {
           const saveBtn = page.locator('button:has-text("Guardar"), button[type="submit"]').first();
           if (await saveBtn.isVisible()) {
             await saveBtn.click();
-            await page.waitForTimeout(3000);
+            await page.waitForFunction(async () => {
+              const db = (window as any).logiscoreDb;
+              if (!db || !db.products) return false;
+              const products = await db.products.toArray();
+              return products.some((p: any) => p.name === 'Producto Prueba Pesos');
+            }, { timeout: 10000 }).catch(() => {});
           }
         }
       }

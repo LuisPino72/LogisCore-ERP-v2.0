@@ -54,14 +54,12 @@ test('Auth & Bootstrap - Login and verify bootstrap completes with real tenant',
     await emailInput.fill(TEST_USER_EMAIL);
     await passwordInput.fill(TEST_USER_PASSWORD);
     await submitButton.click();
-    await page.waitForTimeout(10000);
+    await page.waitForURL('**/dashboard**', { timeout: 20000 }).catch(() => {});
   }
 
   await page.waitForFunction(() => {
     return (window as unknown as { logiscoreDb?: unknown }).logiscoreDb !== undefined;
   }, { timeout: 15000 });
-
-  await page.waitForTimeout(20000);
 
   const allTables = await page.evaluate(() => {
     const db = (window as unknown as { logiscoreDb?: Record<string, { toArray: () => Promise<unknown[]> }> }).logiscoreDb;

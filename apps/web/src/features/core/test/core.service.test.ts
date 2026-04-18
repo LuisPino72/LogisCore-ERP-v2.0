@@ -15,51 +15,60 @@ const createSyncEngineMock = (): SyncEngine => ({
   getStatus: vi.fn(() => "idle" as const)
 });
 
-const createSupabaseMock = (activeSubscription = true): any => ({
-  auth: {
-    getSession: vi.fn(async () => ({
-      data: { session: { user: { id: "user-1" } } },
-      error: null
-    }))
-  },
-  rpc: vi.fn(async (fn: string) => {
-    if (fn === "check_subscriptions") {
-      return {
-        data: { isActive: activeSubscription, status: activeSubscription ? "active" : "expired" },
+const createSupabaseMock = (activeSubscription = true): any => {
+  const createResponse = (data: any[]) => ({ data, error: null });
+
+  const createIsResponse = (data: any[]) => ({
+    is: () => createIsResponse(data),
+    order: async () => createResponse(data)
+  });
+
+  const createEqResponse = (data: any[]) => ({
+    eq: () => createEqResponse(data),
+    maybeSingle: async <T>() => ({ data: data[0] as T, error: null }),
+    is: () => createIsResponse(data),
+    order: () => createIsResponse(data)
+  });
+
+  const createSelectResponse = (data: any[]) => ({
+    eq: () => createEqResponse(data),
+    order: () => createEqResponse(data),
+    is: () => createIsResponse(data),
+    in: () => ({ is: () => createIsResponse([]) })
+  });
+
+  return {
+    auth: {
+      getSession: vi.fn(async () => ({
+        data: { session: { user: { id: "user-1" } } },
         error: null
+      }))
+    },
+    rpc: vi.fn(async (fn: string) => {
+      if (fn === "check_subscriptions") {
+        return {
+          data: { isActive: activeSubscription, status: activeSubscription ? "active" : "expired" },
+          error: null
+        };
+      }
+      return { data: null, error: { message: "rpc_not_found" } };
+    }),
+    from: (table: string) => {
+      const dataMap: Record<string, any[]> = {
+        tenants: [{ id: "tenant-uuid-1", slug: "tenant-demo", name: "Tenant Demo", business_type_id: "bt-1" }],
+        categories: [
+          { local_id: "cat-1", tenant_slug: "tenant-demo", name: "Bebidas", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" },
+          { local_id: "cat-2", tenant_slug: "tenant-demo", name: "Galletas", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" }
+        ],
+        products: [{ local_id: "prod-1", tenant_slug: "tenant-demo", name: "Agua", sku: "AG001", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" }],
+        warehouses: [{ local_id: "wh-1", tenant_slug: "tenant-demo", name: "Principal", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" }],
+        product_presentations: [],
+        product_size_colors: []
       };
+      return { select: () => createSelectResponse(dataMap[table] || []) };
     }
-    return { data: null, error: { message: "rpc_not_found" } };
-  }),
-  from: (table: string) => ({
-    select: () => ({
-      eq: () => ({
-        maybeSingle: async <T>() => {
-          if (table === "tenants") {
-            return { data: { id: "tenant-uuid-1", slug: "tenant-demo", name: "Tenant Demo" } as T, error: null };
-          }
-          if (table === "subscriptions") {
-            return { data: { status: activeSubscription ? "active" : "expired" } as T, error: null };
-          }
-          return { data: null, error: null };
-        },
-        order: () => ({ eq: () => ({ order: async () => {
-          const data = table === "categories"
-            ? [
-                { local_id: "cat-1", tenant_slug: "tenant-demo", name: "Bebidas", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" },
-                { local_id: "cat-2", tenant_slug: "tenant-demo", name: "Galletas", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" }
-              ]
-            : table === "products"
-            ? [{ local_id: "prod-1", tenant_slug: "tenant-demo", name: "Agua", sku: "AG001", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" }]
-            : table === "warehouses"
-            ? [{ local_id: "wh-1", tenant_slug: "tenant-demo", name: "Principal", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" }]
-            : [];
-          return { data, error: null };
-        }})})
-      })
-    })
-  })
-});
+  };
+};
 
 const createCatalogsDbMock = () => ({
   bulkPut: vi.fn(async () => undefined)
@@ -115,41 +124,20 @@ describe("core.service", () => {
     const catalogsDb = createCatalogsDbMock();
     const eventBus = new InMemoryEventBus();
 
-    const supabaseMock: any = {
+    const baseMock = createSupabaseMock(true);
+    const supabaseMock = {
+      ...baseMock,
       from: (table: string) => {
         if (table === "tenants") {
           return {
             select: () => ({
               eq: () => ({
-                maybeSingle: async () => ({
-                  data: { business_type_id: null },
-                  error: null
-                })
+                maybeSingle: async () => ({ data: { id: "tenant-1", business_type_id: null }, error: null })
               })
             })
           };
         }
-        return {
-          select: () => ({
-            eq: () => ({
-              order: () => ({
-                eq: () => ({
-                  order: async () => {
-                    if (table === "categories") {
-                      return {
-                        data: [
-                          { local_id: "cat-1", tenant_slug: "tenant-demo", name: "Bebidas", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" }
-                        ],
-                        error: null
-                      };
-                    }
-                    return { data: [], error: null };
-                  }
-                })
-              })
-            })
-          })
-        };
+        return baseMock.from(table);
       }
     };
 

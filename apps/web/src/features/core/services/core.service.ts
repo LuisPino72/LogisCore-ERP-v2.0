@@ -275,8 +275,6 @@ export const createCoreService = ({
       return ok<void>(undefined);
     }
 
-    const tables = ["categories", "products", "product_presentations", "product_size_colors", "warehouses"] as const;
-
     const tenantInfoQuery = await supabaseClient
       .from("tenants")
       .select("id, business_type_id")
@@ -285,245 +283,172 @@ export const createCoreService = ({
     const tenantId = tenantInfoQuery.data?.id;
     const businessTypeId = tenantInfoQuery.data?.business_type_id;
 
-    const supabaseAny = supabaseClient as unknown as {
-      from: (table: string) => {
-        select: (columns: string) => {
-          eq: (column: string, value: string | boolean) => {
-            is: (column: string, value: null) => {
-              order: (column: string, options?: { ascending?: boolean }) => Promise<SupabaseRowResponse<Record<string, unknown>[]>>;
-            };
-            order: (column: string, options?: { ascending?: boolean }) => Promise<SupabaseRowResponse<Record<string, unknown>[]>>;
-          };
-        };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabaseAny = supabaseClient as any;
+
+    const fetchCategories = async () => {
+      const table = "categories";
+      if (businessTypeId) {
+        const [tenantResponse, globalResponse] = await Promise.all([
+          tenantId
+            ? supabaseAny.from(table).select("local_id, name, created_at, updated_at, deleted_at").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: true })
+            : supabaseAny.from(table).select("local_id, name, created_at, updated_at, deleted_at").eq("tenant_slug", tenantSlug).is("deleted_at", null).order("created_at", { ascending: true }),
+          supabaseAny.from(table).select("local_id, name, created_at, updated_at, deleted_at").eq("is_global", true).eq("business_type_id", businessTypeId).is("deleted_at", null).order("created_at", { ascending: true })
+        ]);
+
+        const dedup = new Map<string, Record<string, unknown>>();
+        [...(tenantResponse.data || []), ...(globalResponse.data || [])].forEach((row) => {
+          const key = row.local_id as string;
+          if (key) dedup.set(key, row);
+        });
+        return { data: Array.from(dedup.values()), error: tenantResponse.error };
+      }
+      return tenantId
+        ? await supabaseAny.from(table).select("local_id, name, created_at, updated_at, deleted_at").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: true })
+        : await supabaseAny.from(table).select("local_id, name, created_at, updated_at, deleted_at").eq("tenant_slug", tenantSlug).is("deleted_at", null).order("created_at", { ascending: true });
+    };
+
+    const fetchProducts = async () => {
+      const table = "products";
+      const columns = "local_id, name, sku, visible, is_weighted, unit_of_measure, category_id, default_presentation_id, is_global, business_type_id, created_at, updated_at, deleted_at";
+      
+      if (businessTypeId) {
+        const [tenantResponse, globalResponse] = await Promise.all([
+          tenantId
+            ? supabaseAny.from(table).select(columns).eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: true })
+            : supabaseAny.from(table).select(columns).eq("tenant_slug", tenantSlug).is("deleted_at", null).order("created_at", { ascending: true }),
+          supabaseAny.from(table).select(columns).eq("is_global", true).eq("business_type_id", businessTypeId).is("deleted_at", null).order("created_at", { ascending: true })
+        ]);
+
+        const dedup = new Map<string, Record<string, unknown>>();
+        (tenantResponse.data || []).forEach((row: Record<string, unknown>) => {
+          const key = row.local_id as string;
+          if (key) dedup.set(key, row);
+        });
+        (globalResponse.data || []).forEach((row: Record<string, unknown>) => {
+          const key = row.local_id as string;
+          if (key && !dedup.has(key)) dedup.set(key, row);
+        });
+        return { data: Array.from(dedup.values()), error: tenantResponse.error };
+      }
+      return tenantId
+        ? await supabaseAny.from(table).select(columns).eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: true })
+        : await supabaseAny.from(table).select(columns).eq("tenant_slug", tenantSlug).is("deleted_at", null).order("created_at", { ascending: true });
+    };
+
+    const fetchRelatedData = async () => {
+      if (!businessTypeId || !tenantId) {
+        return { presentations: [], sizeColors: [], warehouses: [] };
+      }
+
+      const [tenantProducts, globalProducts] = await Promise.all([
+        supabaseAny.from("products").select("local_id").eq("tenant_id", tenantId).is("deleted_at", null),
+        supabaseAny.from("products").select("local_id").eq("is_global", true).eq("business_type_id", businessTypeId).is("deleted_at", null)
+      ]);
+
+      const allProductLocalIds = new Set<string>([
+        ...(tenantProducts.data || []).map((p: Record<string, unknown>) => p.local_id as string),
+        ...(globalProducts.data || []).map((p: Record<string, unknown>) => p.local_id as string)
+      ]);
+
+      if (allProductLocalIds.size === 0) {
+        return { presentations: [], sizeColors: [], warehouses: [] };
+      }
+
+      const productIdsArray = Array.from(allProductLocalIds);
+      const presColumns = "id, product_local_id, name, factor, price, barcode, is_default, created_at, deleted_at";
+      const scColumns = "local_id, product_local_id, size, color, sku_suffix, barcode, created_at, deleted_at";
+
+      const [presentationsResponse, sizeColorsResponse] = await Promise.all([
+        supabaseAny.from("product_presentations").select(presColumns).in("product_local_id", productIdsArray).is("deleted_at", null).order("created_at", { ascending: true }),
+        supabaseAny.from("product_size_colors").select(scColumns).in("product_local_id", productIdsArray).is("deleted_at", null).order("created_at", { ascending: true })
+      ]);
+
+      return {
+        presentations: presentationsResponse.data || [],
+        sizeColors: sizeColorsResponse.data || []
       };
     };
 
-    for (const table of tables) {
-      try {
-        let response: SupabaseRowResponse<Record<string, unknown>[]>;
+    const fetchWarehouses = async () => {
+      const table = "warehouses";
+      const columns = "local_id, name, created_at, updated_at, deleted_at";
+      return tenantId
+        ? await supabaseAny.from(table).select(columns).eq("tenant_id", tenantId).order("created_at", { ascending: true })
+        : await supabaseAny.from(table).select(columns).eq("tenant_slug", tenantSlug).order("created_at", { ascending: true });
+    };
 
-        if (table === "categories" && businessTypeId) {
-          const tenantResponse = tenantId
-            ? await supabaseAny
-                .from(table)
-                .select("*")
-                .eq("tenant_id", tenantId)
-                .is("deleted_at", null)
-                .order("created_at", { ascending: true })
-            : await supabaseAny
-                .from(table)
-                .select("*")
-                .eq("tenant_slug", tenantSlug)
-                .is("deleted_at", null)
-                .order("created_at", { ascending: true });
+    const tables = [
+      { name: "categories", fetch: fetchCategories },
+      { name: "products", fetch: fetchProducts },
+      { name: "product_presentations", fetch: async () => ({ data: (await fetchRelatedData()).presentations, error: null }) },
+      { name: "product_size_colors", fetch: async () => ({ data: (await fetchRelatedData()).sizeColors, error: null }) },
+      { name: "warehouses", fetch: fetchWarehouses }
+    ];
 
-          let globalRows: Record<string, unknown>[] = [];
-          const globalResponse = await supabaseAny
-            .from(table)
-            .select("*")
-            .eq("is_global", true)
-            .eq("business_type_id", businessTypeId)
-            .is("deleted_at", null)
-            .order("created_at", { ascending: true });
+    const results = await Promise.all(tables.map(t => t.fetch()));
 
-          if (!globalResponse.error && Array.isArray(globalResponse.data)) {
-            globalRows = globalResponse.data;
-          }
+    for (let i = 0; i < tables.length; i++) {
+      const tableName = tables[i]!.name;
+      const response = results[i]!;
 
-          const tenantRows = Array.isArray(tenantResponse.data) ? tenantResponse.data : [];
-          const dedup = new Map<string, Record<string, unknown>>();
-          [...tenantRows, ...globalRows].forEach((row) => {
-            const key = (row.local_id as string | undefined) ?? (row.id as string | undefined);
-            if (key) {
-              dedup.set(key, row);
-            }
-          });
+      const data = response.data;
+      const error = response.error;
 
-          response = {
-            data: Array.from(dedup.values()),
-            error: tenantResponse.error
-          };
-        } else if (table === "categories") {
-          response = tenantId
-            ? await supabaseAny
-                .from(table)
-                .select("*")
-                .eq("tenant_id", tenantId)
-                .is("deleted_at", null)
-                .order("created_at", { ascending: true })
-            : await supabaseAny
-                .from(table)
-                .select("*")
-                .eq("tenant_slug", tenantSlug)
-                .is("deleted_at", null)
-                .order("created_at", { ascending: true });
-        } else if (table === "products" && businessTypeId) {
-          // Productos propios del tenant
-          const tenantResponse = tenantId
-            ? await supabaseAny
-                .from(table)
-                .select("*")
-                .eq("tenant_id", tenantId)
-                .is("deleted_at", null)
-                .order("created_at", { ascending: true })
-            : await supabaseAny
-                .from(table)
-                .select("*")
-                .eq("tenant_slug", tenantSlug)
-                .is("deleted_at", null)
-                .order("created_at", { ascending: true });
+      if (error || !data) {
+        continue;
+      }
 
-          // Productos globales del mismo business_type
-          const globalResponse = await supabaseAny
-            .from(table)
-            .select("*")
-            .eq("is_global", true)
-            .eq("business_type_id", businessTypeId)
-            .is("deleted_at", null)
-            .order("created_at", { ascending: true });
+      const records: CatalogRecord[] = data.map((row: Record<string, unknown>) => {
+        const record: CatalogRecord = {
+          tenantId: tenantSlug,
+          createdAt: (row.created_at as string) ?? new Date().toISOString(),
+          updatedAt: (row.updated_at as string) ?? new Date().toISOString()
+        };
 
-          const tenantRows = Array.isArray(tenantResponse.data) ? tenantResponse.data : [];
-          const globalRows = !globalResponse.error && Array.isArray(globalResponse.data) ? globalResponse.data : [];
-          
-          // Deduplicar por local_id (los propios tienen prioridad sobre globales)
-          const dedup = new Map<string, Record<string, unknown>>();
-          tenantRows.forEach((row) => {
-            const key = row.local_id as string;
-            if (key) dedup.set(key, row);
-          });
-          globalRows.forEach((row) => {
-            const key = row.local_id as string;
-            if (key && !dedup.has(key)) {
-              dedup.set(key, row);
-            }
-          });
-
-          response = {
-            data: Array.from(dedup.values()),
-            error: tenantResponse.error
-          };
-        } else if (table === "products") {
-          response = tenantId
-            ? await supabaseAny
-                .from(table)
-                .select("*")
-                .eq("tenant_id", tenantId)
-                .is("deleted_at", null)
-                .order("created_at", { ascending: true })
-            : await supabaseAny
-                .from(table)
-                .select("*")
-                .eq("tenant_slug", tenantSlug)
-                .is("deleted_at", null)
-                .order("created_at", { ascending: true });
-        } else if ((table === "product_presentations" || table === "product_size_colors") && businessTypeId && tenantId) {
-          // Obtener product_local_id de productos propios del tenant
-          const tenantProducts = await supabaseAny
-            .from("products")
-            .select("local_id")
-            .eq("tenant_id", tenantId)
-            .is("deleted_at", null);
-
-          // Obtener product_local_id de productos globales del mismo business_type
-          const globalProducts = await supabaseAny
-            .from("products")
-            .select("local_id")
-            .eq("is_global", true)
-            .eq("business_type_id", businessTypeId)
-            .is("deleted_at", null);
-
-          // Combinar IDs con Set para deduplicar
-          const allProductLocalIds = new Set<string>([
-            ...(tenantProducts.data || []).map(p => p.local_id),
-            ...(globalProducts.data || []).map(p => p.local_id)
-          ]);
-
-          if (allProductLocalIds.size > 0) {
-            const relatedResponse = await supabaseAny
-              .from(table)
-              .select("*")
-              .in("product_local_id", Array.from(allProductLocalIds))
-              .is("deleted_at", null)
-              .order("created_at", { ascending: true });
-            response = relatedResponse;
+        if (tableName === "product_presentations") {
+          record.id = row.id as string;
+          record.productLocalId = row.product_local_id as string;
+          record.name = row.name as string;
+          if (row.factor !== undefined) record.factor = Number(row.factor);
+          if (row.price !== undefined) record.price = Number(row.price);
+          if (row.barcode) record.barcode = row.barcode as string;
+          if (row.is_default !== undefined) record.isDefault = row.is_default as boolean;
+        } else if (tableName === "product_size_colors") {
+          record.localId = row.local_id as string;
+          record.productLocalId = row.product_local_id as string;
+          if (row.size) record.size = row.size as string;
+          if (row.color) record.color = row.color as string;
+          if (row.sku_suffix) record.skuSuffix = row.sku_suffix as string;
+          if (row.barcode) record.barcode = row.barcode as string;
+        } else if (tableName === "products") {
+          record.localId = row.local_id as string;
+          record.name = row.name as string;
+          record.sku = row.sku as string;
+          record.visible = row.visible as boolean;
+          record.isWeighted = (row.is_weighted as boolean) ?? false;
+          record.unitOfMeasure = (row.unit_of_measure as string) ?? 'unidad';
+          if (row.category_id) record.categoryId = row.category_id as string;
+          if (row.default_presentation_id) record.defaultPresentationId = row.default_presentation_id as string;
+          if (row.is_global === true) {
+            record.tenantId = "__global__";
+            record.isGlobal = true;
+            if (row.business_type_id) record.businessTypeId = row.business_type_id as string;
           } else {
-            response = { data: [], error: null };
+            record.tenantId = tenantSlug;
+            record.isGlobal = false;
           }
         } else {
-          response = tenantId
-            ? await supabaseAny
-                .from(table)
-                .select("*")
-                .eq("tenant_id", tenantId)
-                .order("created_at", { ascending: true })
-            : await supabaseAny
-                .from(table)
-                .select("*")
-                .eq("tenant_slug", tenantSlug)
-                .order("created_at", { ascending: true });
+          record.localId = row.local_id as string;
+          record.name = row.name as string;
         }
 
-        const data = response.data;
-        const error = response.error;
+        if (row.deleted_at) record.deletedAt = row.deleted_at as string;
+        return record;
+      });
 
-        if (error || !data) {
-          continue;
-        }
-
-        const records: CatalogRecord[] = data.map((row) => {
-          const record: CatalogRecord = {
-            tenantId: tenantSlug,
-            createdAt: (row.created_at as string) ?? new Date().toISOString(),
-            updatedAt: (row.updated_at as string) ?? new Date().toISOString()
-          };
-
-          if (table === "product_presentations") {
-            record.id = row.id as string;
-            record.productLocalId = row.product_local_id as string;
-            record.name = row.name as string;
-            if (row.factor !== undefined) record.factor = Number(row.factor);
-            if (row.price !== undefined) record.price = Number(row.price);
-            if (row.barcode) record.barcode = row.barcode as string;
-            if (row.is_default !== undefined) record.isDefault = row.is_default as boolean;
-          } else if (table === "product_size_colors") {
-            record.localId = row.local_id as string;
-            record.productLocalId = row.product_local_id as string;
-            if (row.size) record.size = row.size as string;
-            if (row.color) record.color = row.color as string;
-            if (row.sku_suffix) record.skuSuffix = row.sku_suffix as string;
-            if (row.barcode) record.barcode = row.barcode as string;
-          } else if (table === "products") {
-            record.localId = row.local_id as string;
-            record.name = row.name as string;
-            record.sku = row.sku as string;
-            record.visible = row.visible as boolean;
-            record.isWeighted = (row.is_weighted as boolean) ?? false;
-            record.unitOfMeasure = (row.unit_of_measure as string) ?? 'unidad';
-            if (row.category_id) record.categoryId = row.category_id as string;
-            if (row.default_presentation_id) record.defaultPresentationId = row.default_presentation_id as string;
-            // Campos para productos globales
-            if (row.is_global === true) {
-              record.tenantId = "__global__";
-              record.isGlobal = true;
-              if (row.business_type_id) record.businessTypeId = row.business_type_id as string;
-            } else {
-              record.tenantId = tenantSlug;
-              record.isGlobal = false;
-            }
-          } else {
-            record.localId = row.local_id as string;
-            record.name = row.name as string;
-          }
-
-          if (row.deleted_at) record.deletedAt = row.deleted_at as string;
-          return record;
-        });
-
-        if (records.length > 0) {
-          await catalogsDb.bulkPut(table, records);
-        }
-      } catch {
-        continue;
+      if (records.length > 0) {
+        await catalogsDb.bulkPut(tableName as "categories" | "products" | "product_presentations" | "product_size_colors" | "warehouses", records);
       }
     }
 
