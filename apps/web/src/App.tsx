@@ -5,18 +5,17 @@ import { TenantBootstrapGate } from "@/features/tenant/components/TenantBootstra
 import { authService } from "@/features/auth/services/auth.service.instance";
 import { tenantService } from "@/features/tenant/services/tenant.service.instance";
 import { syncEngine } from "@/lib/core/runtime";
+import { type TenantContext } from "@/features/tenant/types/tenant.types";
 
 /**
- * LogisCore ERP - Punto de entrada (v6.8)
- * Implementa arquitectura modular descompuesta (ARCH-001)
+ * LogisCore ERP
  */
 export function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>("dashboard");
 
-  // coreService adapter for the gate
   const coreService = {
     startSync: () => syncEngine.startPeriodicSync(),
-    bootstrapSession: async () => { /* Session already handled by gate, but can add pre-fetching here */ }
+    bootstrapSession: async () => {}
   };
 
   return (
@@ -24,21 +23,31 @@ export function App() {
       authService={authService}
       tenantService={tenantService}
       coreService={coreService}
-      renderApp={(tenantSlug, actor, onLogout, tenant) => (
-        <AppLayout 
-          activeModule={activeModule} 
-          onModuleChange={setActiveModule}
-          onLogout={onLogout}
-          features={tenant?.features || {}}
-        >
-          <ModuleRenderer 
+      renderApp={(tenantSlug, actor, onLogout, tenant) => {
+        // En LogisCore, el bootstrap asegura que si llegamos aquí, tenemos el contexto necesario.
+        // Si estamos en modo suplantación (admin), el tenantContext puede venir del servicio de admin o ser el base.
+        const context: TenantContext = tenant || {
+          tenantSlug,
+          tenantUuid: "", 
+          userId: actor.role 
+        };
+
+        return (
+          <AppLayout 
             activeModule={activeModule} 
-            tenant={{ ...tenant, tenantSlug }}
-            actor={actor}
-            onNavigate={setActiveModule}
-          />
-        </AppLayout>
-      )}
+            onModuleChange={setActiveModule}
+            onLogout={onLogout}
+            features={context.features || {}}
+          >
+            <ModuleRenderer 
+              activeModule={activeModule} 
+              tenant={{ ...context, tenantSlug }}
+              actor={actor}
+              onNavigate={setActiveModule}
+            />
+          </AppLayout>
+        );
+      }}
     />
   );
 }

@@ -2,6 +2,14 @@ import { Suspense, lazy } from "react";
 import { LoadingSpinner } from "./EmptyState";
 import { ErrorBoundary } from "./ErrorBoundary";
 import type { ModuleId } from "./AppLayout";
+import type { ActorContext } from "@/lib/permissions/permissions.types";
+import type { TenantContext } from "@/features/tenant/types/tenant.types";
+import type { InventoryActorContext } from "@/features/inventory/types/inventory.types";
+import type { ProductsActorContext } from "@/features/products/types/products.types";
+import type { SalesActorContext } from "@/features/sales/types/sales.types";
+import type { ProductionActorContext } from "@/features/production/types/production.types";
+import type { InvoicingActorContext } from "@/features/invoicing/types/invoicing.types";
+import type { ReportsActorContext } from "@/features/reports/types/reports.types";
 
 // Lazy loading features
 const DashboardPanel = lazy(() => import("@/features/dashboard/components/DashboardPanel").then(m => ({ default: m.DashboardPanel })));
@@ -15,8 +23,8 @@ const ProductionPanel = lazy(() => import("@/features/production/components/Prod
 
 interface ModuleRendererProps {
   activeModule: ModuleId;
-  tenant: any;
-  actor: any;
+  tenant: TenantContext;
+  actor: ActorContext;
   onNavigate: (module: ModuleId) => void;
 }
 
@@ -33,64 +41,64 @@ export function ModuleRenderer({ activeModule, tenant, actor, onNavigate }: Modu
     <ErrorBoundary key={activeModule}>
       <Suspense fallback={<LoadingSpinner variant="fullscreen" message={`Iniciando módulo ${activeModule}...`} />}>
         {activeModule === "dashboard" && (
-          <DashboardPanel 
-            tenant={tenant} 
-            actor={actor} 
-            onNavigate={onNavigate} 
+          <DashboardPanel
+            tenant={tenant}
+            actor={actor as unknown as InventoryActorContext}
+            onNavigate={onNavigate}
           />
         )}
-        
+
         {activeModule === "products" && (
-          <ProductsCatalog 
-            tenantSlug={tenantSlug} 
-            actor={actor} 
+          <ProductsCatalog
+            tenantSlug={tenantSlug}
+            actor={actor as unknown as ProductsActorContext}
             businessTypeId={businessTypeId}
           />
         )}
-        
+
         {activeModule === "sales" && (
-          <SalesPanel 
-            tenantSlug={tenantSlug} 
-            actor={actor} 
-            products={[]} // El panel de ventas ahora gestiona internamente su búsqueda de productos o requiere inyección
+          <SalesPanel
+            tenantSlug={tenantSlug}
+            actor={actor as unknown as SalesActorContext}
+            products={[]}
           />
         )}
 
         {activeModule === "inventory" && (
-          <InventoryPanel 
-            tenantSlug={tenantSlug} 
-            actor={actor} 
+          <InventoryPanel
+            tenantSlug={tenantSlug}
+            actor={actor as unknown as InventoryActorContext}
             products={[]}
           />
         )}
 
         {activeModule === "purchases" && (
-          <PurchasesPanel 
-            tenantSlug={tenantSlug} 
-            actor={actor} 
+          <PurchasesPanel
+            tenantSlug={tenantSlug}
+            actor={actor as unknown as ProductsActorContext}
             products={[]}
           />
         )}
 
         {activeModule === "invoicing" && (
-          <InvoicingPanel 
-            tenantSlug={tenantSlug} 
-            actor={actor} 
+          <InvoicingPanel
+            tenantSlug={tenantSlug}
+            actor={actor as unknown as InvoicingActorContext}
             features={tenant.features}
           />
         )}
 
         {activeModule === "reports" && (
-          <ReportsPanel 
-            tenantSlug={tenantSlug} 
-            actor={actor} 
+          <ReportsPanel
+            tenantSlug={tenantSlug}
+            actor={actor as unknown as ReportsActorContext}
           />
         )}
 
         {activeModule === "production" && (
-          <ProductionPanel 
-            tenantSlug={tenantSlug} 
-            actor={actor} 
+          <ProductionPanel
+            tenantSlug={tenantSlug}
+            actor={actor as unknown as ProductionActorContext}
             products={[]}
             features={tenant.features}
           />
