@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useState, useRef, useEffect } from "react";
+import { eventBus } from "@/lib/core/runtime";
 import type { SalesService } from "../services/sales.service";
 import type {
   CloseBoxInput,
@@ -93,6 +94,19 @@ export const useSales = ({
       lastError: null
     });
   }, []);
+
+  /**
+   * Escucha eventos de sincronización para refrescar la UI (Regla de Oro #4)
+   */
+  useEffect(() => {
+    const featureTables = ["sales", "suspended_sales", "box_closings"];
+    
+    return eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
+      if (featureTables.includes(payload.table)) {
+        void refresh();
+      }
+    });
+  }, [refresh]);
 
   /**
    * Crea una venta suspendida (ticket)

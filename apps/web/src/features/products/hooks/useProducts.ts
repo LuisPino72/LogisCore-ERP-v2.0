@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useState, useRef, useEffect } from "react";
+import { eventBus } from "@/lib/core/runtime";
 import type { ProductsService } from "../services/products.service";
 import type {
   CreateCategoryInput,
@@ -99,6 +100,19 @@ export const useProducts = ({
       lastError: null
     });
   }, []);
+
+  /**
+   * Escucha eventos de sincronización para refrescar la UI (Regla de Oro #4)
+   */
+  useEffect(() => {
+    const featureTables = ["products", "categories", "product_presentations", "product_size_colors"];
+    
+    return eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
+      if (featureTables.includes(payload.table)) {
+        void refresh();
+      }
+    });
+  }, [refresh]);
 
   /**
    * Crea una nueva categoría
