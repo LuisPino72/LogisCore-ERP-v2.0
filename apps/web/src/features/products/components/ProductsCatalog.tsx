@@ -49,6 +49,7 @@ function VirtualizedGlobalProductList({
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const product = products[virtualRow.index];
+          if (!product) return null;
           return (
             <div
               key={product.id}
@@ -112,10 +113,14 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
   const [selectedGlobalProducts, setSelectedGlobalProducts] = useState<Set<string>>(new Set());
   const [importingProducts, setImportingProducts] = useState(false);
   const globalProductsContainerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void refresh(); }, [refresh]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const [prevRate, setPrevRate] = useState(exchangeRateFromApp);
+  if (exchangeRateFromApp !== prevRate) {
+    setExchangeRate(exchangeRateFromApp ?? DEFAULT_EXCHANGE_RATE);
+    setPrevRate(exchangeRateFromApp);
+  }
 
   useEffect(() => {
     if (!businessTypeId) return;
@@ -128,12 +133,6 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
     })();
     return () => { cancelled = true; };
   }, [businessTypeId]);
-
-  useEffect(() => {
-    if (typeof exchangeRateFromApp === "number" && exchangeRateFromApp > 0) {
-      setExchangeRate(exchangeRateFromApp);
-    }
-  }, [exchangeRateFromApp]);
 
   useEffect(() => {
     const offCreatedCategory = eventBus.on("CATEGORY.CREATED", () => {

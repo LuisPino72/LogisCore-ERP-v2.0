@@ -1,165 +1,133 @@
+import { Hono } from "jsr:@hono/hono@4.6.1";
 import { createClient } from "jsr:@supabase/supabase-js@2.49.1";
-import { createRbacMiddleware } from "../_shared/rbac-middleware";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-interface GlobalProductSeed {
-  name: string;
-  category: string;
-  sku: string;
-  visible: boolean;
-  is_weighted: boolean;
-  unit_of_measure: string;
-  presentation: { name: string; factor: number };
-}
+const app = new Hono();
 
-const GLOBAL_PRODUCTS_BY_BUSINESS: Record<string, GlobalProductSeed[]> = {
+const cors = async (c: any, next: any) => {
+  if (c.req.method === "OPTIONS") {
+    return c.text("ok", 200, {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "https://logiscore-erp.vercel.app",
+      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Methods": "POST, OPTIONS"
+    });
+  }
+  await next();
+};
+app.use(cors);
+
+const globalProducts: Record<string, any[]> = {
   Bodega: [
-    { name: "Tomate", category: "Frutas y Verduras", sku: "TOM-001", visible: true, is_weighted: true, unit_of_measure: "kg", presentation: { name: "Unidad", factor: 1 } },
-    { name: "Cebolla", category: "Frutas y Verduras", sku: "CEB-001", visible: true, is_weighted: true, unit_of_measure: "kg", presentation: { name: "Unidad", factor: 1 } },
-    { name: "Arroz", category: "Víveres", sku: "ARR-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
-    { name: "Harina", category: "Víveres", sku: "HAR-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
-    { name: "Aceite", category: "Enlatados", sku: "ACE-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Litro", factor: 1 } },
-    { name: "Azúcar", category: "Víveres", sku: "AZU-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
-    { name: "Sal", category: "Condimentos", sku: "SAL-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
-    { name: "Pasta", category: "Pastas", sku: "PAS-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Paquete", factor: 1 } },
-    { name: "Leche", category: "Lácteos", sku: "LEC-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Litro", factor: 1 } },
-    { name: "Huevos", category: "Lácteos", sku: "HUE-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Docena", factor: 12 } }
+    { name: "Tomate", category: "Frutas y Verduras", sku: "TOM-001", visible: true, isWeighted: true, unit: "kg", presName: "Unidad", presFactor: 1 },
+    { name: "Cebolla", category: "Frutas y Verduras", sku: "CEB-001", visible: true, isWeighted: true, unit: "kg", presName: "Unidad", presFactor: 1 },
+    { name: "Arroz", category: "Viveres", sku: "ARR-001", visible: true, isWeighted: false, unit: "unidad", presName: "Kilo", presFactor: 1 },
+    { name: "Harina", category: "Viveres", sku: "HAR-001", visible: true, isWeighted: false, unit: "unidad", presName: "Kilo", presFactor: 1 },
+    { name: "Aceite", category: "Enlatados", sku: "ACE-001", visible: true, isWeighted: false, unit: "unidad", presName: "Litro", presFactor: 1 },
+    { name: "Azucar", category: "Viveres", sku: "AZU-001", visible: true, isWeighted: false, unit: "unidad", presName: "Kilo", presFactor: 1 },
+    { name: "Sal", category: "Condimentos", sku: "SAL-001", visible: true, isWeighted: false, unit: "unidad", presName: "Kilo", presFactor: 1 },
+    { name: "Pasta", category: "Pastas", sku: "PAS-001", visible: true, isWeighted: false, unit: "unidad", presName: "Paquete", presFactor: 1 },
+    { name: "Leche", category: "Lacteos", sku: "LEC-001", visible: true, isWeighted: false, unit: "unidad", presName: "Litro", presFactor: 1 },
+    { name: "Huevos", category: "Lacteos", sku: "HUE-001", visible: true, isWeighted: false, unit: "unidad", presName: "Docena", presFactor: 12 }
   ],
   Restaurante: [
-    { name: "Aceite", category: "Insumos", sku: "ACE-RES-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Litro", factor: 1 } },
-    { name: "Harina", category: "Insumos", sku: "HAR-RES-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } },
-    { name: "Tomate", category: "Insumos", sku: "TOM-RES-001", visible: true, is_weighted: true, unit_of_measure: "kg", presentation: { name: "Kilo", factor: 1 } },
-    { name: "Cebolla", category: "Insumos", sku: "CEB-RES-001", visible: true, is_weighted: true, unit_of_measure: "kg", presentation: { name: "Kilo", factor: 1 } },
-    { name: "Pollo", category: "Proteínas", sku: "POL-RES-001", visible: true, is_weighted: true, unit_of_measure: "kg", presentation: { name: "Kilo", factor: 1 } },
-    { name: "Arroz", category: "Insumos", sku: "ARR-RES-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Kilo", factor: 1 } }
+    { name: "Aceite", category: "Insumos", sku: "ACE-RES-001", visible: true, isWeighted: false, unit: "unidad", presName: "Litro", presFactor: 1 },
+    { name: "Harina", category: "Insumos", sku: "HAR-RES-001", visible: true, isWeighted: false, unit: "unidad", presName: "Kilo", presFactor: 1 },
+    { name: "Tomate", category: "Insumos", sku: "TOM-RES-001", visible: true, isWeighted: true, unit: "kg", presName: "Kilo", presFactor: 1 },
+    { name: "Cebolla", category: "Insumos", sku: "CEB-RES-001", visible: true, isWeighted: true, unit: "kg", presName: "Kilo", presFactor: 1 },
+    { name: "Pollo", category: "Proteinas", sku: "POL-RES-001", visible: true, isWeighted: true, unit: "kg", presName: "Kilo", presFactor: 1 },
+    { name: "Arroz", category: "Insumos", sku: "ARR-RES-001", visible: true, isWeighted: false, unit: "unidad", presName: "Kilo", presFactor: 1 }
   ],
   Manufactura: [
-    { name: "Materia Prima A", category: "Materia Prima", sku: "MP-A-001", visible: true, is_weighted: true, unit_of_measure: "kg", presentation: { name: "Kilo", factor: 1 } },
-    { name: "Materia Prima B", category: "Materia Prima", sku: "MP-B-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Unidad", factor: 1 } },
-    { name: "Insumo General", category: "Insumos", sku: "INS-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Unidad", factor: 1 } }
+    { name: "Materia Prima A", category: "Materia Prima", sku: "MP-A-001", visible: true, isWeighted: true, unit: "kg", presName: "Kilo", presFactor: 1 },
+    { name: "Materia Prima B", category: "Materia Prima", sku: "MP-B-001", visible: true, isWeighted: false, unit: "unidad", presName: "Unidad", presFactor: 1 },
+    { name: "Insumo General", category: "Insumos", sku: "INS-001", visible: true, isWeighted: false, unit: "unidad", presName: "Unidad", presFactor: 1 }
   ],
   Servicios: [],
   Otro: [
-    { name: "Producto Genérico", category: "General", sku: "GEN-001", visible: true, is_weighted: false, unit_of_measure: "unidad", presentation: { name: "Unidad", factor: 1 } }
+    { name: "Producto Generico", category: "General", sku: "GEN-001", visible: true, isWeighted: false, unit: "unidad", presName: "Unidad", presFactor: 1 }
   ]
 };
 
-const DEFAULT_CATEGORIES_BY_BUSINESS: Record<string, string[]> = {
-  Bodega: ["Frutas y Verduras", "Víveres", "Lácteos", "Enlatados", "Condimentos", "Pastas", "Bebidas", "Limpieza"],
-  Restaurante: ["Insumos", "Proteínas", "Bebidas", "Limpieza", "Empaques"],
+const defaultCategories: Record<string, string[]> = {
+  Bodega: ["Frutas y Verduras", "Viveres", "Lacteos", "Enlatados", "Condimentos", "Pastas", "Bebidas", "Limpieza"],
+  Restaurante: ["Insumos", "Proteinas", "Bebidas", "Limpieza", "Empaques"],
   Manufactura: ["Materia Prima", "Insumos", "Productos Terminados", "Empaques", "Limpieza"],
   Servicios: ["Insumos", "Herramientas", "Repuestos", "Limpieza"],
- Otro: ["General", "Varios"]
+  Otro: ["General", "Varios"]
 };
 
-const jsonHeaders = {
-  "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "https://logiscore-erp.vercel.app",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS"
-};
-
-interface CreateTenantInput {
-  name: string;
-  slug: string;
-  ownerEmail: string;
-  ownerPassword: string;
-  ownerFullName: string;
-  planId: string;
-  trialDays?: number;
-  businessTypeId?: string;
-  contactEmail?: string;
-  phone?: string;
-  address?: string;
-  logoUrl?: string;
-  taxpayerInfo?: {
-    rif: string;
-    razonSocial: string;
-    direccionFiscal: string;
-  };
-  employees?: Array<{
-    email: string;
-    password: string;
-    fullName: string;
-  }>;
-  hasWarehouse?: boolean;
-  warehouse?: {
-    name: string;
-    address?: string;
-    isDefault?: boolean;
-  };
-}
-
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: jsonHeaders });
+const openapi = {
+  openapi: "3.0.0",
+  info: { title: "admin-create-tenant", version: "2.0.0", description: "Create new tenants" },
+  paths: {
+    "/": {
+      post: {
+        summary: "Create tenant",
+        requestBody: {
+          content: { "application/json": {
+            schema: {
+              type: "object",
+              required: ["name", "slug", "ownerEmail", "ownerPassword", "ownerFullName", "planId"],
+              properties: {
+                name: { type: "string" },
+                slug: { type: "string" },
+                ownerEmail: { type: "string" },
+                ownerPassword: { type: "string" },
+                ownerFullName: { type: "string" },
+                planId: { type: "string" }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "OK" },
+          "400": { description: "Error" },
+          "403": { description: "Forbidden" }
+        }
+      }
+    }
   }
+};
 
+app.post("/", async (c) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  
   try {
-    const rbacMiddleware = await createRbacMiddleware("ADMIN:USERS");
-    const rbacResult = await rbacMiddleware(req);
-    
-    if (!rbacResult.ok) {
-      return new Response(
-        JSON.stringify({ success: false, error: rbacResult.error.code }),
-        { status: 403, headers: jsonHeaders }
-      );
+    const authHeader = c.req.raw.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return c.json({ success: false, error: "UNAUTHORIZED" }, 403);
     }
-
-    let input: CreateTenantInput;
-    try {
-      input = await req.json();
-    } catch {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid JSON body" }),
-        { status: 400, headers: jsonHeaders }
-      );
-    }
-
-    const requiredFields = ["name", "slug", "ownerEmail", "ownerPassword", "ownerFullName", "planId"];
-    const missingFields = requiredFields.filter(f => !input[f as keyof CreateTenantInput]);
-    if (missingFields.length > 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: `Faltan campos requeridos: ${missingFields.join(", ")}` }),
-        { status: 400, headers: jsonHeaders }
-      );
-    }
-
+    const token = authHeader.replace("Bearer ", "");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: roleRow, error: roleError } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("user_id", authResult.data.user.id)
-      .eq("role", "admin")
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (roleError || !roleRow) {
-      return new Response(
-        JSON.stringify({ success: false, error: "FORBIDDEN_ADMIN_ONLY" }),
-        { status: 403, headers: jsonHeaders }
-      );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return c.json({ success: false, error: "INVALID_TOKEN" }, 403);
     }
-
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    const { data: roleRow } = await supabase.from("user_roles").select("user_id").eq("user_id", user.id).eq("role", "admin").eq("is_active", true).maybeSingle();
+    if (!roleRow) {
+      return c.json({ success: false, error: "FORBIDDEN_ADMIN_ONLY" }, 403);
+    }
+    let input: any;
+    try { input = await c.req.json(); } catch {
+      return c.json({ success: false, error: "Invalid JSON body" }, 400);
+    }
+    const required = ["name", "slug", "ownerEmail", "ownerPassword", "ownerFullName", "planId"];
+    const missing = required.filter(f => !input[f]);
+    if (missing.length > 0) {
+      return c.json({ success: false, error: "Faltan campos: " + missing.join(", ") }, 400);
+    }
+    const { data: authData, error: createUserError } = await supabase.auth.admin.createUser({
       email: input.ownerEmail,
       password: input.ownerPassword,
       email_confirm: true,
       user_metadata: { full_name: input.ownerFullName }
     });
-
-    if (authError || !authData.user) {
-      return new Response(
-        JSON.stringify({ success: false, error: authError?.message ?? "Error al crear usuario owner" }),
-        { status: 400, headers: jsonHeaders }
-      );
+    if (createUserError || !authData.user) {
+      return c.json({ success: false, error: createUserError?.message ?? "Error al crear usuario" }, 400);
     }
-
     const ownerUserId = authData.user.id;
-
-    const insertData: Record<string, unknown> = {
+    const { data: tenantData, error: tenantError } = await supabase.from("tenants").insert({
       name: input.name,
       slug: input.slug,
       owner_user_id: ownerUserId,
@@ -167,27 +135,13 @@ Deno.serve(async (req: Request) => {
       phone: input.phone || null,
       address: input.address || null,
       business_type_id: input.businessTypeId || null,
-      logo_url: input.logoUrl || null,
-      taxpayer_info: input.taxpayerInfo || null,
       is_active: true
-    };
-
-    const { data: tenantData, error: tenantError } = await supabase
-      .from("tenants")
-      .insert(insertData)
-      .select()
-      .single();
-
+    }).select().single();
     if (tenantError || !tenantData) {
       await supabase.auth.admin.deleteUser(ownerUserId);
-      return new Response(
-        JSON.stringify({ success: false, error: tenantError?.message ?? "Error al crear tenant" }),
-        { status: 400, headers: jsonHeaders }
-      );
+      return c.json({ success: false, error: tenantError?.message ?? "Error al crear tenant" }, 400);
     }
-
     const tenantId = tenantData.id;
-
     await supabase.from("user_roles").insert({
       user_id: ownerUserId,
       tenant_id: tenantId,
@@ -196,44 +150,6 @@ Deno.serve(async (req: Request) => {
       full_name: input.ownerFullName,
       is_active: true
     });
-
-    const employees = input.employees || [];
-    const createdEmployees: Array<{ email: string; userId: string; fullName: string }> = [];
-    
-    for (const emp of employees) {
-      if (!emp.email || !emp.password || !emp.fullName) continue;
-      
-      const { data: empAuthData, error: empAuthError } = await supabase.auth.admin.createUser({
-        email: emp.email,
-        password: emp.password,
-        email_confirm: true,
-        user_metadata: { full_name: emp.fullName }
-      });
-
-      if (empAuthError || !empAuthData.user) {
-        console.error("Error creating employee:", empAuthError?.message);
-        continue;
-      }
-
-      const empUserId = empAuthData.user.id;
-      
-      await supabase.from("user_roles").insert({
-        user_id: empUserId,
-        tenant_id: tenantId,
-        role: "employee",
-        email: emp.email,
-        full_name: emp.fullName,
-        is_active: true,
-        permissions: emp.permissions || []
-      });
-
-      createdEmployees.push({
-        email: emp.email,
-        userId: empUserId,
-        fullName: emp.fullName
-      });
-    }
-
     if (input.hasWarehouse && input.warehouse?.name) {
       await supabase.from("warehouses").insert({
         local_id: crypto.randomUUID(),
@@ -246,24 +162,16 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString()
       });
     }
-
     let categoriesCreatedCount = 0;
     let productsCreated = 0;
     let presentationsCreated = 0;
-
     if (input.businessTypeId) {
-      const { data: businessType } = await supabase
-        .from("business_types")
-        .select("name")
-        .eq("id", input.businessTypeId)
-        .maybeSingle<{ name: string }>();
-
+      const { data: businessType } = await supabase.from("business_types").select("name").eq("id", input.businessTypeId).maybeSingle();
       const businessName = businessType?.name ?? "Otro";
-      const defaultCategories = DEFAULT_CATEGORIES_BY_BUSINESS[businessName] ?? DEFAULT_CATEGORIES_BY_BUSINESS["Otro"];
+      const cats = defaultCategories[businessName] ?? defaultCategories["Otro"];
       const categoryMap = new Map<string, string>();
       const now = new Date().toISOString();
-
-      for (const catName of defaultCategories) {
+      for (const catName of cats) {
         const catLocalId = crypto.randomUUID();
         const { error: catError } = await supabase.from("categories").insert({
           local_id: catLocalId,
@@ -275,63 +183,50 @@ Deno.serve(async (req: Request) => {
           business_type_id: input.businessTypeId,
           is_global: false
         });
-
         if (!catError) {
           categoriesCreatedCount++;
           categoryMap.set(catName.toLowerCase(), catLocalId);
         }
       }
-
-      const seedProducts = GLOBAL_PRODUCTS_BY_BUSINESS[businessName] ?? [];
-
-      if (seedProducts.length > 0) {
-        for (const sp of seedProducts) {
-          const categoryId = categoryMap.get(sp.category.toLowerCase()) ?? null;
-          const productLocalId = crypto.randomUUID();
-
-          const { error: prodError } = await supabase.from("products").insert({
-            local_id: productLocalId,
+      const seedProducts = globalProducts[businessName] ?? [];
+      for (const sp of seedProducts) {
+        const categoryId = categoryMap.get(sp.category.toLowerCase()) ?? null;
+        const productLocalId = crypto.randomUUID();
+        const { error: prodError } = await supabase.from("products").insert({
+          local_id: productLocalId,
+          tenant_id: tenantId,
+          tenant_slug: input.slug,
+          name: sp.name,
+          sku: sp.sku,
+          visible: sp.visible,
+          is_weighted: sp.isWeighted,
+          unit_of_measure: sp.unit,
+          category_id: categoryId,
+          is_serialized: false,
+          is_taxable: true,
+          created_at: now,
+          updated_at: now
+        });
+        if (!prodError) {
+          productsCreated++;
+          const { error: presError } = await supabase.from("product_presentations").insert({
             tenant_id: tenantId,
             tenant_slug: input.slug,
-            name: sp.name,
-            sku: sp.sku,
-            visible: sp.visible,
-            is_weighted: sp.is_weighted,
-            unit_of_measure: sp.unit_of_measure,
-            category_id: categoryId,
-            is_serialized: false,
-            is_taxable: true,
+            product_local_id: productLocalId,
+            name: sp.presName,
+            factor: sp.presFactor,
+            is_default: true,
             created_at: now,
             updated_at: now
           });
-
-          if (!prodError) {
-            productsCreated++;
-
-            const { error: presError } = await supabase.from("product_presentations").insert({
-              tenant_id: tenantId,
-              tenant_slug: input.slug,
-              product_local_id: productLocalId,
-              name: sp.presentation.name,
-              factor: sp.presentation.factor,
-              is_default: true,
-              created_at: now,
-              updated_at: now
-            });
-
-            if (!presError) {
-              presentationsCreated++;
-            }
-          }
+          if (!presError) presentationsCreated++;
         }
       }
     }
-
     const trialDays = input.trialDays || 0;
     const isTrial = trialDays > 0;
     const daysToAdd = isTrial ? trialDays : 30;
-
-    const { error: subError } = await supabase.from("subscriptions").insert({
+    await supabase.from("subscriptions").insert({
       tenant_id: tenantId,
       plan_id: input.planId,
       status: isTrial ? "trial" : "active",
@@ -340,38 +235,18 @@ Deno.serve(async (req: Request) => {
       billing_cycle: "monthly",
       trial_days: trialDays
     });
-
-    if (subError) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Error al crear suscripción: " + subError.message }),
-        { status: 400, headers: jsonHeaders }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        tenant: {
-          id: tenantData.id,
-          name: tenantData.name,
-          slug: tenantData.slug
-        },
-        owner: {
-          userId: ownerUserId,
-          email: input.ownerEmail,
-          fullName: input.ownerFullName
-        },
-        employees: createdEmployees,
-        categoriesCreated: categoriesCreatedCount,
-        productsCreated,
-        presentationsCreated
-      }),
-      { headers: jsonHeaders }
-    );
+    return c.json({
+      success: true,
+      tenant: { id: tenantData.id, name: tenantData.name, slug: tenantData.slug },
+      owner: { userId: ownerUserId, email: input.ownerEmail, fullName: input.ownerFullName },
+      categoriesCreated: categoriesCreatedCount,
+      productsCreated,
+      presentationsCreated
+    });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ success: false, error: String(error) }),
-      { status: 500, headers: jsonHeaders }
-    );
+    return c.json({ success: false, error: String(error) }, 500);
   }
 });
+
+app.doc("/openapi.json", openapi);
+export default app;

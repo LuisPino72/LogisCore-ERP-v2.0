@@ -34,7 +34,8 @@ export function ProductEditModal({
     unitOfMeasure: "unidad"
   });
 
-  useEffect(() => {
+  const [prevProduct, setPrevProduct] = useState(product);
+  if (product !== prevProduct) {
     if (product) {
       setFormData({
         name: product.name,
@@ -51,7 +52,8 @@ export function ProductEditModal({
         unitOfMeasure: product.unitOfMeasure ?? "unidad"
       });
     }
-  }, [product]);
+    setPrevProduct(product);
+  }
 
   const handleChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));

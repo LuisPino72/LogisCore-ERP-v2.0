@@ -251,66 +251,54 @@ export function PurchasesPanel({
     return { totalCompradoMes, ordenesPendientes, proveedoresActivos };
   }, [purchasesState.purchases, purchasesState.suppliers]);
 
-  const OrdersListTabContent = () => (
-    <div className="space-y-6">
-      <PurchaseForm
-        products={products}
-        warehouses={warehouses ?? []}
-        suppliers={purchasesState.suppliers}
-        warehouseLocalId={warehouseLocalId}
-        setWarehouseLocalId={setWarehouseLocalId}
-        supplierLocalId={supplierLocalId}
-        setSupplierLocalId={setSupplierLocalId}
-        supplierName={supplierName}
-        setSupplierName={setSupplierName}
-        productLocalId={productLocalId}
-        setProductLocalId={setProductLocalId}
-        qty={qty}
-        setQty={setQty}
-        unitCost={unitCost}
-        setUnitCost={setUnitCost}
-        items={items}
-        onAddItem={handleAddItem}
-        onRemoveItem={handleRemoveItem}
-        onSubmit={handleCreatePurchase}
-        isSubmitting={purchasesState.isSubmitting}
-      />
-      <PurchaseOrdersList
-        purchases={purchasesState.purchases}
-        suppliers={purchasesState.suppliers}
-        warehouses={warehouses ?? []}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onConfirm={handleConfirmPurchase}
-        onEdit={handleStartEdit}
-        onCancel={handleCancelPurchase}
-        onStartReceiving={handleStartReceiving}
-      />
-    </div>
-  );
-
-  const ReceivingsTabContent = () => (
-    <ReceivingsList receivings={purchasesState.receivings} />
-  );
-
   const ordersSubTabs: TabItem[] = [
-    { id: "orders-list", label: "Órdenes de Compra", content: <OrdersListTabContent /> },
-    { id: "receivings", label: "Recepciones", content: <ReceivingsTabContent /> }
+    { 
+      id: "orders-list", 
+      label: "Órdenes de Compra", 
+      content: (
+        <div className="space-y-6">
+          <PurchaseForm
+            products={products}
+            warehouses={warehouses ?? []}
+            suppliers={purchasesState.suppliers}
+            warehouseLocalId={warehouseLocalId}
+            setWarehouseLocalId={setWarehouseLocalId}
+            supplierLocalId={supplierLocalId}
+            setSupplierLocalId={setSupplierLocalId}
+            supplierName={supplierName}
+            setSupplierName={setSupplierName}
+            productLocalId={productLocalId}
+            setProductLocalId={setProductLocalId}
+            qty={qty}
+            setQty={setQty}
+            unitCost={unitCost}
+            setUnitCost={setUnitCost}
+            items={items}
+            onAddItem={handleAddItem}
+            onRemoveItem={handleRemoveItem}
+            onSubmit={handleCreatePurchase}
+            isSubmitting={purchasesState.isSubmitting}
+          />
+          <PurchaseOrdersList
+            purchases={purchasesState.purchases}
+            suppliers={purchasesState.suppliers}
+            warehouses={warehouses ?? []}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onConfirm={handleConfirmPurchase}
+            onEdit={handleStartEdit}
+            onCancel={handleCancelPurchase}
+            onStartReceiving={handleStartReceiving}
+          />
+        </div>
+      )
+    },
+    { 
+      id: "receivings", 
+      label: "Recepciones", 
+      content: <ReceivingsList receivings={purchasesState.receivings} /> 
+    }
   ];
-
-  const CatalogTabContent = () => (
-    <PurchasesCatalogPanel 
-      tenantSlug={tenantSlug} 
-      actor={actor} 
-      categories={categories} 
-      products={products} 
-      presentations={presentations} 
-      suppliers={purchasesState.suppliers}
-      onCreateSupplier={createSupplier}
-      onUpdateSupplier={updateSupplier}
-      isLoadingSuppliers={purchasesState.isLoading}
-    />
-  );
 
   return (
     <section className="p-6">
@@ -354,7 +342,17 @@ export function PurchasesPanel({
           variant="underline" 
         />
       ) : (
-        <CatalogTabContent />
+        <PurchasesCatalogPanel 
+          tenantSlug={tenantSlug} 
+          actor={actor} 
+          categories={categories} 
+          products={products} 
+          presentations={presentations} 
+          suppliers={purchasesState.suppliers}
+          onCreateSupplier={createSupplier}
+          onUpdateSupplier={updateSupplier}
+          isLoadingSuppliers={purchasesState.isLoading}
+        />
       )}
 
       <EditPurchaseModal

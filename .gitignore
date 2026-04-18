@@ -19,7 +19,11 @@ coverage/
 .env.test.local
 .env.production.local
 *.env.local
+.env.example
 opencode.json
+
+# Scripts locales y utilidades temporales
+analyze_numeric.py
 
 # Logs
 *.log
@@ -57,6 +61,7 @@ supabase/config.toml
 .agents/
 .gemini/
 .antigravity/
+.playwright-mcp/
 
 # Others
 tmp/
@@ -64,7 +69,10 @@ temp/
 .cache/
 .parcel-cache/
 .DS_Store
-memoria
+[Mm]emoria/
+
+# Código Generado
+**/generated/
 
 # Playwright
 /test-results/

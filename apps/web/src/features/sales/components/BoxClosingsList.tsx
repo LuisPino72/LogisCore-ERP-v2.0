@@ -28,6 +28,8 @@ export function BoxClosingsList({
     );
   }, [boxClosings, warehouseFilter]);
 
+  const [now] = useState(() => Date.now());
+
   return (
     <div className="space-y-4">
       <div className="flex gap-4 flex-wrap">
@@ -80,7 +82,7 @@ export function BoxClosingsList({
                       {isOpen && (
                         <div className="text-xs text-content-tertiary">
                           Abierta desde hace{" "}
-                          {Math.floor((Date.now() - new Date(closing.openedAt).getTime()) / (1000 * 60 * 60))}h
+                          {Math.floor((now - new Date(closing.openedAt).getTime()) / (1000 * 60 * 60))}h
                         </div>
                       )}
                     </td>

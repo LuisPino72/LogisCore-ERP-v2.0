@@ -159,9 +159,14 @@ export function PurchasesCatalogPanel({
     }
   }, [tenant]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void refreshData(); }, [refreshData]);
 
-  useEffect(() => { setSuppliers(initialSuppliers); }, [initialSuppliers]);
+  const [prevInitialSuppliers, setPrevInitialSuppliers] = useState(initialSuppliers);
+  if (initialSuppliers !== prevInitialSuppliers) {
+    setSuppliers(initialSuppliers);
+    setPrevInitialSuppliers(initialSuppliers);
+  }
 
   useEffect(() => {
     const offCatalogPulled = eventBus.on("CORE.CATALOGS_PULLED", () => void refreshData());

@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./index.css";
 import { db } from "./lib/db/dexie";
+import { initSentry } from "./config/sentry";
+
+initSentry();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {

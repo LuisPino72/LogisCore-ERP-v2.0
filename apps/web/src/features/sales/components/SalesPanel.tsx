@@ -61,10 +61,17 @@ export function SalesPanel({
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [payments, setPayments] = useState<SalePayment[]>([]);
   const [saleCurrency] = useState<SalesCurrency>("VES");
-  const [exchangeRate, setExchangeRate] = useState(1);
+  const [exchangeRate, setExchangeRate] = useState(exchangeRateFromApp ?? 1);
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [showOpenBoxModal, setShowOpenBoxModal] = useState(false);
   const [, setActiveTab] = useState("terminal");
+
+  // Sync exchange rate if prop changes from parent
+  const [prevRate, setPrevRate] = useState(exchangeRateFromApp);
+  if (exchangeRateFromApp !== prevRate) {
+    setExchangeRate(exchangeRateFromApp ?? 1);
+    setPrevRate(exchangeRateFromApp);
+  }
 
   const tenant = useMemo(() => ({ tenantSlug }), [tenantSlug]);
 
@@ -99,12 +106,6 @@ export function SalesPanel({
       offSuspended();
     };
   }, [refresh]);
-
-  useEffect(() => {
-    if (typeof exchangeRateFromApp === "number" && exchangeRateFromApp > 0) {
-      setExchangeRate(exchangeRateFromApp);
-    }
-  }, [exchangeRateFromApp]);
 
   const handleRefreshRate = useCallback(async () => {
     setIsLoadingRate(true);
@@ -205,6 +206,7 @@ export function SalesPanel({
       subtotal,
       taxTotal: iva,
       discountTotal: 0,
+      igtfAmount: igtf,
       total,
       items: cart,
       payments

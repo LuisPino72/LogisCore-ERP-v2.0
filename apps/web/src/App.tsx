@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as Sentry from "@sentry/react";
 import { AppLayout, type ModuleId } from "@/common/components/AppLayout";
 import { ModuleRenderer } from "@/common/components/ModuleRenderer";
 import { TenantBootstrapGate } from "@/features/tenant/components/TenantBootstrapGate";
@@ -19,35 +20,37 @@ export function App() {
   };
 
   return (
-    <TenantBootstrapGate
-      authService={authService}
-      tenantService={tenantService}
-      coreService={coreService}
-      renderApp={(tenantSlug, actor, onLogout, tenant) => {
-        // En LogisCore, el bootstrap asegura que si llegamos aquí, tenemos el contexto necesario.
-        // Si estamos en modo suplantación (admin), el tenantContext puede venir del servicio de admin o ser el base.
-        const context: TenantContext = tenant || {
-          tenantSlug,
-          tenantUuid: "", 
-          userId: actor.role 
-        };
+    <Sentry.ErrorBoundary fallback={<div className="p-4 text-red-500">Ha ocurrido un error inesperado. El equipo técnico ha sido notificado.</div>}>
+      <TenantBootstrapGate
+        authService={authService}
+        tenantService={tenantService}
+        coreService={coreService}
+        renderApp={(tenantSlug, actor, onLogout, tenant) => {
+          // En LogisCore, el bootstrap asegura que si llegamos aquí, tenemos el contexto necesario.
+          // Si estamos en modo suplantación (admin), el tenantContext puede venir del servicio de admin o ser el base.
+          const context: TenantContext = tenant || {
+            tenantSlug,
+            tenantUuid: "", 
+            userId: actor.role 
+          };
 
-        return (
-          <AppLayout 
-            activeModule={activeModule} 
-            onModuleChange={setActiveModule}
-            onLogout={onLogout}
-            features={context.features || {}}
-          >
-            <ModuleRenderer 
+          return (
+            <AppLayout 
               activeModule={activeModule} 
-              tenant={{ ...context, tenantSlug }}
-              actor={actor}
-              onNavigate={setActiveModule}
-            />
-          </AppLayout>
-        );
-      }}
-    />
+              onModuleChange={setActiveModule}
+              onLogout={onLogout}
+              features={context.features || {}}
+            >
+              <ModuleRenderer 
+                activeModule={activeModule} 
+                tenant={{ ...context, tenantSlug }}
+                actor={actor}
+                onNavigate={setActiveModule}
+              />
+            </AppLayout>
+          );
+        }}
+      />
+    </Sentry.ErrorBoundary>
   );
 }

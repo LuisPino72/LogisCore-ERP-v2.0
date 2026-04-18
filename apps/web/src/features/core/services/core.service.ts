@@ -288,13 +288,20 @@ export const createCoreService = ({
 
     const fetchCategories = async () => {
       const table = "categories";
-      if (businessTypeId) {
+      const columns = "local_id, name, created_at, updated_at, deleted_at, is_global";
+      
+      if (tenantId) {
         const [tenantResponse, globalResponse] = await Promise.all([
-          tenantId
-            ? supabaseAny.from(table).select("local_id, name, created_at, updated_at, deleted_at").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: true })
-            : supabaseAny.from(table).select("local_id, name, created_at, updated_at, deleted_at").eq("tenant_slug", tenantSlug).is("deleted_at", null).order("created_at", { ascending: true }),
-          supabaseAny.from(table).select("local_id, name, created_at, updated_at, deleted_at").eq("is_global", true).eq("business_type_id", businessTypeId).is("deleted_at", null).order("created_at", { ascending: true })
+          supabaseAny.from(table).select(columns).eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: true }),
+          supabaseAny.from(table).select(columns).eq("is_global", true).is("deleted_at", null).order("created_at", { ascending: true })
         ]);
+
+        console.log('[BOOTSTRAP] Categories fetch:', {
+          tenant: tenantResponse.data?.length ?? 0,
+          global: globalResponse.data?.length ?? 0,
+          tenantSlug,
+          tenantId
+        });
 
         const dedup = new Map<string, Record<string, unknown>>();
         [...(tenantResponse.data || []), ...(globalResponse.data || [])].forEach((row) => {
@@ -303,9 +310,8 @@ export const createCoreService = ({
         });
         return { data: Array.from(dedup.values()), error: tenantResponse.error };
       }
-      return tenantId
-        ? await supabaseAny.from(table).select("local_id, name, created_at, updated_at, deleted_at").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: true })
-        : await supabaseAny.from(table).select("local_id, name, created_at, updated_at, deleted_at").eq("tenant_slug", tenantSlug).is("deleted_at", null).order("created_at", { ascending: true });
+      console.log('[BOOTSTRAP] Categories fetch skipped - no tenantId');
+      return { data: [], error: null };
     };
 
     const fetchProducts = async () => {
@@ -373,9 +379,14 @@ export const createCoreService = ({
     const fetchWarehouses = async () => {
       const table = "warehouses";
       const columns = "local_id, name, created_at, updated_at, deleted_at";
-      return tenantId
-        ? await supabaseAny.from(table).select(columns).eq("tenant_id", tenantId).order("created_at", { ascending: true })
-        : await supabaseAny.from(table).select(columns).eq("tenant_slug", tenantSlug).order("created_at", { ascending: true });
+      
+      if (tenantId) {
+        const response = await supabaseAny.from(table).select(columns).eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: true });
+        if ((response.data?.length ?? 0) > 0) {
+          return response;
+        }
+      }
+      return { data: [], error: null };
     };
 
     const tables = [

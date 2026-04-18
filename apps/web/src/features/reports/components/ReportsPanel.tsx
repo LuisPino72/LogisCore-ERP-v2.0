@@ -122,6 +122,7 @@ export function ReportsPanel({ tenantSlug, actor, warehouses = defaultWarehouses
     }
   }, [loadKpis, loadSales, loadKardex, loadFinance, loadBalance, loadCashFlow, loadBoxClosings, loadAuditLogs, canViewAudit]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     void loadAll();
   }, [loadAll]);

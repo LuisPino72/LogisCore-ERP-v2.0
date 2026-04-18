@@ -22,7 +22,10 @@ export function PriceManagementModal({
 }: PriceManagementModalProps) {
   const [prices, setPrices] = useState<Record<string, number>>({});
 
-  useEffect(() => {
+  const [prevProduct, setPrevProduct] = useState(product);
+  const [prevPresentations, setPrevPresentations] = useState(presentations);
+
+  if (product !== prevProduct || presentations !== prevPresentations) {
     if (product && presentations) {
       const productPres = presentations.filter(p => p.productLocalId === product.localId);
       const initialPrices: Record<string, number> = {};
@@ -31,7 +34,9 @@ export function PriceManagementModal({
       });
       setPrices(initialPrices);
     }
-  }, [product, presentations]);
+    setPrevProduct(product);
+    setPrevPresentations(presentations);
+  }
 
   const handlePriceChange = (id: string, value: string) => {
     const numValue = parseFloat(value) || 0;
