@@ -35,16 +35,16 @@ export function DashboardPanel({
   onUpdateExchangeRate, 
   onFetchExchangeRates 
 }: DashboardPanelProps) {
-  const { state, loadData, invalidateCache } = useDashboard();
+  const { state, loadData, invalidateCache } = useDashboard(tenant, actor);
 
   const handleRefresh = useCallback(() => {
     invalidateCache();
-    loadData(tenant, actor);
-  }, [invalidateCache, loadData, tenant, actor]);
+    loadData();
+  }, [invalidateCache, loadData]);
 
   useEffect(() => {
-    loadData(tenant, actor);
-  }, [loadData, tenant, actor]);
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
     const offSaleCompleted = eventBus.on("SALE.COMPLETED", handleRefresh);
@@ -76,7 +76,7 @@ export function DashboardPanel({
             <span>Error al cargar el dashboard: {state.lastError.message}</span>
           </Alert>
           <Button 
-            onClick={() => loadData(tenant, actor)}
+            onClick={() => loadData()}
             variant="primary"
           >
             Reintentar

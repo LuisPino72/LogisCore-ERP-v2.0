@@ -38,24 +38,33 @@ test.describe('Fiscal & Weighted Precision E2E', () => {
     console.log(`Weighted products found: ${weightedProducts.length}`);
     
     if (weightedProducts.length === 0) {
-      console.log('No weighted products found, creating one...');
-      await page.goto('/inventory');
-      await page.waitForLoadState('networkidle');
-      
-      const addBtn = page.locator('button:has-text("Nuevo"), button:has-text("Agregar")').first();
-      await addBtn.click();
-      await page.waitForSelector('input[name="name"]');
-      
-      await page.locator('input[name="name"]').fill('Fiscal Test Weighted');
-      await page.locator('input[name="sku"]').fill(`FTW-${Date.now()}`);
-      await page.locator('input[type="checkbox"]').check(); // isWeighted
-      await page.locator('button[type="submit"]').click();
-      
-      await page.waitForFunction(async () => {
+      console.log('No weighted products found, creating one directly in Dexie...');
+
+      // Insert test product directly into Dexie to avoid SPA navigation issues
+      await page.evaluate(async (tenantSlug) => {
         const db = (window as any).logiscoreDb;
-        const p = await db.products.where('name').equals('Fiscal Test Weighted').first();
-        return !!p;
-      }, { timeout: 10000 });
+        if (!db || !db.products) throw new Error('logiscoreDb.products not available');
+        const localId = `test-prod-${Date.now()}`;
+        await db.products.add({
+          localId,
+          tenantId: tenantSlug,
+          name: 'Fiscal Test Weighted',
+          sku: `FTW-${Date.now()}`,
+          isWeighted: true,
+          isTaxable: false,
+          unitOfMeasure: 'kg',
+          createdAt: new Date().toISOString(),
+          visible: true,
+        });
+      }, TEST_TENANT_SLUG);
+
+      // Wait for the product to appear in the in-memory DB
+      await page.waitForFunction(async (prodName) => {
+        const db = (window as any).logiscoreDb;
+        if (!db?.products) return false;
+        const all = await db.products.toArray();
+        return all.some((p: any) => p.name === prodName);
+      }, 'Fiscal Test Weighted', { timeout: 10000 });
     }
     
     const updatedProducts = await dbUtil.getByIndex('products', 'tenantId', TEST_TENANT_SLUG);
