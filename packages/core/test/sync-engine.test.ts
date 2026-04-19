@@ -112,7 +112,6 @@ describe("DefaultSyncEngine", () => {
 
     for (let i = 0; i < 5; i += 1) {
       const promise = engine.processNext();
-      // Advance virtual clock to bypass non-blocking backoff guard (Date.now() < nextAllowedSyncTime)
       await vi.advanceTimersByTimeAsync(30000);
       await promise;
     }

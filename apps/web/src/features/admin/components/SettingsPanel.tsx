@@ -3,9 +3,11 @@
  * Solo contiene reglas de impuestos globales.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { GlobalConfig, UpdateGlobalConfigInput } from "../types/admin.types";
 import { ConfirmDialog } from "@/common/components/ConfirmDialog";
+import { Button } from "@/common/components/Button";
+import { Card } from "@/common/components/Card";
 
 interface SettingsPanelProps {
   config: GlobalConfig | null;
@@ -16,19 +18,17 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: SettingsPanelProps) {
   const [formData, setFormData] = useState<UpdateGlobalConfigInput>({
-    globalTaxRules: []
+    globalTaxRules: config?.globalTaxRules || []
   });
 
   const [newTax, setNewTax] = useState({ name: "", rate: 0, type: "iva" as "iva" | "islr" | "igtf" });
   const [deletingRule, setDeletingRule] = useState<{ name: string; index: number } | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
 
-  useEffect(() => {
-    if (config) {
-      setFormData({
-        globalTaxRules: config.globalTaxRules || []
-      });
-    }
-  }, [config]);
+  if (config && !configLoaded) {
+    setFormData({ globalTaxRules: config.globalTaxRules || [] });
+    setConfigLoaded(true);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,25 +58,24 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="stack-md max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-content-primary">Configuración Global</h1>
           <p className="text-content-secondary">Reglas de impuestos aplicables a todos los tenants</p>
         </div>
-        <button onClick={onRefresh} disabled={isLoading} className="btn btn-secondary">
+        <Button onClick={onRefresh} disabled={isLoading} variant="secondary">
           {isLoading ? <span className="spinner" /> : "Recargar"}
-        </button>
+        </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Global Tax Rules */}
-        <div className="card">
+      <form onSubmit={handleSubmit} className="stack-md">
+        <Card>
           <div className="card-header border-b border-border bg-surface-50">
             <h2 className="font-semibold text-content-primary">Reglas de Impuestos Globales</h2>
           </div>
           <div className="card-body">
-            <div className="space-y-4">
+            <div className="stack-md">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end bg-surface-100 p-3 rounded-lg border border-border">
                 <div className="md:col-span-1">
                   <label className="label text-xs">Nombre</label>
@@ -119,9 +118,9 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
                     <option value="igtf">IGTF</option>
                   </select>
                 </div>
-                <button type="button" onClick={addTaxRule} className="btn btn-secondary btn-sm h-[40px]">
+                <Button type="button" onClick={addTaxRule} variant="secondary" size="sm" className="h-[40px]">
                   Añadir Regla
-                </button>
+                </Button>
               </div>
 
               <div className="divide-y divide-border border border-border rounded-lg overflow-hidden">
@@ -153,12 +152,12 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
               </div>
             </div>
           </div>
-        </div>
+        </Card>
 
         <div className="flex justify-end pt-6">
-          <button type="submit" className="btn btn-primary btn-lg px-12" disabled={isLoading}>
+          <Button type="submit" variant="primary" size="lg" className="px-12" disabled={isLoading}>
             {isLoading ? "Guardando..." : "Guardar Impuestos"}
-          </button>
+          </Button>
         </div>
       </form>
 

@@ -6,6 +6,8 @@
 import { useEffect, useState } from "react";
 import type { BusinessType, CreateBusinessTypeInput, UpdateBusinessTypeInput } from "../types/admin.types";
 import { ConfirmDialog } from "@/common/components/ConfirmDialog";
+import { Button } from "@/common/components/Button";
+import { Card } from "@/common/components/Card";
 
 interface BusinessTypesPanelProps {
   businessTypes: BusinessType[];
@@ -64,38 +66,38 @@ export function BusinessTypesPanel({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="stack-md">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-content-primary">Tipos de Negocio</h1>
           <p className="text-content-secondary">Configuración de industrias y giros comerciales</p>
         </div>
         <div className="flex gap-3">
-          <button 
+          <Button 
             onClick={() => {
               setEditingType(null);
               setFormData({ name: "", description: "" });
               setShowForm(prev => !prev);
             }} 
-            className="btn btn-primary"
+            variant="primary"
           >
             {showForm ? "Cancelar" : "+ Nuevo Tipo"}
-          </button>
-          <button onClick={onRefresh} disabled={isLoading} className="btn btn-secondary">
+          </Button>
+          <Button onClick={onRefresh} disabled={isLoading} variant="secondary">
             {isLoading ? <span className="spinner" /> : "Actualizar"}
-          </button>
+          </Button>
         </div>
       </div>
 
       {showForm && (
-        <div className="card">
+        <Card>
           <div className="card-header">
             <h2 className="font-semibold text-content-primary">
               {editingType ? `Editar ${editingType.name}` : "Nuevo Tipo de Negocio"}
             </h2>
           </div>
           <div className="card-body">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="stack-sm">
               <div>
                 <label className="label">Nombre del Tipo</label>
                 <input 
@@ -116,17 +118,17 @@ export function BusinessTypesPanel({
                   placeholder="Describa para qué tipo de negocios aplica..."
                 />
               </div>
-              <button type="submit" className="btn btn-primary" disabled={isLoading}>
+              <Button type="submit" variant="primary" disabled={isLoading}>
                 {editingType ? "Guardar Cambios" : "Guardar Tipo de Negocio"}
-              </button>
+              </Button>
             </form>
           </div>
-        </div>
+        </Card>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {businessTypes.map(type => (
-          <div key={type.id} className="card hover:shadow-md transition-shadow">
+          <Card key={type.id} className="hover:shadow-md transition-shadow">
             <div className="card-body">
               <div className="flex items-start justify-between">
                 <h3 className="font-bold text-content-primary">{type.name}</h3>
@@ -152,7 +154,7 @@ export function BusinessTypesPanel({
                 <span>Registrado el: {new Date(type.createdAt).toLocaleDateString()}</span>
               </div>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 

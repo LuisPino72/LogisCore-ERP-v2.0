@@ -100,7 +100,6 @@ const createDbMock = (): PurchasesDb => {
       return product;
     },
     async createAuditLog() {
-      // No-op for tests
     }
   };
 };
@@ -573,7 +572,7 @@ describe("purchases.service", () => {
     expect(edited.ok).toBe(true);
     if (!edited.ok) return;
     expect(edited.data.items).toHaveLength(2);
-    expect(edited.data.total).toBe(145); // 5*20 + 3*15
+    expect(edited.data.total).toBe(145);
     expect(spy).toHaveBeenCalled();
   });
 

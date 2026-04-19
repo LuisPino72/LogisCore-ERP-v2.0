@@ -2,7 +2,9 @@ import { useState } from "react";
 import type { Invoice } from "../types/invoicing.types";
 import { Modal } from "@/common/components/Modal";
 import { FormField } from "@/common";
-import { AlertTriangle } from "lucide-react";
+import { Alert } from "@/common/components/Alert";
+import { Card } from "@/common/components/Card";
+import { Button } from "@/common/components/Button";
 
 interface VoidInvoiceModalProps {
   isOpen: boolean;
@@ -45,46 +47,48 @@ export function VoidInvoiceModal({
       size="md"
       footer={
         <>
-          <button onClick={onClose} className="btn btn-secondary">
+          <Button onClick={onClose} variant="secondary">
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
             disabled={!reason.trim() || isSubmitting}
-            className="btn btn-primary bg-state-error hover:bg-red-600"
+            variant="primary"
+            className="bg-state-error hover:bg-red-600"
           >
             {isSubmitting ? "Anulando..." : "Anular Factura"}
-          </button>
+          </Button>
         </>
       }
     >
-      <div className="space-y-4">
-        <div className="alert alert-warning">
-          <AlertTriangle className="w-5 h-5 shrink-0" />
+      <div className="stack-md">
+        <Alert variant="warning">
           <div>
             <p className="font-medium">Esta acción es irreversible</p>
             <p className="text-sm">
               La factura será marcada como anulada y no podrá ser usada para fines fiscales.
             </p>
           </div>
-        </div>
+        </Alert>
 
-        <div className="bg-surface-50 p-4 rounded-lg">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-content-secondary">Factura:</span>
-            <span className="font-mono">
-              {invoice.invoiceNumber || invoice.localId.slice(0, 8)}
-            </span>
+        <Card variant="filled">
+          <div className="stack-sm">
+            <div className="flex justify-between">
+              <span className="text-content-secondary">Factura:</span>
+              <span className="font-mono">
+                {invoice.invoiceNumber || invoice.localId.slice(0, 8)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-content-secondary">Cliente:</span>
+              <span className="font-medium">{invoice.customerName || "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-content-secondary">Total:</span>
+              <span className="font-mono font-medium">{formatCurrency(invoice.total)}</span>
+            </div>
           </div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-content-secondary">Cliente:</span>
-            <span className="font-medium">{invoice.customerName || "—"}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-content-secondary">Total:</span>
-            <span className="font-mono font-medium">{formatCurrency(invoice.total)}</span>
-          </div>
-        </div>
+        </Card>
 
         <FormField label="Motivo de anulación" htmlFor="voidReason">
           <textarea

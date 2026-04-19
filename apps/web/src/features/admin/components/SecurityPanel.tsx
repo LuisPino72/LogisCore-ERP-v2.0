@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import type { SecurityUser, AuditLogEntry } from "../types/admin.types";
+import { Badge } from "@/common/components/Badge";
+import { Button } from "@/common/components/Button";
+import { Card } from "@/common/components/Card";
+import { Tabs } from "@/common/components/Tabs";
 
 interface SecurityPanelProps {
   users: SecurityUser[];
@@ -50,84 +54,70 @@ export function SecurityPanel({
     return actionMap[action] || action;
   };
 
-  const getActionBadgeClass = (action: string) => {
-    if (action.includes("FAILED")) return "badge-error";
-    if (action.includes("DELETE")) return "badge-warning";
-    if (action.includes("CREATE")) return "badge-success";
-    if (action.includes("LOGIN") || action.includes("LOGOUT")) return "badge-info";
-    return "badge-default";
+const getActionBadgeVariant = (action: string): "default" | "success" | "warning" | "error" | "info" => {
+    if (action.includes("FAILED")) return "error";
+    if (action.includes("DELETE")) return "warning";
+    if (action.includes("CREATE")) return "success";
+    if (action.includes("LOGIN") || action.includes("LOGOUT")) return "info";
+    return "default";
   };
 
   return (
-    <div className="space-y-6">
+    <div className="stack-md">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-content-primary">Seguridad y Accesos</h1>
           <p className="text-content-secondary">Visualización de usuarios y registros de auditoría</p>
         </div>
         <div className="flex gap-3">
-          <button onClick={onRefresh} disabled={isLoading} className="btn btn-secondary">
+          <Button onClick={onRefresh} disabled={isLoading} variant="secondary">
             {isLoading ? <span className="spinner" /> : "Actualizar"}
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="flex border-b border-border mb-4">
-        <button
-          className={`py-2 px-4 font-medium text-sm transition-colors border-b-2 ${
-            activeTab === "users"
-              ? "border-brand-600 text-brand-600"
-              : "border-transparent text-content-secondary hover:text-content-primary"
-          }`}
-          onClick={() => setActiveTab("users")}
-        >
-          Directorio Global de Usuarios
-        </button>
-        <button
-          className={`py-2 px-4 font-medium text-sm transition-colors border-b-2 ${
-            activeTab === "audit"
-              ? "border-brand-600 text-brand-600"
-              : "border-transparent text-content-secondary hover:text-content-primary"
-          }`}
-          onClick={() => setActiveTab("audit")}
-        >
-          Registros de Auditoría
-        </button>
-      </div>
+      <Tabs
+        activeTab={activeTab}
+        onChange={(tab) => setActiveTab(tab as "users" | "audit")}
+        tabs={[
+          { id: "users", label: "Directorio Global de Usuarios" },
+          { id: "audit", label: "Registros de Auditoría" }
+        ]}
+      />
 
       {activeTab === "users" && (
-        <div className="card overflow-hidden">
+        <Card>
           <div className="card-header border-b border-border bg-surface-50">
             <h2 className="font-semibold text-content-primary">Lista de Usuarios del Sistema</h2>
           </div>
           <div className="card-body p-0 overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-surface-100 text-left border-b border-border">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-sm font-medium text-content-secondary">Usuario</th>
-                  <th className="px-4 py-3 text-sm font-medium text-content-secondary">Email</th>
-                  <th className="px-4 py-3 text-sm font-medium text-content-secondary">Tenant</th>
-                  <th className="px-4 py-3 text-sm font-medium text-content-secondary">Rol</th>
-                  <th className="px-4 py-3 text-sm font-medium text-content-secondary">Estado</th>
+                  <th>Usuario</th>
+                  <th>Email</th>
+                  <th>Tenant</th>
+                  <th>Rol</th>
+                  <th>Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {users.map(user => (
                   <tr key={user.id} className="hover:bg-surface-50 text-sm">
-                    <td className="px-4 py-3">
+                    <td>
                       <span className="font-medium text-content-primary">{user.fullName || "—"}</span>
                     </td>
-                    <td className="px-4 py-3 text-content-secondary">{user.email}</td>
-                    <td className="px-4 py-3 text-content-secondary">{user.tenantName || "—"}</td>
-                    <td className="px-4 py-3">
-                      <span className={`badge ${user.role === 'admin' ? 'badge-warning' : 'badge-info'}`}>
+                    <td className="text-content-secondary">{user.email}</td>
+                    <td className="text-content-secondary">{user.tenantName || "—"}</td>
+                    <td>
+                      <Badge variant={user.role === 'admin' ? "warning" : "info"}>
                         {user.role}
-                      </span>
+                      </Badge>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`badge ${user.isActive ? "badge-success" : "badge-error"}`}>
+                    <td>
+                      <Badge variant={user.isActive ? "success" : "error"}>
                         {user.isActive ? "Activo" : "Eliminado"}
-                      </span>
+                      </Badge>
                     </td>
                   </tr>
                 ))}
@@ -139,36 +129,35 @@ export function SecurityPanel({
               </div>
             )}
           </div>
-        </div>
+        </Card>
       )}
 
       {activeTab === "audit" && (
-        <div className="card overflow-hidden">
+        <Card>
           <div className="card-header border-b border-border bg-surface-50">
             <h2 className="font-semibold text-content-primary">Historial de Accesos</h2>
           </div>
           <div className="card-body p-0 overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-surface-100 text-left border-b border-border">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-sm font-medium text-content-secondary">Fecha/Hora</th>
-                  <th className="px-4 py-3 text-sm font-medium text-content-secondary">Acción</th>
-                  <th className="px-4 py-3 text-sm font-medium text-content-secondary">Usuario</th>
-
+                  <th>Fecha/Hora</th>
+                  <th>Acción</th>
+                  <th>Usuario</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {auditLogs.map(log => (
                   <tr key={log.id} className="hover:bg-surface-50 text-sm">
-                    <td className="px-4 py-3 text-content-secondary whitespace-nowrap">
+                    <td className="text-content-secondary whitespace-nowrap">
                       {formatDate(log.timestamp)}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`badge ${getActionBadgeClass(log.action)}`}>
+                    <td>
+                      <Badge variant={getActionBadgeVariant(log.action)}>
                         {formatAction(log.action)}
-                      </span>
+                      </Badge>
                     </td>
-                    <td className="px-4 py-3 text-content-primary">
+                    <td className="text-content-primary">
                       {log.email || log.userId || "—"}
                     </td>
                   </tr>
@@ -187,24 +176,26 @@ export function SecurityPanel({
                 Total: {auditLogsTotal} registros
               </span>
               <div className="flex gap-2">
-                <button 
+                <Button 
                   onClick={() => setAuditPage(p => Math.max(0, p - 1))}
                   disabled={auditPage === 0}
-                  className="btn btn-secondary btn-sm"
+                  variant="secondary"
+                  size="sm"
                 >
                   Anterior
-                </button>
-                <button 
+                </Button>
+                <Button 
                   onClick={() => setAuditPage(p => p + 1)}
                   disabled={(auditPage + 1) * 20 >= auditLogsTotal}
-                  className="btn btn-secondary btn-sm"
+                  variant="secondary"
+                  size="sm"
                 >
                   Siguiente
-                </button>
+                </Button>
               </div>
             </div>
           )}
-        </div>
+        </Card>
       )}
     </div>
   );

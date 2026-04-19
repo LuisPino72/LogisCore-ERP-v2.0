@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 import { RotateCcw, Trash2, Clock } from "lucide-react";
 import { Badge } from "@/common/components/Badge";
+import { Button } from "@/common/components/Button";
+import { Card } from "@/common/components/Card";
+import { Alert } from "@/common/components/Alert";
+import { SearchInput } from "@/common/components/SearchInput";
 import type { SuspendedSale } from "../types/sales.types";
 import { getSuspendedStatusLabel, calculateSubtotal } from "../utils/sales.utils";
 
@@ -42,15 +46,12 @@ export function SuspendedList({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex gap-4 flex-wrap">
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar..."
-              className="input w-64"
-            />
-          </div>
+          <SearchInput 
+            value={searchQuery} 
+            onChange={setSearchQuery} 
+            placeholder="Buscar..." 
+            className="w-64"
+          />
         </div>
         <Badge variant={canSuspendMore ? "success" : "warning"}>
           {currentCount} / {maxSuspended} suspendidas
@@ -58,9 +59,9 @@ export function SuspendedList({
       </div>
 
       {!canSuspendMore && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+        <Alert variant="warning">
           Límite máximo alcanzado. Restaure o elimine ventas suspendidas para continuar.
-        </div>
+        </Alert>
       )}
 
       {filteredSales.length === 0 ? (
@@ -76,7 +77,7 @@ export function SuspendedList({
             const total = calculateSubtotal(sale.cart ?? []);
             
             return (
-              <div key={sale.localId} className="card p-4">
+              <Card key={sale.localId} className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <span className="font-mono text-sm text-content-secondary">
@@ -112,22 +113,26 @@ export function SuspendedList({
                 )}
                 
                 <div className="flex gap-2">
-                  <button
+                  <Button
                     onClick={() => onRestore(sale.localId)}
-                    className="btn btn-secondary flex-1 text-sm py-1.5"
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1"
                   >
                     <RotateCcw className="w-3 h-3" />
                     Restaurar
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => onDelete(sale.localId)}
-                    className="btn btn-ghost text-state-error py-1.5 px-2"
+                    variant="ghost"
+                    size="sm"
+                    className="text-state-error"
                     title="Eliminar"
                   >
                     <Trash2 className="w-3 h-3" />
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>

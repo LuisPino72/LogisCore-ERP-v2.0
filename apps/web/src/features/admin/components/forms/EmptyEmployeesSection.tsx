@@ -2,6 +2,8 @@
  * Sección mostrada cuando no hay empleados (para edición de tenant).
  */
 
+import { Button } from "@/common/components/Button";
+
 interface EmptyEmployeesSectionProps {
   onAdd: () => void;
 }
@@ -11,13 +13,14 @@ export function EmptyEmployeesSection({ onAdd }: EmptyEmployeesSectionProps) {
     <div>
       <h3 className="text-sm font-medium text-content-primary mb-3 border-b pb-1">Empleados</h3>
       <p className="text-sm text-content-secondary mb-3">No hay empleados creados para este tenant.</p>
-      <button 
+      <Button 
         type="button" 
         onClick={onAdd}
-        className="btn btn-secondary text-sm"
+        variant="secondary"
+        size="sm"
       >
         + Agregar Empleado
-      </button>
+      </Button>
     </div>
   );
 }

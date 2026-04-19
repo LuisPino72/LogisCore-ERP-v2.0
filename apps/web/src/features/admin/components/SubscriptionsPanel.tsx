@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import type { Subscription, Plan } from "../types/admin.types";
+import { Button } from "@/common/components/Button";
 
 import { SubscriptionTable } from "./forms/SubscriptionTable";
 import { RenewModal } from "./forms/RenewModal";
@@ -80,15 +81,15 @@ export function SubscriptionsPanel({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="stack-md">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-content-primary">Suscripciones</h1>
           <p className="text-content-secondary">Gestión de planes activos y facturación</p>
         </div>
-        <button onClick={onRefreshSubscriptions} disabled={isLoading} className="btn btn-secondary">
+        <Button onClick={onRefreshSubscriptions} disabled={isLoading} variant="secondary">
           {isLoading ? <span className="spinner" /> : "Actualizar"}
-        </button>
+        </Button>
       </div>
 
       <SubscriptionTable

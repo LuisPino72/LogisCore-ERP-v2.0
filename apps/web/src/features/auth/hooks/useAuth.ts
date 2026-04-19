@@ -22,7 +22,7 @@ interface UseAuthOptions {
 /**
  * Hook para gestionar autenticación
  * @param service - Servicio de auth inyectado (para testing)
- * @returns state, loadSession, signIn
+ * @returns 
  */
 export const useAuth = ({ service }: UseAuthOptions) => {
   const [state, setState] = useState<AuthUiState>(initialState);

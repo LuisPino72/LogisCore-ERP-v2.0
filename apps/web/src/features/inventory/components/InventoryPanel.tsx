@@ -17,6 +17,7 @@ import { LoadingSpinner } from "@/common/components/EmptyState";
 import { Tabs, type TabItem } from "@/common/components/Tabs";
 import { SearchInput } from "@/common/components/SearchInput";
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 
 import type { 
   InventoryActorContext, 
@@ -280,13 +281,10 @@ export function InventoryPanel({ tenantSlug, actor, products }: InventoryPanelPr
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         {filterControls}
-        <button 
-          onClick={() => setShowMovementModal(true)}
-          className="btn btn-primary"
-        >
+        <Button variant="primary" onClick={() => setShowMovementModal(true)}>
           <Plus className="w-4 h-4" />
           Registrar Movimiento
-        </button>
+        </Button>
       </div>
       <MovementsTable 
         movements={filteredMovements} 
@@ -300,13 +298,10 @@ export function InventoryPanel({ tenantSlug, actor, products }: InventoryPanelPr
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         {filterControls}
-        <button 
-          onClick={() => setShowCountModal(true)}
-          className="btn btn-primary"
-        >
+        <Button variant="primary" onClick={() => setShowCountModal(true)}>
           <Plus className="w-4 h-4" />
           Nuevo Conteo
-        </button>
+        </Button>
       </div>
       <CountsTable 
         counts={filteredCounts} 
@@ -320,13 +315,10 @@ export function InventoryPanel({ tenantSlug, actor, products }: InventoryPanelPr
   const warehousesTab = (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <button 
-          onClick={() => setShowWarehouseModal(true)}
-          className="btn btn-primary"
-        >
+        <Button variant="primary" onClick={() => setShowWarehouseModal(true)}>
           <Plus className="w-4 h-4" />
           Nueva Bodega
-        </button>
+        </Button>
       </div>
       <WarehousesGrid warehouses={state.warehouses} />
     </div>

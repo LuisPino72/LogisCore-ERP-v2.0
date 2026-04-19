@@ -1,4 +1,5 @@
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 import { LoadingSpinner } from "@/common/components/EmptyState";
 import { Check } from "lucide-react";
 import type { Purchase } from "../../types/purchases.types";
@@ -33,10 +34,10 @@ export function ReceivePurchaseModal({
       size="lg"
       footer={
         <>
-          <button onClick={onClose} className="btn btn-secondary">Cancelar</button>
-          <button onClick={onSubmit} disabled={isSubmitting} className="btn btn-primary">
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={onSubmit} disabled={isSubmitting}>
             {isSubmitting ? <LoadingSpinner size="sm" /> : <><Check className="w-4 h-4" /> Confirmar</>}
-          </button>
+          </Button>
         </>
       }
     >

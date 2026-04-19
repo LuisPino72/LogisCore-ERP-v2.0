@@ -1,5 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
-import { Search, Scale, Plus, Minus, X, ShoppingCart, Package, Box } from "lucide-react";
+import { Scale, Plus, Minus, X, ShoppingCart, Package, Box } from "lucide-react";
+import { Button } from "@/common/components/Button";
+import { Card } from "@/common/components/Card";
+import { Badge } from "@/common/components/Badge";
+import { Alert } from "@/common/components/Alert";
+import { SearchInput } from "@/common/components/SearchInput";
 import type { Product } from "@/features/products/types/products.types";
 import type { SaleItem, SalePayment, SalesCurrency } from "../types/sales.types";
 import {
@@ -112,14 +117,11 @@ export function TerminalView({
   return (
     <div className="space-y-4">
       <div className="flex gap-4 items-center">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar producto por nombre o SKU..."
-            className="input pl-10"
+        <div className="flex-1">
+          <SearchInput 
+            value={searchQuery} 
+            onChange={setSearchQuery} 
+            placeholder="Buscar producto por nombre o SKU..." 
           />
         </div>
         <select
@@ -135,11 +137,7 @@ export function TerminalView({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          <div className="card p-4">
-            <h3 className="font-semibold text-content-primary mb-3 flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              Catálogo de Productos
-            </h3>
+          <Card title={<div className="flex items-center gap-2"><Package className="w-4 h-4" /> Catálogo de Productos</div>}>
             {filteredProducts.length === 0 ? (
               <div className="text-center py-8 text-content-secondary">
                 No hay productos disponibles
@@ -156,19 +154,19 @@ export function TerminalView({
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
         <div className="space-y-4">
-          <div className="card p-4">
-            <h3 className="font-semibold text-content-primary mb-3 flex items-center gap-2">
+          <Card title={
+            <div className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4" />
               Carrito de Compras
               {cart.length > 0 && (
-                <span className="badge badge-brand ml-auto">{cart.length}</span>
+                <Badge variant="info" className="ml-auto">{cart.length}</Badge>
               )}
-            </h3>
-
+            </div>
+          }>
             {cart.length === 0 ? (
               <div className="text-center py-8 text-content-secondary">
                 Agregue productos del catálogo
@@ -249,10 +247,9 @@ export function TerminalView({
                 </div>
               </div>
             )}
-          </div>
+          </Card>
 
-          <div className="card p-4">
-            <h4 className="font-medium text-sm text-content-primary mb-3">Pagos</h4>
+          <Card title={<div className="font-medium text-sm text-content-primary">Pagos</div>}>
             <div className="space-y-2">
               {pendingPayments.map((payment, index) => (
                 <div key={index} className="flex items-center justify-between p-2 bg-surface-50 rounded">
@@ -306,14 +303,15 @@ export function TerminalView({
                   className="input flex-1"
                 />
               </div>
-              <button
+              <Button
                 onClick={handleAddPayment}
                 disabled={!newPaymentAmount || Number(newPaymentAmount) <= 0}
-                className="btn btn-secondary w-full"
+                variant="secondary"
+                className="w-full"
               >
                 <Plus className="w-4 h-4" />
                 Agregar Pago
-              </button>
+              </Button>
             </div>
 
             {pendingPayments.length > 0 && (
@@ -329,42 +327,44 @@ export function TerminalView({
                   </div>
                 )}
                 {!centsRuleValid && (
-                  <div className="mt-2 p-2 bg-state-error/5 border border-state-error/10 rounded text-xs text-state-error">
-                    ⚠️ Diferencia excede 0.01 Bs (Regla de los Céntimos)
-                  </div>
+                  <Alert variant="warning" className="mt-2">
+                    Diferencia excede 0.01 Bs (Regla de los Céntimos)
+                  </Alert>
                 )}
               </div>
             )}
-          </div>
+          </Card>
 
           <div className="flex gap-2 flex-wrap">
             {!isBoxOpen && (
-              <button onClick={onOpenBox} className="btn btn-secondary flex-1">
+              <Button onClick={onOpenBox} variant="secondary" className="flex-1">
                 <Box className="w-4 h-4" />
                 Abrir Caja
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               onClick={() => setShowSuspendModal(true)}
               disabled={cart.length === 0}
-              className="btn btn-secondary flex-1"
+              variant="secondary"
+              className="flex-1"
             >
               <Package className="w-4 h-4" />
               Suspender
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={onFinalizeSale}
               disabled={cart.length === 0 || !isBoxOpen || totalPaid < total}
-              className="btn btn-primary flex-1"
+              variant="primary"
+              className="flex-1"
             >
               <ShoppingCart className="w-4 h-4" />
               Finalizar
-            </button>
+            </Button>
             {cart.length > 0 && (
-              <button onClick={onClearCart} className="btn btn-ghost">
+              <Button onClick={onClearCart} variant="ghost">
                 <X className="w-4 h-4" />
                 Limpiar
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -386,12 +386,12 @@ export function TerminalView({
                 />
               </div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setShowSuspendModal(false)} className="btn btn-secondary">
+                <Button onClick={() => setShowSuspendModal(false)} variant="secondary">
                   Cancelar
-                </button>
-                <button onClick={handleSuspend} className="btn btn-primary">
+                </Button>
+                <Button onClick={handleSuspend} variant="primary">
                   Suspender
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -400,8 +400,6 @@ export function TerminalView({
     </div>
   );
 }
-
-// Extracted Sub-Components for Performance and Vercel Best Practices (rendering-no-inline-components)
 
 function ProductButton({ 
   product, 

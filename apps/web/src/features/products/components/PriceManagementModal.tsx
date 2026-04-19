@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 import type { Product, ProductPresentation } from "../types/products.types";
 import { formatPrice } from "../utils/products.utils";
 
@@ -68,12 +69,12 @@ export function PriceManagementModal({
       size="lg"
       footer={
         <>
-          <button className="btn btn-secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose}>
             Cancelar
-          </button>
-          <button className="btn btn-primary" onClick={handleSave}>
+          </Button>
+          <Button variant="primary" onClick={handleSave}>
             Guardar
-          </button>
+          </Button>
         </>
       }
     >

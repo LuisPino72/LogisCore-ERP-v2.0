@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, X, Grid3X3 } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 import { FormField, Select, Input } from "@/common";
 import type { Category } from "../types/products.types";
 
@@ -167,16 +168,14 @@ export function VariantGeneratorModal({
       size="xl"
       footer={
         <>
-          <button className="btn btn-secondary" onClick={onClose}>
-            Cancelar
-          </button>
-          <button 
-            className="btn btn-primary" 
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button 
+            variant="primary" 
             onClick={handleSave}
             disabled={!productData.name || !productData.sku}
           >
             Crear
-          </button>
+          </Button>
         </>
       }
     >
@@ -354,9 +353,9 @@ export function VariantGeneratorModal({
                   placeholder="Agregar talla (S, M, L...)"
                   onKeyDown={(e) => e.key === "Enter" && handleAddSize()}
                 />
-                <button onClick={handleAddSize} className="btn btn-secondary">
-                  <Plus className="w-4 h-4" />
-                </button>
+<Button onClick={handleAddSize} variant="secondary" size="sm">
+                  Agregar
+                </Button>
               </div>
             </div>
             <div>
@@ -379,9 +378,9 @@ export function VariantGeneratorModal({
                   placeholder="Agregar color (Rojo, Azul...)"
                   onKeyDown={(e) => e.key === "Enter" && handleAddColor()}
                 />
-                <button onClick={handleAddColor} className="btn btn-secondary">
-                  <Plus className="w-4 h-4" />
-                </button>
+<Button onClick={handleAddColor} variant="secondary" size="sm">
+                  Agregar
+                </Button>
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/common/components/Badge";
+import { Button } from "@/common/components/Button";
 import type { BoxClosing } from "../types/sales.types";
 import { getBoxStatusLabel, getBoxStatusVariant } from "../utils/sales.utils";
 
@@ -105,12 +106,13 @@ export function BoxClosingsList({
                     </td>
                     <td className="px-4 py-3 text-right">
                       {isOpen && (
-                        <button
+                        <Button
                           onClick={() => onCloseBox(closing.warehouseLocalId)}
-                          className="btn btn-secondary text-sm py-1"
+                          variant="secondary"
+                          size="sm"
                         >
                           Cerrar Caja
-                        </button>
+                        </Button>
                       )}
                     </td>
                   </tr>

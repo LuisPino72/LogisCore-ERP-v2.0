@@ -9,6 +9,9 @@ import { useState, type FormEvent } from "react";
 import type { AuthSession } from "../types/auth.types";
 import type { AppError, Result } from "@logiscore/core";
 import { FormField, Input } from "@/common";
+import { Button } from "@/common/components/Button";
+import { Card } from "@/common/components/Card";
+import { Alert } from "@/common/components/Alert";
 
 // ============================================================================
 // LoginPage - Página completa de login
@@ -46,7 +49,7 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
     return (
       <div className="min-h-screen bg-linear-to-br from-brand-50 to-surface-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="card">
+          <Card>
             <div className="card-body">
               <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
@@ -62,12 +65,9 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
 
               {resetSent ? (
                 <div className="text-center">
-                  <div className="alert alert-success mb-4">
-                    <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
+                  <Alert variant="success" className="mb-4">
                     <span>Correo enviado. Revisa tu bandeja de entrada.</span>
-                  </div>
+                  </Alert>
                   <button
                     onClick={() => {
                       setShowForgotPassword(false);
@@ -80,14 +80,9 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleResetPassword} className="space-y-5">
+                <form onSubmit={handleResetPassword} className="stack-md">
                   {resetError && (
-                    <div className="alert alert-error">
-                      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>{resetError}</span>
-                    </div>
+                    <Alert variant="error">{resetError}</Alert>
                   )}
 
                   <FormField label="Correo electrónico" htmlFor="resetEmail" required>
@@ -103,10 +98,11 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
                     />
                   </FormField>
 
-                  <button
+                  <Button
                     type="submit"
                     disabled={isLoading}
-                    className="btn btn-primary w-full"
+                    variant="primary"
+                    className="w-full"
                   >
                     {isLoading ? (
                       <>
@@ -116,7 +112,7 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
                     ) : (
                       "Enviar Enlace"
                     )}
-                  </button>
+                  </Button>
 
                   <button
                     type="button"
@@ -128,7 +124,7 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
                 </form>
               )}
             </div>
-          </div>
+          </Card>
 
           <p className="text-center text-xs text-content-tertiary mt-6">
             © {new Date().getFullYear()} LogisCore ERP. Todos los derechos reservados.
@@ -141,7 +137,7 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
   return (
     <div className="min-h-screen bg-linear-to-br from-brand-50 to-surface-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="card">
+        <Card>
           <div className="card-body">
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
@@ -162,7 +158,7 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
               onForgotPassword={() => setShowForgotPassword(true)}
             />
           </div>
-        </div>
+        </Card>
 
         <p className="text-center text-xs text-content-tertiary mt-6">
           © {new Date().getFullYear()} LogisCore ERP. Todos los derechos reservados.
@@ -196,14 +192,9 @@ export function LoginForm({ onLogin, isLoading, error, onForgotPassword }: Login
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="stack-md">
       {error && (
-        <div className="alert alert-error">
-          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{error}</span>
-        </div>
+        <Alert variant="error">{error}</Alert>
       )}
 
       <FormField label="Correo electrónico" htmlFor="email" required>
@@ -245,10 +236,11 @@ export function LoginForm({ onLogin, isLoading, error, onForgotPassword }: Login
         </div>
       </FormField>
 
-      <button
+      <Button
         type="submit"
         disabled={isLoading}
-        className="btn btn-primary w-full"
+        variant="primary"
+        className="w-full"
       >
         {isLoading ? (
           <>
@@ -258,7 +250,7 @@ export function LoginForm({ onLogin, isLoading, error, onForgotPassword }: Login
         ) : (
           "Iniciar Sesión"
         )}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -276,7 +268,7 @@ interface AuthSessionCardProps {
  */
 export function AuthSessionCard({ session }: AuthSessionCardProps) {
   return (
-    <div className="card card-body p-3 mb-4">
+    <Card className="card-body p-3 mb-4">
       <h3 className="text-sm font-semibold text-content-primary mb-2">
         Sesión activa
       </h3>
@@ -288,6 +280,6 @@ export function AuthSessionCard({ session }: AuthSessionCardProps) {
           Correo: <span className="font-medium text-content-primary">{session.email}</span>
         </p>
       )}
-    </div>
+    </Card>
   );
 }

@@ -6,6 +6,9 @@
 import { useState, type FormEvent } from "react";
 import type { Result, AppError } from "@logiscore/core";
 import { FormField, Input } from "@/common";
+import { Button } from "@/common/components/Button";
+import { Card } from "@/common/components/Card";
+import { Alert } from "@/common/components/Alert";
 
 interface ResetPasswordPageProps {
   onUpdatePassword: (password: string) => Promise<Result<void, AppError>>;
@@ -52,7 +55,7 @@ export function ResetPasswordPage({ onUpdatePassword, onPasswordReset }: ResetPa
     return (
       <div className="min-h-screen bg-linear-to-br from-brand-50 to-surface-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="card">
+          <Card>
             <div className="card-body text-center">
               <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -69,7 +72,7 @@ export function ResetPasswordPage({ onUpdatePassword, onPasswordReset }: ResetPa
                 Ir al login ahora
               </a>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     );
@@ -78,7 +81,7 @@ export function ResetPasswordPage({ onUpdatePassword, onPasswordReset }: ResetPa
   return (
     <div className="min-h-screen bg-linear-to-br from-brand-50 to-surface-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="card">
+        <Card>
           <div className="card-body">
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
@@ -92,14 +95,9 @@ export function ResetPasswordPage({ onUpdatePassword, onPasswordReset }: ResetPa
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="stack-md">
               {error && (
-                <div className="alert alert-error">
-                  <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>{error}</span>
-                </div>
+                <Alert variant="error">{error}</Alert>
               )}
 
               <FormField label="Nueva Contraseña" htmlFor="newPassword" required>
@@ -128,10 +126,11 @@ export function ResetPasswordPage({ onUpdatePassword, onPasswordReset }: ResetPa
                 />
               </FormField>
 
-              <button
+              <Button
                 type="submit"
                 disabled={isLoading}
-                className="btn btn-primary w-full"
+                variant="primary"
+                className="w-full"
               >
                 {isLoading ? (
                   <>
@@ -141,10 +140,10 @@ export function ResetPasswordPage({ onUpdatePassword, onPasswordReset }: ResetPa
                 ) : (
                   "Cambiar Contraseña"
                 )}
-              </button>
+              </Button>
             </form>
           </div>
-        </div>
+        </Card>
 
         <p className="text-center text-xs text-content-tertiary mt-6">
           © {new Date().getFullYear()} LogisCore ERP. Todos los derechos reservados.

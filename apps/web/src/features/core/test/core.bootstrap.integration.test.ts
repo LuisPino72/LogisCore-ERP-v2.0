@@ -145,13 +145,11 @@ describe("core bootstrap integration", () => {
       attempts: 0
     });
 
-    // Use fake timers to skip the await new Promise(setTimeout)
     const { vi } = await import("vitest");
     vi.useFakeTimers();
 
     for (let i = 0; i < 5; i += 1) {
       const promise = syncEngine.processNext();
-      // Advance virtual clock to bypass non-blocking backoff guard (Date.now() < nextAllowedSyncTime)
       await vi.advanceTimersByTimeAsync(30000);
       await promise;
     }

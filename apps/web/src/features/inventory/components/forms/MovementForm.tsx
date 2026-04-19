@@ -1,6 +1,7 @@
 import type { StockMovementType } from "../../types/inventory.types";
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "../../types/inventory.types";
+import { Button } from "@/common/components/Button";
 import { FormField, Select } from "@/common";
 
 interface MovementFormProps {
@@ -85,20 +86,13 @@ export function MovementForm({
           className="input min-h-[80px]"
         />
       </FormField>
-      <div className="flex justify-end gap-3">
-        <button 
-          onClick={onCancel}
-          className="btn btn-secondary"
-        >
+<div className="flex justify-end gap-3">
+        <Button variant="secondary" onClick={onCancel}>
           Cancelar
-        </button>
-        <button 
-          onClick={onSubmit}
-          disabled={!isValid}
-          className="btn btn-primary"
-        >
-          Registrar
-        </button>
+        </Button>
+        <Button variant="primary" onClick={onSubmit} disabled={!isValid}>
+          Crear Movimiento
+        </Button>
       </div>
     </div>
   );

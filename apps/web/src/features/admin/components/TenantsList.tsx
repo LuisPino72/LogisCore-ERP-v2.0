@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { LoadingSpinner, toastHelpers, ConfirmDialog } from "@/common";
+import { Button } from "@/common/components/Button";
 import { TenantTable } from "./TenantTable";
 import { TenantForm } from "./TenantForm";
 import type { Tenant, CreateTenantInput, UpdateTenantInput, SecurityUser, Plan, BusinessType } from "../types/admin.types";
@@ -121,20 +122,20 @@ export function TenantsList({
     }
   };
 
-  return (
-    <div className="space-y-6">
+return (
+    <div className="stack-md">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-content-primary">Tenants</h1>
           <p className="text-content-secondary">Gestión de empresas y negocios</p>
         </div>
         {!showForm && (
-          <button
+          <Button
             onClick={() => { setEditingTenant(null); setShowForm(true); }}
-            className="btn btn-primary"
+            variant="primary"
           >
             + Nuevo Tenant
-          </button>
+          </Button>
         )}
       </div>
 
@@ -169,8 +170,8 @@ export function TenantsList({
                     const tenant = tenants.find(t => t.id === id);
                     if (tenant) handleDeleteClick(tenant, permanent);
                   }}
-                  onDeactivate={(tenant) => handleDeactivate(tenant)}
-                  onAccess={onAccessTenant}
+                   onDeactivate={(tenant) => handleDeactivate(tenant)}
+                   onAccess={onAccessTenant}
                />
             )}
         </>

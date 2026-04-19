@@ -13,6 +13,8 @@ import type {
   BusinessType 
 } from "../types/admin.types";
 import { ConfirmDialog } from "@/common/components/ConfirmDialog";
+import { Button } from "@/common/components/Button";
+import { Tabs } from "@/common/components/Tabs";
 import { adminService } from "../services/admin.service.instance";
 import { useToast } from "@/common/stores/toastStore";
 
@@ -103,7 +105,7 @@ export function GlobalCatalogPanel({
     } else {
       loadProducts();
     }
-  }, [activeTab, selectedBusinessType]);
+  }, [activeTab, selectedBusinessType, loadCategories, loadProducts]);
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,15 +313,8 @@ export function GlobalCatalogPanel({
     }));
   };
 
-  const categoryData = categories.map(c => ({
-    id: c.id,
-    name: c.name,
-    businessTypeId: c.businessTypeId,
-    businessTypeName: c.businessTypeName
-  }));
-
   return (
-    <div className="space-y-6">
+    <div className="stack-md">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-content-primary">Catálogos Globales</h1>
@@ -341,37 +336,21 @@ export function GlobalCatalogPanel({
         </select>
       </div>
 
-      <div className="border-b border-border">
-        <nav className="flex gap-8">
-          <button
-            className={`pb-3 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "categories"
-                ? "border-brand-500 text-brand-600"
-                : "border-transparent text-content-secondary hover:text-content-primary"
-            }`}
-            onClick={() => setActiveTab("categories")}
-          >
-            Categorías ({categories.length})
-          </button>
-          <button
-            className={`pb-3 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "products"
-                ? "border-brand-500 text-brand-600"
-                : "border-transparent text-content-secondary hover:text-content-primary"
-            }`}
-            onClick={() => setActiveTab("products")}
-          >
-            Productos ({products.length})
-          </button>
-        </nav>
-      </div>
+      <Tabs
+        activeTab={activeTab}
+        onChange={(tab) => setActiveTab(tab as Tab)}
+        tabs={[
+          { id: "categories", label: `Categorías (${categories.length})` },
+          { id: "products", label: `Productos (${products.length})` }
+        ]}
+      />
 
       {activeTab === "categories" && (
-        <div className="space-y-4">
+        <div className="stack-md">
           <div className="flex justify-between items-center">
-            <button onClick={openNewCategory} className="btn btn-primary">
+            <Button onClick={openNewCategory} variant="primary">
               + Nueva Categoría
-            </button>
+            </Button>
           </div>
 
           {showCategoryForm && (
@@ -391,7 +370,7 @@ export function GlobalCatalogPanel({
           )}
 
           <CategoryList
-            categories={categoryData}
+            categories={categories}
             isLoading={categoriesLoading}
             selectedBusinessType={selectedBusinessType}
             onEdit={openEditCategory}
@@ -401,18 +380,18 @@ export function GlobalCatalogPanel({
       )}
 
       {activeTab === "products" && (
-        <div className="space-y-4">
+        <div className="stack-md">
           <div className="flex justify-between items-center">
-            <button onClick={openNewProduct} className="btn btn-primary">
+            <Button onClick={openNewProduct} variant="primary">
               + Nuevo Producto
-            </button>
+            </Button>
           </div>
 
           {showProductForm && (
             <ProductForm
               form={productForm}
               businessTypes={businessTypes}
-              categories={categoryData}
+              categories={categories}
               isEditing={!!editingProduct}
               onChange={(field, value) => setProductForm({ ...productForm, [field]: value })}
               onAddPresentation={addPresentation}

@@ -2,6 +2,9 @@ import { useCallback, useEffect } from "react";
 import { useDashboard } from "../hooks/useDashboard";
 import { LoadingSpinner } from "@/common";
 import { EmptyState } from "@/common";
+import { Card } from "@/common/components/Card";
+import { Alert } from "@/common/components/Alert";
+import { Button } from "@/common/components/Button";
 import { StatCard } from "./StatCard";
 import { SalesTrendChart } from "./SalesTrendChart";
 import { TopProductsChart } from "./TopProductsChart";
@@ -67,16 +70,18 @@ export function DashboardPanel({
 
   if (state.lastError) {
     return (
-      <div className="p-12 text-center card max-w-lg mx-auto mt-10">
-        <div className="alert alert-error mb-6">
-          <span>Error al cargar el dashboard: {state.lastError.message}</span>
-        </div>
-        <button 
-          onClick={() => loadData(tenant, actor)}
-          className="btn btn-primary"
-        >
-          Reintentar
-        </button>
+      <div className="p-12 text-center max-w-lg mx-auto mt-10">
+        <Card>
+          <Alert variant="error" className="mb-6">
+            <span>Error al cargar el dashboard: {state.lastError.message}</span>
+          </Alert>
+          <Button 
+            onClick={() => loadData(tenant, actor)}
+            variant="primary"
+          >
+            Reintentar
+          </Button>
+        </Card>
       </div>
     );
   }

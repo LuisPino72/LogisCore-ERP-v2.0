@@ -9,16 +9,21 @@ export interface TabItem {
 
 export interface TabsProps {
   items: TabItem[];
+  activeTab?: string;
   defaultTab?: string;
   onChange?: (tabId: string) => void;
   variant?: "underline" | "pills";
 }
 
-export function Tabs({ items, defaultTab, onChange, variant = "underline" }: TabsProps) {
-  const [activeTab, setActiveTab] = useState(defaultTab ?? items[0]?.id);
+export function Tabs({ items, activeTab: controlledActiveTab, defaultTab, onChange, variant = "underline" }: TabsProps) {
+  const [internalActiveTab, setInternalActiveTab] = useState(defaultTab ?? items[0]?.id);
+  
+  const activeTab = controlledActiveTab ?? internalActiveTab;
 
   const handleTabClick = (tabId: string) => {
-    setActiveTab(tabId);
+    if (!controlledActiveTab) {
+      setInternalActiveTab(tabId);
+    }
     onChange?.(tabId);
   };
 

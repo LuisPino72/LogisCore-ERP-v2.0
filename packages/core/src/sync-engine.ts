@@ -141,7 +141,6 @@ export class DefaultSyncEngine implements SyncEngine {
         table: nextItem.table,
         resolution: "remote_wins"
       });
-      // Emit refresh so frontend pulls latest remote data
       this.eventBus.emit("SYNC.REFRESH_TABLE", { table: nextItem.table });
       this.status = "idle";
       this.eventBus.emit("SYNC.STATUS_CHANGED", { status: this.status });
@@ -170,7 +169,6 @@ export class DefaultSyncEngine implements SyncEngine {
     await this.storage.updateQueueAttempts(nextItem.id, nextAttempts);
     const retryAfter = this.computeBackoffDelay(nextItem.attempts);
     
-    // SYNC-003: Apply non-blocking backoff delay
     this.nextAllowedSyncTime = Date.now() + retryAfter;
     this.eventBus.emit("SYNC.RETRY_SCHEDULED", {
       itemId: nextItem.id,
@@ -194,10 +192,6 @@ export class DefaultSyncEngine implements SyncEngine {
     }, intervalMs);
   }
 
-  /**
-   * SYNC-002: Process multiple queue items in a single cycle.
-   * Returns the count of processed/error items.
-   */
   async processBatch(batchSize = 10): Promise<{ processed: number; errors: number }> {
     let processed = 0;
     let errors = 0;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 import { FormField, Select, Input } from "@/common";
 import { DollarSign } from "lucide-react";
 
@@ -40,12 +41,12 @@ export function OpenBoxModal({
       title="Apertura de Caja"
       footer={
         <>
-          <button onClick={onClose} className="btn btn-secondary">
+          <Button onClick={onClose} variant="secondary">
             Cancelar
-          </button>
-          <button onClick={handleConfirm} className="btn btn-primary">
+          </Button>
+          <Button onClick={handleConfirm} variant="primary">
             Abrir Caja
-          </button>
+          </Button>
         </>
       }
     >

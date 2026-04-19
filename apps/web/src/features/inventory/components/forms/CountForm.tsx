@@ -1,5 +1,6 @@
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "../../types/inventory.types";
+import { Button } from "@/common/components/Button";
 import { FormField, Select, Input } from "@/common";
 
 interface CountFormProps {
@@ -64,19 +65,12 @@ export function CountForm({
         />
       </FormField>
       <div className="flex justify-end gap-3">
-        <button 
-          onClick={onCancel}
-          className="btn btn-secondary"
-        >
+        <Button variant="secondary" onClick={onCancel}>
           Cancelar
-        </button>
-        <button 
-          onClick={onSubmit}
-          disabled={!isValid}
-          className="btn btn-primary"
-        >
+        </Button>
+        <Button variant="primary" onClick={onSubmit} disabled={!isValid}>
           Crear Conteo
-        </button>
+        </Button>
       </div>
     </div>
   );

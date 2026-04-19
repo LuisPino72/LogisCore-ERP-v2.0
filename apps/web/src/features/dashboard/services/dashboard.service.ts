@@ -89,7 +89,7 @@ export const createDashboardService = ({
     const today = startOfDay(now);
     const yesterday = startOfDay(addDays(now, -1));
 
-    // Filter sales by status and date
+    // Filtra ventas por estado y fecha
     const todaySalesList = allSales.filter(s => s.status === "completed" && isSameDay(parseISO(s.createdAt), today));
     const yesterdaySalesList = allSales.filter(s => s.status === "completed" && isSameDay(parseISO(s.createdAt), yesterday));
 
@@ -116,7 +116,7 @@ export const createDashboardService = ({
       ticketTrend
     };
 
-    // Sales Trend (Last 7 days)
+    // Tendencia de ventas
     const salesTrendData: SalesTrendPoint[] = [];
     for (let i = 6; i >= 0; i--) {
       const day = subDays(today, i);
@@ -128,7 +128,7 @@ export const createDashboardService = ({
       });
     }
 
-    // Top Products
+    // Productos más vendidos
     const productMap = new Map<string, { qty: number, total: number }>();
     allSales
       .filter(s => s.status === "completed")
@@ -151,7 +151,7 @@ export const createDashboardService = ({
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 5);
 
-    // Recent Activities
+    // Actividades recientes
     const recentActivities: RecentActivityEntry[] = allSales
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 5)
@@ -164,7 +164,7 @@ export const createDashboardService = ({
         amount: s.total
       }));
 
-    // Low Stock Products (top 3)
+    // Productos con stock bajo
     const lowStockProducts: LowStockProduct[] = reorderSuggestions
       .slice(0, 3)
       .map(s => ({
@@ -175,7 +175,7 @@ export const createDashboardService = ({
         warehouseName: warehouses.get(s.warehouseLocalId) || "Bodega Principal"
       }));
 
-    // Exchange Rate (solo bcv)
+    // Tasa de cambio
     let exchangeRate: number | null = null;
     if (exchangeRates) {
       const rateResult = await exchangeRates.getActiveRate(tenant.tenantSlug, "USD", "VES");
@@ -184,7 +184,7 @@ export const createDashboardService = ({
       }
     }
 
-    // Cash Status
+    // Estado de caja
     const openBox = boxClosings?.find(b => b.status === "open" && !b.deletedAt);
     const cashStatus: CashStatus = openBox ? "open" : "closed";
 

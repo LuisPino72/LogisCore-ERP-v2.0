@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 import { LoadingSpinner } from "@/common/components/EmptyState";
 import { FormField, Select, Input } from "@/common";
 import type { Category } from "@/features/products/types/products.types";
@@ -52,12 +53,12 @@ export function ProductForm({
       size="lg"
       footer={
         <>
-          <button onClick={onClose} className="btn btn-secondary">
+          <Button variant="secondary" onClick={onClose}>
             Cancelar
-          </button>
-          <button onClick={onSubmit} disabled={isSubmitting} className="btn btn-primary">
+          </Button>
+          <Button variant="primary" onClick={onSubmit} disabled={isSubmitting}>
             {isSubmitting ? <LoadingSpinner size="sm" /> : <><Check className="w-4 h-4" /> Crear</>}
-          </button>
+          </Button>
         </>
       }
     >

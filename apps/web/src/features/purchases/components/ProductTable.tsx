@@ -1,5 +1,6 @@
 import { Plus, Package } from "lucide-react";
 import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
+import { Button } from "@/common/components/Button";
 import { Badge } from "@/common/components/Badge";
 import type { Category, Product } from "@/features/products/types/products.types";
 
@@ -36,9 +37,9 @@ export function ProductTable({ products, categories, isLoading, onAddNew }: Prod
             title="No hay productos"
             description="Crea el primer producto para el catálogo"
             action={
-              <button onClick={onAddNew} className="btn btn-primary">
+              <Button variant="primary" onClick={onAddNew}>
                 <Plus className="w-4 h-4" /> Nuevo Producto
-              </button>
+              </Button>
             }
           />
         </div>

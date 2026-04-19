@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useState, useRef, useEffect } from "react";
+import { eventBus } from "@/lib/core/runtime";
 import { inventoryService } from "../services/inventory.service.instance";
 import type { InventoryService } from "../services/inventory.service";
 import type {
@@ -153,6 +154,35 @@ export const useInventory = ({
       lastError: null
     });
   }, []);
+
+  useEffect(() => {
+    const featureTables = ["warehouses", "stock_movements", "inventory_counts", "product_size_colors", "inventory_lots"];
+    
+    const offSync = eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
+      if (featureTables.includes(payload.table)) {
+        void refresh();
+      }
+    });
+
+    const offWarehouse = eventBus.on("INVENTORY.WAREHOUSE_CREATED", () => void refresh());
+    const offSizeColor = eventBus.on("INVENTORY.SIZE_COLOR_CREATED", () => void refresh());
+    const offStock = eventBus.on("INVENTORY.STOCK_MOVEMENT_RECORDED", () => void refresh());
+    const offCountCreated = eventBus.on("INVENTORY.COUNT_CREATED", () => void refresh());
+    const offCountPosted = eventBus.on("INVENTORY.COUNT_POSTED", () => void refresh());
+    const offReorderEval = eventBus.on("INVENTORY.REORDER_EVALUATED", () => void refresh());
+    const offReorderSugg = eventBus.on("INVENTORY.REORDER_SUGGESTED", () => void refresh());
+
+    return () => {
+      offSync();
+      offWarehouse();
+      offSizeColor();
+      offStock();
+      offCountCreated();
+      offCountPosted();
+      offReorderEval();
+      offReorderSugg();
+    };
+  }, [refresh]);
 
   const createWarehouse = useCallback(
     async (input: CreateWarehouseInput) => {

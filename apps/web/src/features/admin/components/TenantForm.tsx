@@ -11,6 +11,8 @@ import {
   VALIDATION_RULES
 } from "@/common";
 
+import { Button } from "@/common/components/Button";
+import { Card } from "@/common/components/Card";
 import { TenantBasicInfoForm } from "./forms/TenantBasicInfoForm";
 import { BusinessTypeSelect } from "./forms/BusinessTypeSelect";
 import { OwnerSection } from "./forms/OwnerSection";
@@ -104,7 +106,7 @@ function getInitialFormData(initialData: Tenant | null | undefined, tenantEmploy
   
   if (ti) {
     if (typeof ti === "string") {
-      try { parsedTi = { ...parsedTi, ...JSON.parse(ti) }; } catch { /* ignore parse error */ }
+      try { parsedTi = { ...parsedTi, ...JSON.parse(ti) }; } catch { /* ignore parse errors */ }
     } else if (typeof ti === "object") {
       parsedTi = { ...parsedTi, ...(ti as Record<string, unknown>) };
     }
@@ -154,10 +156,10 @@ export function TenantForm({
   onSubmit, 
   onCancel 
 }: TenantFormProps) {
-  const [formData, setFormData] = useState<FormData>(getInitialFormData(initialData, tenantEmployees));
+  const [formData, setFormData] = useState<FormData>(() => getInitialFormData(initialData, tenantEmployees));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [logoPreview, setLogoPreview] = useState<string | null>(initialData?.logoUrl || null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(() => initialData?.logoUrl || null);
   const [deletedEmployeeIds, setDeletedEmployeeIds] = useState<string[]>([]);
 
   const isNew = !initialData;
@@ -450,14 +452,14 @@ export function TenantForm({
   };
 
   return (
-    <div className="card">
+    <Card>
       <div className="card-header">
         <h2 className="font-semibold text-content-primary">
           {initialData ? "Editar Tenant" : "Nuevo Tenant"}
         </h2>
       </div>
       <div className="card-body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="stack-md">
           <TenantBasicInfoForm 
             formData={formData} 
             errors={errors} 
@@ -560,15 +562,15 @@ export function TenantForm({
           />
 
           <div className="flex gap-3 pt-4 border-t">
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+            <Button type="submit" variant="primary" disabled={isSubmitting}>
               {isSubmitting ? "Guardando..." : "Guardar"}
-            </button>
-            <button type="button" onClick={onCancel} className="btn btn-secondary" disabled={isSubmitting}>
+            </Button>
+            <Button type="button" onClick={onCancel} variant="secondary" disabled={isSubmitting}>
               Cancelar
-            </button>
+            </Button>
           </div>
         </form>
       </div>
-    </div>
+    </Card>
   );
 }

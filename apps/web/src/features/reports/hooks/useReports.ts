@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useState, useRef, useEffect } from "react";
+import { eventBus } from "@/lib/core/runtime";
 import { reportsService } from "../services/reports.service.instance";
 import type { ReportsService } from "../services/reports.service";
 import type {
@@ -135,6 +136,30 @@ export const useReports = ({
     },
     []
   );
+
+  useEffect(() => {
+    const offSync = eventBus.on("SYNC.REFRESH_TABLE", () => {
+      void loadSalesByDay();
+      void loadSalesByProduct();
+      void loadKardex();
+      void loadGrossProfit();
+      void loadBoxClosings();
+      void loadAuditLogs();
+    });
+
+    const offSale = eventBus.on("SALE.COMPLETED", () => void loadSalesByDay());
+    const offProduct = eventBus.on("PRODUCT.CREATED", () => void loadSalesByProduct());
+    const offInventory = eventBus.on("INVENTORY.STOCK_MOVEMENT_RECORDED", () => void loadKardex());
+    const offBox = eventBus.on("POS.BOX_CLOSED", () => void loadBoxClosings());
+
+    return () => {
+      offSync();
+      offSale();
+      offProduct();
+      offInventory();
+      offBox();
+    };
+  }, [loadSalesByDay, loadSalesByProduct, loadKardex, loadGrossProfit, loadBoxClosings, loadAuditLogs]);
 
   return {
     state,

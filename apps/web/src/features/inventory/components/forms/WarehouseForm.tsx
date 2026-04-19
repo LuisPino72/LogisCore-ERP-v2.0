@@ -1,4 +1,5 @@
 import type { CreateWarehouseInput } from "../../types/inventory.types";
+import { Button } from "@/common/components/Button";
 import { FormField, Input } from "@/common";
 
 interface WarehouseFormProps {
@@ -55,19 +56,12 @@ export function WarehouseForm({
         </label>
       </div>
       <div className="flex justify-end gap-3">
-        <button 
-          onClick={onCancel}
-          className="btn btn-secondary"
-        >
+        <Button variant="secondary" onClick={onCancel}>
           Cancelar
-        </button>
-        <button 
-          onClick={onSubmit}
-          disabled={!isValid}
-          className="btn btn-primary"
-        >
+        </Button>
+        <Button variant="primary" onClick={onSubmit} disabled={!isValid}>
           Crear Bodega
-        </button>
+        </Button>
       </div>
     </div>
   );

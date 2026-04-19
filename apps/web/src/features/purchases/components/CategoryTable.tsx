@@ -1,5 +1,6 @@
 import { Plus, Package } from "lucide-react";
 import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
+import { Button } from "@/common/components/Button";
 import type { Category } from "@/features/products/types/products.types";
 
 interface CategoryTableProps {
@@ -41,9 +42,9 @@ export function CategoryTable({ categories, isLoading, onAddNew }: CategoryTable
             title="No hay categorías"
             description="Crea la primera categoría para organizar tus productos"
             action={
-              <button onClick={onAddNew} className="btn btn-primary">
+              <Button variant="primary" onClick={onAddNew}>
                 <Plus className="w-4 h-4" /> Nueva Categoría
-              </button>
+              </Button>
             }
           />
         </div>

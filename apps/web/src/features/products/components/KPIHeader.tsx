@@ -1,6 +1,7 @@
 import { Package, Folder, Scale, Globe } from "lucide-react";
 import type { Category, Product } from "../types/products.types";
 import { Tooltip } from "@/common";
+import { StatCard } from "@/common/components/StatCard";
 
 interface KPIHeaderProps {
   products: Product[];
@@ -24,15 +25,12 @@ export function KPIHeader({ products, categories, globalProductsCount }: KPIHead
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
       {kpis.map((kpi) => (
         <Tooltip key={kpi.label} content={kpi.tooltip} position="top">
-          <div className="stat-card cursor-help hover:bg-surface-50 transition-colors">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-content-tertiary">
-                <kpi.icon className="w-4 h-4" />
-              </span>
-            </div>
-            <div className="stat-value">{kpi.value.toLocaleString("es-VE")}</div>
-            <div className="stat-label">{kpi.label}</div>
-          </div>
+          <StatCard 
+            label={kpi.label}
+            value={kpi.value.toLocaleString("es-VE")}
+            icon={<kpi.icon className="w-5 h-5 text-brand-600" />}
+            className="cursor-help hover:bg-surface-50 transition-colors"
+          />
         </Tooltip>
       ))}
     </div>

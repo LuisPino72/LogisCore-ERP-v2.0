@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useState, useRef, useEffect } from "react";
+import { eventBus } from "@/lib/core/runtime";
 import { invoicingService } from "../services/invoicing.service.instance";
 import type { InvoicingService } from "../services/invoicing.service";
 import type {
@@ -79,6 +80,27 @@ export const useInvoicing = ({
       lastError: null
     }));
   }, []);
+
+  useEffect(() => {
+    const featureTables = ["invoices", "tax_rules", "exchange_rates"];
+
+    const offSync = eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
+      if (featureTables.includes(payload.table)) {
+        void refresh();
+      }
+    });
+
+    const offInvoice = eventBus.on("INVOICE.CREATED", () => void refresh());
+    const offInvoiceUpd = eventBus.on("INVOICE.UPDATED", () => void refresh());
+    const offInvoiceDel = eventBus.on("INVOICE.DELETED", () => void refresh());
+
+    return () => {
+      offSync();
+      offInvoice();
+      offInvoiceUpd();
+      offInvoiceDel();
+    };
+  }, [refresh]);
 
   const createInvoiceFromSale = useCallback(
     async (input: CreateInvoiceFromSaleInput) => {

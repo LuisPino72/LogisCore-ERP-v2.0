@@ -1,5 +1,6 @@
 import { Search, Edit2, X } from "lucide-react";
 import { Badge } from "@/common/components/Badge";
+import { Button } from "@/common/components/Button";
 import type { Purchase, Supplier } from "../types/purchases.types";
 import type { Warehouse } from "@/features/inventory/types/inventory.types";
 
@@ -103,18 +104,18 @@ export function PurchaseOrdersList({
                 <div className="flex gap-2 flex-wrap">
                   {purchase.status === "draft" && (
                     <>
-                      <button onClick={() => onConfirm(purchase.localId)} className="btn btn-sm btn-secondary">Confirmar</button>
-                      <button onClick={() => onEdit(purchase)} className="btn btn-sm btn-ghost"><Edit2 className="w-3 h-3" /></button>
-                      <button onClick={() => onCancel(purchase.localId)} className="btn btn-sm btn-ghost text-state-error"><X className="w-3 h-3" /></button>
+                      <Button variant="secondary" size="sm" onClick={() => onConfirm(purchase.localId)}>Confirmar</Button>
+                      <Button variant="ghost" size="sm" onClick={() => onEdit(purchase)}><Edit2 className="w-3 h-3" /></Button>
+                      <Button variant="ghost" size="sm" className="text-state-error" onClick={() => onCancel(purchase.localId)}><X className="w-3 h-3" /></Button>
                     </>
                   )}
                   {canReceive(purchase.status) && (
-                    <button onClick={() => onStartReceiving(purchase)} className="btn btn-sm btn-primary">Recepcionar</button>
+                    <Button variant="primary" size="sm" onClick={() => onStartReceiving(purchase)}>Recepcionar</Button>
                   )}
                   {purchase.status === "partial_received" && (
                     <>
-                      <button onClick={() => onStartReceiving(purchase)} className="btn btn-sm btn-secondary">Completar</button>
-                      <button onClick={() => onCancel(purchase.localId)} className="btn btn-sm btn-ghost text-state-error">Anular</button>
+                      <Button variant="secondary" size="sm" onClick={() => onStartReceiving(purchase)}>Completar</Button>
+                      <Button variant="ghost" size="sm" className="text-state-error" onClick={() => onCancel(purchase.localId)}>Anular</Button>
                     </>
                   )}
                 </div>

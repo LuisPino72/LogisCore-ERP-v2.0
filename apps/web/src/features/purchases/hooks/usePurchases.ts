@@ -1,4 +1,5 @@
 import { useCallback, useState, useRef, useEffect } from "react";
+import { eventBus } from "@/lib/core/runtime";
 import type { PurchasesService } from "../services/purchases.service";
 import { purchasesService } from "../services/purchases.service.instance";
 import type {
@@ -76,6 +77,33 @@ export const usePurchases = ({
       lastError: null
     }));
   }, []);
+
+  useEffect(() => {
+    const featureTables = ["purchases", "suppliers", "receivings", "inventory_lots"];
+
+    const offSync = eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
+      if (featureTables.includes(payload.table)) {
+        void refresh();
+      }
+    });
+
+    const offPurchase = eventBus.on("PURCHASE.CREATED", () => void refresh());
+    const offPurchaseUpd = eventBus.on("PURCHASE.UPDATED", () => void refresh());
+    const offPurchaseDel = eventBus.on("PURCHASE.DELETED", () => void refresh());
+    const offSupplier = eventBus.on("SUPPLIER.CREATED", () => void refresh());
+    const offSupplierUpd = eventBus.on("SUPPLIER.UPDATED", () => void refresh());
+    const offSupplierDel = eventBus.on("SUPPLIER.DELETED", () => void refresh());
+
+    return () => {
+      offSync();
+      offPurchase();
+      offPurchaseUpd();
+      offPurchaseDel();
+      offSupplier();
+      offSupplierUpd();
+      offSupplierDel();
+    };
+  }, [refresh]);
 
   const createSupplier = useCallback(
     async (input: CreateSupplierInput) => {

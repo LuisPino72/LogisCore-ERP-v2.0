@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 import { FormField, Select, Input } from "@/common";
 import type { Product, Category } from "../types/products.types";
 import { UNITS_OF_MEASURE } from "../utils/products.utils";
@@ -90,12 +91,12 @@ export function ProductEditModal({
       size="lg"
       footer={
         <>
-          <button className="btn btn-secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose}>
             Cancelar
-          </button>
-          <button className="btn btn-primary" onClick={handleSubmit}>
+          </Button>
+          <Button variant="primary" onClick={handleSubmit}>
             Guardar
-          </button>
+          </Button>
         </>
       }
     >

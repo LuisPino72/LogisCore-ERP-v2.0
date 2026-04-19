@@ -101,11 +101,28 @@ export const useSales = ({
   useEffect(() => {
     const featureTables = ["sales", "suspended_sales", "box_closings"];
     
-    return eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
+    const offSync = eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
       if (featureTables.includes(payload.table)) {
         void refresh();
       }
     });
+
+    const offSales = eventBus.on("SALE.COMPLETED", () => void refresh());
+    const offSuspended = eventBus.on("SALE.SUSPENDED", () => void refresh());
+    const offRestored = eventBus.on("SALE.SUSPENDED_RESTORED", () => void refresh());
+    const offBoxClosed = eventBus.on("POS.BOX_CLOSED", () => void refresh());
+    const offBoxOpened = eventBus.on("POS.BOX_OPENED", () => void refresh());
+    const offStock = eventBus.on("INVENTORY.STOCK_MOVEMENT_RECORDED", () => void refresh());
+
+    return () => {
+      offSync();
+      offSales();
+      offSuspended();
+      offRestored();
+      offBoxClosed();
+      offBoxOpened();
+      offStock();
+    };
   }, [refresh]);
 
   /**

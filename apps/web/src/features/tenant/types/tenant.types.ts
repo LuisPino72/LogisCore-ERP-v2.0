@@ -90,7 +90,7 @@ export interface TenantBootstrapResult {
 export interface TenantUiState {
   isLoading: boolean;
   isBlocked: boolean;
-  isLastDay: boolean; // Flag para el banner
+  isLastDay: boolean; 
   subscriptionEndDate: string | null;
   tenant: TenantContext | null;
   userRole: UserRole | null;

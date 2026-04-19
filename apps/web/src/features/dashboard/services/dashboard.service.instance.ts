@@ -11,7 +11,6 @@ export const dashboardService = createDashboardService({
   products: productsService,
   exchangeRates: {
     getActiveRate: async (tenantId: string, fromCurrency: string, toCurrency: string) => {
-      // Solo usar tasa BCV
       const result = await exchangeRatesService.getActiveRate(tenantId, fromCurrency, toCurrency);
       if (!result.ok || !result.data) {
         return { ok: true, data: null };

@@ -7,6 +7,10 @@ import { productsService } from "../services/products.service.instance";
 import { adminService } from "@/features/admin/services/admin.service.instance";
 import type { ProductsActorContext, Product } from "../types/products.types";
 import { Tabs } from "@/common/components/Tabs";
+import { Alert } from "@/common/components/Alert";
+import { Button } from "@/common/components/Button";
+import { Card } from "@/common/components/Card";
+import { Badge } from "@/common/components/Badge";
 import { KPIHeader } from "./KPIHeader";
 import { ProductsDataTable } from "./ProductsDataTable";
 import { ProductsFilters, type ProductsFiltersState } from "./ProductsFilters";
@@ -113,8 +117,7 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
   const [selectedGlobalProducts, setSelectedGlobalProducts] = useState<Set<string>>(new Set());
   const [importingProducts, setImportingProducts] = useState(false);
   const globalProductsContainerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { refresh(); }, [refresh]);
 
   const [prevRate, setPrevRate] = useState(exchangeRateFromApp);
   if (exchangeRateFromApp !== prevRate) {
@@ -279,11 +282,9 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
   };
 
   const handleEditProduct = async (_product: Product) => {
-    // TODO: Open edit modal
   };
 
   const handlePriceProduct = async (_product: Product) => {
-    // TODO: Open price modal
   };
 
   const handleDeleteProduct = async (product: Product) => {
@@ -300,9 +301,7 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
       );
       eventBus.emit("PRODUCT.DELETED", { localId: product.localId });
       await refresh();
-    } catch {
-      // Handle error silently or show toast
-    }
+    } catch { /* Silently ignore delete errors, UI shows toast from hook */ }
   };
 
   const activeCategories = state.categories.filter(c => !c.deletedAt);
@@ -339,14 +338,14 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
       {activeCategories.length > 0 ? (
         <div className="space-y-2">
           {activeCategories.map(category => (
-            <div key={category.localId} className="card p-4 flex items-center justify-between">
+            <Card key={category.localId} className="flex items-center justify-between">
               <div>
                 <h3 className="font-medium text-content-primary">{category.name}</h3>
                 <p className="text-sm text-content-secondary">
                   {state.products.filter(p => p.categoryId === category.localId && !p.deletedAt).length} productos
                 </p>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       ) : (
@@ -366,7 +365,7 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
           {state.presentations.map(presentation => {
             const product = state.products.find(p => p.localId === presentation.productLocalId);
             return (
-              <div key={presentation.id} className="card p-4 flex items-center justify-between">
+              <Card key={presentation.id} className="flex items-center justify-between">
                 <div>
                   <h3 className="font-medium text-content-primary">{presentation.name}</h3>
                   <p className="text-sm text-content-secondary">
@@ -381,7 +380,7 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
                     {((presentation.price ?? 0) * exchangeRate).toLocaleString("es-VE")} Bs
                   </p>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -402,15 +401,15 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
           {state.sizeColors.filter(sc => !sc.deletedAt).map(variant => {
             const product = state.products.find(p => p.localId === variant.productLocalId);
             return (
-              <div key={variant.localId} className="card p-4 flex items-center justify-between">
+              <Card key={variant.localId} className="flex items-center justify-between">
                 <div>
                   <h3 className="font-medium text-content-primary">{product?.name ?? "Producto no encontrado"}</h3>
                   <div className="flex gap-2 mt-1">
                     {variant.size && (
-                      <span className="badge badge-info">{variant.size}</span>
+                      <Badge variant="info">{variant.size}</Badge>
                     )}
                     {variant.color && (
-                      <span className="badge badge-warning">{variant.color}</span>
+                      <Badge variant="warning">{variant.color}</Badge>
                     )}
                   </div>
                 </div>
@@ -419,7 +418,7 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
                     <p className="text-sm font-mono text-content-secondary">{variant.skuSuffix}</p>
                   )}
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -443,9 +442,9 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
   return (
     <section className="p-6">
       {state.lastError ? (
-        <div className="alert alert-error mb-4">
+        <Alert variant="error" className="mb-4">
           {state.lastError.message}
-        </div>
+        </Alert>
       ) : null}
       
       <div className="mb-6">
@@ -454,13 +453,14 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
             <h1 className="text-2xl font-bold text-content-primary mb-1">Maestro de Catálogo</h1>
             <p className="text-content-secondary">Gestiona tus productos, categorías y presentaciones</p>
           </div>
-          <button
+          <Button
             onClick={handleOpenImportModal}
-            className="btn btn-primary flex items-center gap-2"
+            variant="primary"
+            className="flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
             Importar del Catálogo Global
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -533,32 +533,34 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
               </>
             )}
 
-            <div className="flex justify-end gap-2 pt-4">
-              <button
-                onClick={() => setShowImportModal(false)}
-                className="btn btn-ghost"
-                disabled={importingProducts}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleImportSelected}
-                disabled={selectedGlobalProducts.size === 0 || importingProducts}
-                className="btn btn-primary flex items-center gap-2"
-              >
-                {importingProducts ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Importando...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    Importar ({selectedGlobalProducts.size})
-                  </>
-                )}
-              </button>
-            </div>
+             <div className="flex justify-end gap-2 pt-4">
+               <Button
+                 onClick={() => setShowImportModal(false)}
+                 variant="ghost"
+                 disabled={importingProducts}
+               >
+                 Cancelar
+               </Button>
+               <Button
+                 onClick={handleImportSelected}
+                 disabled={selectedGlobalProducts.size === 0 || importingProducts}
+                 variant="primary"
+                 className="flex items-center gap-2"
+               >
+                 {importingProducts ? (
+                   <>
+                     <Loader2 className="w-4 h-4 animate-spin" />
+                     Importando...
+                   </>
+                 ) : (
+                   <>
+                     <Download className="w-4 h-4" />
+                     Importar ({selectedGlobalProducts.size})
+                   </>
+                 )}
+               </Button>
+             </div>
+
           </div>
         </Modal>
       )}

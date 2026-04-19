@@ -107,11 +107,32 @@ export const useProducts = ({
   useEffect(() => {
     const featureTables = ["products", "categories", "product_presentations", "product_size_colors"];
     
-    return eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
+    const offSync = eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
       if (featureTables.includes(payload.table)) {
         void refresh();
       }
     });
+
+    const offProduct = eventBus.on("PRODUCT.CREATED", () => void refresh());
+    const offProductUpd = eventBus.on("PRODUCT.UPDATED", () => void refresh());
+    const offProductDel = eventBus.on("PRODUCT.DELETED", () => void refresh());
+    const offCat = eventBus.on("CATEGORY.CREATED", () => void refresh());
+    const offCatUpd = eventBus.on("CATEGORY.UPDATED", () => void refresh());
+    const offCatDel = eventBus.on("CATEGORY.DELETED", () => void refresh());
+    const offPres = eventBus.on("PRESENTATION.CREATED", () => void refresh());
+    const offPresUpd = eventBus.on("PRESENTATION.UPDATED", () => void refresh());
+
+    return () => {
+      offSync();
+      offProduct();
+      offProductUpd();
+      offProductDel();
+      offCat();
+      offCatUpd();
+      offCatDel();
+      offPres();
+      offPresUpd();
+    };
   }, [refresh]);
 
   /**

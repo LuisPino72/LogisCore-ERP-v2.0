@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import type { Recipe } from "../types/production.types";
 import type { Product } from "@/features/products/types/products.types";
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 import { Badge } from "@/common/components/Badge";
 import { FormField, Select, Input } from "@/common";
 import { Scale } from "lucide-react";
@@ -62,16 +63,16 @@ export function NewOrderModal({
       size="md"
       footer={
         <>
-          <button onClick={onClose} className="btn btn-secondary">
+          <Button variant="secondary" onClick={onClose}>
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
-            className="btn btn-primary"
           >
             {isSubmitting ? "Creando..." : "Crear Orden"}
-          </button>
+          </Button>
         </>
       }
     >

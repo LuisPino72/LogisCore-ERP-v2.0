@@ -1,4 +1,5 @@
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 import { LoadingSpinner } from "@/common/components/EmptyState";
 import { Plus, X } from "lucide-react";
 import type { PurchaseItem } from "../../types/purchases.types";
@@ -45,10 +46,10 @@ export function EditPurchaseModal({
       size="lg"
       footer={
         <>
-          <button onClick={onClose} className="btn btn-secondary">Cancelar</button>
-          <button onClick={onSubmit} disabled={isSubmitting || editItems.length === 0} className="btn btn-primary">
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={onSubmit} disabled={isSubmitting || editItems.length === 0}>
             {isSubmitting ? <LoadingSpinner size="sm" /> : <><Plus className="w-4 h-4" /> Guardar</>}
-          </button>
+          </Button>
         </>
       }
     >
@@ -90,7 +91,9 @@ export function EditPurchaseModal({
           </select>
         </div>
         <input type="number" min="0.0001" step="0.0001" value={qty} onChange={(e) => setQty(e.target.value)} className="input" placeholder="Cant" />
-        <button onClick={onAddItem} disabled={!productLocalId} className="btn btn-secondary"><Plus className="w-4 h-4" /></button>
+        <Button onClick={onAddItem} disabled={!productLocalId} variant="secondary">
+            <Plus className="w-4 h-4" />
+          </Button>
       </div>
 
       <div className="text-right text-sm font-medium text-content-primary">

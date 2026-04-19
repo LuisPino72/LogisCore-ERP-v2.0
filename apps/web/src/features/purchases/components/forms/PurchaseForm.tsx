@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { LoadingSpinner } from "@/common/components/EmptyState";
+import { Button } from "@/common/components/Button";
 import { Plus, Check, X } from "lucide-react";
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "@/features/inventory/types/inventory.types";
@@ -94,9 +95,10 @@ export function PurchaseForm({
             <input type="number" min="0" step="0.0001" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} className="input" />
           </div>
           <div className="flex items-end">
-            <button type="button" onClick={onAddItem} disabled={!productLocalId} className="btn btn-secondary w-full">
-              <Plus className="w-4 h-4" /> Agregar
-            </button>
+<Button type="button" onClick={onAddItem} disabled={!productLocalId} variant="secondary" className="w-full">
+            <Plus className="w-4 h-4" />
+            Agregar
+          </Button>
           </div>
         </div>
 
@@ -123,9 +125,9 @@ export function PurchaseForm({
           </div>
         )}
 
-        <button type="button" disabled={!canSubmit || isSubmitting} onClick={onSubmit} className="btn btn-primary w-full">
+        <Button type="button" disabled={!canSubmit || isSubmitting} onClick={onSubmit} variant="primary" className="w-full">
           {isSubmitting ? <LoadingSpinner size="sm" /> : <><Check className="w-4 h-4" /> Crear Orden de Compra</>}
-        </button>
+        </Button>
       </div>
     </div>
   );

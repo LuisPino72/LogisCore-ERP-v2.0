@@ -1,7 +1,9 @@
-import type { Invoice } from "../types/invoicing.types";
-import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
+import { Card } from "@/common/components/Card";
+import { Alert } from "@/common/components/Alert";
 import { Badge } from "@/common/components/Badge";
-import { User, Calendar, CreditCard, FileDown } from "lucide-react";
+import { Modal } from "@/common/components/Modal";
+import type { Invoice } from "../types/invoicing.types";
 import { generateCertifiedPdf } from "../services/pdf.service";
 import { logPdfExport } from "../services/audit.service";
 import { useState } from "react";
@@ -95,22 +97,24 @@ export function InvoiceModal({ isOpen, onClose, invoice, tenantConfig }: Invoice
       title={`Factura ${invoice.invoiceNumber || invoice.localId.slice(0, 8)}`}
       size="lg"
     >
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="stack-md">
+        <div className="flex justify-between items-center">
           <Badge variant={status.variant}>{status.label}</Badge>
           <div className="flex items-center gap-3">
             {pdfError && (
-              <span className="text-sm text-state-error">{pdfError}</span>
+              <Alert variant="error" className="text-sm">{pdfError}</Alert>
             )}
             {canDownloadPdf && (
-              <button
+              <Button
                 onClick={handleGeneratePdf}
                 disabled={isGeneratingPdf}
-                className="btn btn-primary flex items-center gap-2 text-sm py-1.5 px-3"
+                variant="primary"
+                size="sm"
+                className="flex items-center gap-2"
               >
                 <FileDown className="w-4 h-4" />
                 {isGeneratingPdf ? "Generando..." : "Descargar PDF"}
-              </button>
+              </Button>
             )}
             {invoice.controlNumber && (
               <span className="font-mono text-sm text-content-secondary">
@@ -147,24 +151,24 @@ export function InvoiceModal({ isOpen, onClose, invoice, tenantConfig }: Invoice
         <div className="border-t border-surface-200 pt-4">
           <h4 className="font-medium mb-3">Ítems</h4>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-50">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-2 py-1 text-left text-xs font-medium text-content-tertiary">Descripción</th>
-                  <th className="px-2 py-1 text-right text-xs font-medium text-content-tertiary">Qty</th>
-                  <th className="px-2 py-1 text-right text-xs font-medium text-content-tertiary">Precio</th>
-                  <th className="px-2 py-1 text-right text-xs font-medium text-content-tertiary">IVA</th>
-                  <th className="px-2 py-1 text-right text-xs font-medium text-content-tertiary">Subtotal</th>
+                  <th>Descripción</th>
+                  <th className="text-right">Qty</th>
+                  <th className="text-right">Precio</th>
+                  <th className="text-right">IVA</th>
+                  <th className="text-right">Subtotal</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-surface-100">
+              <tbody>
                 {invoice.items.map((item, index) => (
                   <tr key={index}>
-                    <td className="px-2 py-2">{item.description}</td>
-                    <td className="px-2 py-2 text-right font-mono">{item.qty.toFixed(4)}</td>
-                    <td className="px-2 py-2 text-right font-mono">{item.unitPrice.toFixed(2)}</td>
-                    <td className="px-2 py-2 text-right font-mono">{item.taxRate}%</td>
-                    <td className="px-2 py-2 text-right font-mono">{item.subtotal.toFixed(2)}</td>
+                    <td>{item.description}</td>
+                    <td className="text-right font-mono">{item.qty.toFixed(4)}</td>
+                    <td className="text-right font-mono">{item.unitPrice.toFixed(2)}</td>
+                    <td className="text-right font-mono">{item.taxRate}%</td>
+                    <td className="text-right font-mono">{item.subtotal.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -172,33 +176,35 @@ export function InvoiceModal({ isOpen, onClose, invoice, tenantConfig }: Invoice
           </div>
         </div>
 
-        <div className="bg-surface-50 p-4 rounded-lg space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-content-secondary">Subtotal:</span>
-            <span className="font-mono">{formatCurrency(invoice.subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-content-secondary">IVA:</span>
-            <span className="font-mono">{formatCurrency(invoice.taxTotal)}</span>
-          </div>
-          {invoice.igtfAmount > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-content-secondary">IGTF:</span>
-              <span className="font-mono">{formatCurrency(invoice.igtfAmount)}</span>
+        <Card variant="filled">
+          <div className="stack-sm">
+            <div className="flex justify-between">
+              <span className="text-content-secondary">Subtotal:</span>
+              <span className="font-mono">{formatCurrency(invoice.subtotal)}</span>
             </div>
-          )}
-          {invoice.discountTotal > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-content-secondary">Descuento:</span>
-              <span className="font-mono text-state-error">-{formatCurrency(invoice.discountTotal)}</span>
+            <div className="flex justify-between">
+              <span className="text-content-secondary">IVA:</span>
+              <span className="font-mono">{formatCurrency(invoice.taxTotal)}</span>
             </div>
-          )}
-          <div className="divider" />
-          <div className="flex justify-between font-medium text-lg">
-            <span>Total:</span>
-            <span className="font-mono">{formatCurrency(invoice.total)}</span>
+            {invoice.igtfAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-content-secondary">IGTF:</span>
+                <span className="font-mono">{formatCurrency(invoice.igtfAmount)}</span>
+              </div>
+            )}
+            {invoice.discountTotal > 0 && (
+              <div className="flex justify-between">
+                <span className="text-content-secondary">Descuento:</span>
+                <span className="font-mono text-state-error">-{formatCurrency(invoice.discountTotal)}</span>
+              </div>
+            )}
+            <div className="divider" />
+            <div className="flex justify-between font-medium text-lg">
+              <span>Total:</span>
+              <span className="font-mono">{formatCurrency(invoice.total)}</span>
+            </div>
           </div>
-        </div>
+        </Card>
 
         {invoice.payments.length > 0 && (
           <div>
@@ -206,9 +212,9 @@ export function InvoiceModal({ isOpen, onClose, invoice, tenantConfig }: Invoice
               <CreditCard className="w-4 h-4" />
               Pagos
             </h4>
-            <div className="space-y-1">
+            <div className="stack-xs">
               {invoice.payments.map((payment, index) => (
-                <div key={index} className="flex justify-between text-sm bg-surface-50 p-2 rounded">
+                <div key={index} className="flex justify-between bg-surface-50 p-2 rounded">
                   <span className="capitalize">{payment.method}</span>
                   <span className="font-mono">
                     {payment.currency} {payment.amount.toFixed(2)}

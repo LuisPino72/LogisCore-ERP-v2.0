@@ -202,7 +202,6 @@ export const createAdminService = ({
   const getSystemMetrics: AdminService["getSystemMetrics"] = async () => {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const [
       sessionsResult,
@@ -238,7 +237,6 @@ export const createAdminService = ({
     ).size;
 
     const tenants = tenantsResult.data || [];
-    const activeTenants = tenants.filter(t => t.is_active !== false).length;
     const users = usersResult.data || [];
     const subs = subsResult.data || [];
     const activeSubs = subs.filter(s => s.status === "active").length;

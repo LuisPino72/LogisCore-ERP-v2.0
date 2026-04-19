@@ -95,7 +95,6 @@ const createDbMock = (initialStockMovements: StockMovementRecord[] = []): Produc
         }, 0);
     },
     async createAuditLog() {
-      // No-op for tests
     }
   };
 };

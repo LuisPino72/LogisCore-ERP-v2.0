@@ -1,5 +1,6 @@
 import { Plus, Building2, Edit2, Trash2 } from "lucide-react";
 import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
+import { Button } from "@/common/components/Button";
 import { Badge } from "@/common/components/Badge";
 import type { Supplier } from "../types/purchases.types";
 
@@ -31,9 +32,10 @@ export function SupplierTable({ suppliers, isLoading, onAddNew, onEdit, onDelete
             title="No hay proveedores"
             description="Crea tu primer proveedor para comenzar"
             action={
-              <button onClick={onAddNew} className="btn btn-primary">
-                <Plus className="w-4 h-4" /> Nuevo Proveedor
-              </button>
+<Button variant="primary" onClick={onAddNew}>
+                <Plus className="w-4 h-4" />
+                Nuevo Proveedor
+              </Button>
             }
           />
         </div>

@@ -15,26 +15,38 @@ export function SearchInput({
   debounce = 300,
   className = ""
 }: SearchInputProps) {
-  const [localValue, setLocalValue] = useState(value ?? "");
+  const isControlled = value !== undefined;
+  const [internalValue, setInternalValue] = useState("");
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setLocalValue(value ?? "");
-  }, [value]);
+    if (isControlled && value !== undefined && value !== internalValue) {
+      setInternalValue(value);
+    }
+  }, [value, isControlled]);
+
+  const currentValue = isControlled ? value : internalValue;
 
   useEffect(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     timeoutRef.current = setTimeout(() => {
-      onChange?.(localValue);
+      onChange?.(currentValue);
     }, debounce);
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [localValue, debounce, onChange]);
+  }, [currentValue, debounce, onChange]);
+
+  const handleChange = (newValue: string) => {
+    if (!isControlled) {
+      setInternalValue(newValue);
+    }
+    onChange?.(newValue);
+  };
 
   return (
     <div className={`relative ${className}`}>
@@ -48,18 +60,15 @@ export function SearchInput({
       </svg>
       <input
         type="text"
-        value={localValue}
-        onChange={(e) => setLocalValue(e.target.value)}
+        value={currentValue}
+        onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
         className="w-full pl-10 pr-4 py-2 text-sm border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 placeholder:text-content-tertiary"
       />
-      {localValue && (
+      {currentValue && (
         <button
           type="button"
-          onClick={() => {
-            setLocalValue("");
-            onChange?.("");
-          }}
+          onClick={() => handleChange("")}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-content-tertiary hover:text-content-secondary"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

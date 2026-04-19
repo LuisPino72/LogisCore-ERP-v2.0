@@ -17,11 +17,9 @@ interface TopProductsChartProps {
 export function TopProductsChart({ data }: TopProductsChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [mounted, setMounted] = useState(false);
   const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
 
   useEffect(() => {
-    setMounted(true);
     const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
@@ -34,7 +32,7 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
     return () => resizeObserver.disconnect();
   }, []);
 
-  if (!mounted || !data?.length || dimensions.width <= 0 || dimensions.height <= 0) {
+  if (!data?.length || dimensions.width <= 0 || dimensions.height <= 0) {
     return (
       <div className="h-[300px] w-full bg-white p-6 rounded-2xl border shadow-sm flex items-center justify-center">
         <p className="text-content-tertiary">{data?.length ? "Cargando gráfico..." : "No hay productos vendidos"}</p>

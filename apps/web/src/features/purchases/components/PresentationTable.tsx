@@ -1,5 +1,6 @@
 import { Plus, Box } from "lucide-react";
 import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
+import { Button } from "@/common/components/Button";
 import { Badge } from "@/common/components/Badge";
 import type { Product, ProductPresentation } from "@/features/products/types/products.types";
 
@@ -35,9 +36,9 @@ export function PresentationTable({ presentations, products, isLoading, onAddNew
             title="No hay presentaciones"
             description="Crea presentaciones para tus productos (ej: 1kg, 500ml)"
             action={
-              <button onClick={onAddNew} className="btn btn-primary">
+              <Button variant="primary" onClick={onAddNew}>
                 <Plus className="w-4 h-4" /> Nueva Presentación
-              </button>
+              </Button>
             }
           />
         </div>

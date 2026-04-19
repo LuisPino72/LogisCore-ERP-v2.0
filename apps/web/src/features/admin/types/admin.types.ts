@@ -264,7 +264,7 @@ export interface UpdateGlobalConfigInput {
 
 /**
  * Métricas críticas del sistema en tiempo real.
- * Used by the Admin Dashboard to monitor system health.
+ * Usado por el Admin Dashboard para monitorear la salud del sistema.
  */
 export interface SystemMetrics {
   activeSessionsToday: number;

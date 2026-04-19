@@ -16,6 +16,7 @@ import type { Category, Product, ProductPresentation, CreateProductInput } from 
 import type { PurchasesActorContext, Supplier, CreateSupplierInput, UpdateSupplierInput } from "../types/purchases.types";
 import { eventBus } from "@/lib/core/runtime";
 import { Tabs, type TabItem } from "@/common/components/Tabs";
+import { Button } from "@/common/components/Button";
 import { purchasesService } from "../services/purchases.service.instance";
 import { purchasesCatalogService } from "../services/purchases-catalog.service.instance";
 import type { PurchasesTenantContext } from "../types/purchases.types";
@@ -159,7 +160,6 @@ export function PurchasesCatalogPanel({
     }
   }, [tenant]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void refreshData(); }, [refreshData]);
 
   const [prevInitialSuppliers, setPrevInitialSuppliers] = useState(initialSuppliers);
@@ -333,9 +333,7 @@ export function PurchasesCatalogPanel({
     if (!confirmed) return;
     try {
       await purchasesService.deleteSupplier(supplier.localId, { tenantSlug });
-    } catch {
-      // Handle error silently
-    }
+    } catch { /* Silently ignore delete errors */ }
   };
 
   const tabs: TabItem[] = [
@@ -356,10 +354,10 @@ export function PurchasesCatalogPanel({
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {activeTab === "products" && <button onClick={openProductModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Nuevo Producto</button>}
-        {activeTab === "categories" && <button onClick={openCategoryModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Nueva Categoría</button>}
-        {activeTab === "presentations" && <button onClick={openPresentationModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Nueva Presentación</button>}
-        {activeTab === "suppliers" && <button onClick={openSupplierModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Nuevo Proveedor</button>}
+        {activeTab === "products" && <Button variant="primary" onClick={openProductModal}><Plus className="w-4 h-4" /> Nuevo Producto</Button>}
+        {activeTab === "categories" && <Button variant="primary" onClick={openCategoryModal}><Plus className="w-4 h-4" /> Nueva Categoría</Button>}
+        {activeTab === "presentations" && <Button variant="primary" onClick={openPresentationModal}><Plus className="w-4 h-4" /> Nueva Presentación</Button>}
+        {activeTab === "suppliers" && <Button variant="primary" onClick={openSupplierModal}><Plus className="w-4 h-4" /> Nuevo Proveedor</Button>}
       </div>
 
       {lastError && <div className="alert alert-error">{lastError}</div>}

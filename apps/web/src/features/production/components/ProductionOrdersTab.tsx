@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { ProductionOrder, Recipe } from "../types/production.types";
 import { DataTable } from "@/common/components/DataTable";
+import { Button } from "@/common/components/Button";
 import { Badge } from "@/common/components/Badge";
 import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
 import { Package, Play, CheckCircle, XCircle, Clock } from "lucide-react";
@@ -107,26 +108,28 @@ export function ProductionOrdersTab({
       render: (_: unknown, row: ProductionOrder) => {
         if (row.status === "draft") {
           return (
-            <button
+            <Button
               onClick={() => onStartOrder(row.localId)}
               disabled={isSubmitting}
-              className="btn btn-secondary text-xs py-1 px-2"
+              variant="secondary"
+              size="sm"
             >
               <Play className="w-3 h-3" />
               Iniciar
-            </button>
+            </Button>
           );
         }
         if (row.status === "in_progress") {
           return (
-            <button
+            <Button
               onClick={() => onCompleteOrder(row)}
               disabled={isSubmitting}
-              className="btn btn-primary text-xs py-1 px-2"
+              variant="primary"
+              size="sm"
             >
               <CheckCircle className="w-3 h-3" />
               Finalizar
-            </button>
+            </Button>
           );
         }
         return <span className="text-content-tertiary">—</span>;
@@ -138,10 +141,10 @@ export function ProductionOrdersTab({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-content-primary">Órdenes de Producción</h3>
-        <button onClick={onCreateOrder} className="btn btn-primary">
+        <Button variant="primary" onClick={onCreateOrder}>
           <Package className="w-4 h-4" />
           Nueva Orden
-        </button>
+        </Button>
       </div>
 
       {isLoading ? (
@@ -152,10 +155,10 @@ export function ProductionOrdersTab({
           title="No hay órdenes"
           description="Crea tu primera orden de producción para comenzar."
           action={
-            <button onClick={onCreateOrder} className="btn btn-primary">
+            <Button variant="primary" onClick={onCreateOrder}>
               <Package className="w-4 h-4" />
               Crear Orden
-            </button>
+            </Button>
           }
         />
       ) : (

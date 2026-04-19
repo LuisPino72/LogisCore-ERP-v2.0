@@ -22,7 +22,6 @@ export interface ProductionActorPermissions {
   canVoidInvoice: boolean;
   canAdjustStock: boolean;
   allowedWarehouseLocalIds?: string[];
-  // Nuevos permisos para operaciones avanzadas
   canCreatePurchaseOrders?: boolean;
   canApprovePurchaseOrders?: boolean;
   canCreateProductionOrders?: boolean;

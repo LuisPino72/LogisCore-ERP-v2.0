@@ -8,9 +8,9 @@ export const initSentry = () => {
       Sentry.replayIntegration(),
     ],
     // Performance Monitoring
-    tracesSampleRate: 1.0, // Capture 100% of transactions for now
+    tracesSampleRate: 1.0, // Captura 100% de transacciones por ahora
     // Session Replay
-    replaysSessionSampleRate: 0.1, // Sample 10% of sessions
-    replaysOnErrorSampleRate: 1.0, // Sample 100% of sessions with errors,
+    replaysSessionSampleRate: 0.1, // Muestra 10% de sesiones
+    replaysOnErrorSampleRate: 1.0, // Muestra 100% de sesiones con errores,
   });
 };

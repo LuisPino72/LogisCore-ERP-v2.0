@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useState, useRef, useEffect } from "react";
+import { eventBus } from "@/lib/core/runtime";
 import { productionService } from "../services/production.service.instance";
 import type { ProductionService } from "../services/production.service";
 import type {
@@ -81,6 +82,27 @@ export const useProduction = ({
       lastError: null
     }));
   }, []);
+
+  useEffect(() => {
+    const offSync = eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
+      if (payload.table === "production_orders" || payload.table === "recipes") {
+        void refresh();
+      }
+    });
+
+    const offRecipe = eventBus.on("PRODUCTION.RECIPE_CREATED", () => void refresh());
+    const offOrder = eventBus.on("PRODUCTION.ORDER_CREATED", () => void refresh());
+    const offStart = eventBus.on("PRODUCTION.STARTED", () => void refresh());
+    const offComplete = eventBus.on("PRODUCTION.COMPLETED", () => void refresh());
+
+    return () => {
+      offSync();
+      offRecipe();
+      offOrder();
+      offStart();
+      offComplete();
+    };
+  }, [refresh]);
 
   const createRecipe = useCallback(
     async (input: CreateRecipeInput) => {

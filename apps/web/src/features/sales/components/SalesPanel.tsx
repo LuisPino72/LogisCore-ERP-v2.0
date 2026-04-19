@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { eventBus } from "@/lib/core/runtime";
 import { Tabs, type TabItem } from "@/common/components/Tabs";
+import { Alert } from "@/common/components/Alert";
 import type { Product } from "@/features/products/types/products.types";
 import { useSales } from "../hooks/useSales";
 import { salesService } from "../services/sales.service.instance";
@@ -64,9 +65,8 @@ export function SalesPanel({
   const [exchangeRate, setExchangeRate] = useState(exchangeRateFromApp ?? 1);
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [showOpenBoxModal, setShowOpenBoxModal] = useState(false);
-  const [, setActiveTab] = useState("terminal");
+  const [activeTab, setActiveTab] = useState("terminal");
 
-  // Sync exchange rate if prop changes from parent
   const [prevRate, setPrevRate] = useState(exchangeRateFromApp);
   if (exchangeRateFromApp !== prevRate) {
     setExchangeRate(exchangeRateFromApp ?? 1);
@@ -298,9 +298,12 @@ export function SalesPanel({
   return (
     <section className="p-6">
       {state.lastError && (
-        <div className="mb-4 p-3 bg-state-error/10 border border-state-error/20 rounded-lg text-state-error text-sm">
+        <Alert 
+          variant="error" 
+          className="mb-4"
+        >
           {state.lastError.message}
-        </div>
+        </Alert>
       )}
 
       <SalesKPIs
@@ -313,12 +316,13 @@ export function SalesPanel({
         isLoadingRate={isLoadingRate}
       />
 
-      <Tabs
-        items={tabs}
-        defaultTab="terminal"
-        onChange={setActiveTab}
-        variant="underline"
-      />
+       <Tabs
+         items={tabs}
+         activeTab={activeTab}
+         onChange={setActiveTab}
+         variant="underline"
+       />
+
 
       <OpenBoxModal
         isOpen={showOpenBoxModal}

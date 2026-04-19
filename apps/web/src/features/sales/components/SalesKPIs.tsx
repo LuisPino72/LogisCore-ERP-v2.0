@@ -1,6 +1,8 @@
 import { DollarSign, Box, Scale, Pause, RefreshCw } from "lucide-react";
-import { Sale, BoxClosing, SuspendedSale } from "../types/sales.types";
+import { StatCard } from "@/common/components/StatCard";
+import { Button } from "@/common/components/Button";
 import { Tooltip } from "@/common";
+import { Sale, BoxClosing, SuspendedSale } from "../types/sales.types";
 
 interface SalesKPIsProps {
   sales: Sale[];
@@ -78,32 +80,24 @@ export function SalesKPIs({
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
       {kpis.map((kpi) => (
         <Tooltip key={kpi.label} content={kpi.tooltip} position="top">
-          <div className="stat-card cursor-help hover:bg-surface-50 transition-colors">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-content-tertiary">
-                <kpi.icon className="w-4 h-4" />
-              </span>
-              {kpi.pulse && (
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-state-success opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-state-success"></span>
-                </span>
-              )}
-            </div>
-            <div className="stat-value">{kpi.value}</div>
-            <div className="stat-label flex items-center gap-1">
-              {kpi.label}
-              {kpi.action === "refresh" && (
-                <button
-                  onClick={onRefreshRate}
-                  disabled={isLoadingRate}
-                  className="ml-1 p-1 rounded hover:bg-surface-100 transition-colors"
-                  title="Actualizar tasa"
-                >
-                  <RefreshCw className={`w-3 h-3 ${isLoadingRate ? "animate-spin" : ""}`} />
-                </button>
-              )}
-            </div>
+          <div className="cursor-help">
+            <StatCard 
+              label={kpi.label}
+              value={kpi.value}
+              icon={<kpi.icon className="w-5 h-5 text-brand-600" />}
+              className="hover:bg-surface-50 transition-colors"
+            />
+            {kpi.label === "Tasa USD/VES" && (
+              <Button
+                onClick={onRefreshRate}
+                disabled={isLoadingRate}
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 p-1"
+              >
+                <RefreshCw className={`w-3 h-3 ${isLoadingRate ? "animate-spin" : ""}`} />
+              </Button>
+            )}
           </div>
         </Tooltip>
       ))}

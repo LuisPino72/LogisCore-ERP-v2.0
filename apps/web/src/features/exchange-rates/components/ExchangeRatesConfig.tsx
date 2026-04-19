@@ -30,9 +30,8 @@ export function ExchangeRatesConfig({ tenantSlug }: ExchangeRatesConfigProps) {
     setIsLoading(false);
   }, [tenantSlug]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
-    void loadRate();
+    loadRate();
   }, [loadRate]);
 
   const handleSave = async () => {

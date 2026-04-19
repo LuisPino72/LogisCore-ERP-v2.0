@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { Product } from "@/features/products/types/products.types";
 import type { Recipe } from "../types/production.types";
 import { DataTable } from "@/common/components/DataTable";
+import { Button } from "@/common/components/Button";
 import { Badge } from "@/common/components/Badge";
 import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
 import { Plus, Beaker } from "lucide-react";
@@ -75,10 +76,10 @@ export function RecipesTab({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-content-primary">Recetas (BOM)</h3>
-        <button onClick={onCreateRecipe} className="btn btn-primary">
+        <Button variant="primary" onClick={onCreateRecipe}>
           <Plus className="w-4 h-4" />
           Nueva Receta
-        </button>
+        </Button>
       </div>
 
       {isLoading ? (
@@ -89,10 +90,10 @@ export function RecipesTab({
           title="No hay recetas"
           description="Crea tu primera receta para comenzar a gestionar tu producción."
           action={
-            <button onClick={onCreateRecipe} className="btn btn-primary">
+            <Button variant="primary" onClick={onCreateRecipe}>
               <Plus className="w-4 h-4" />
               Crear Receta
-            </button>
+            </Button>
           }
         />
       ) : (

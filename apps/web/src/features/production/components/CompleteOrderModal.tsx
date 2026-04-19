@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import type { ProductionOrder, Recipe } from "../types/production.types";
 import type { Product } from "@/features/products/types/products.types";
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 import { Badge } from "@/common/components/Badge";
 import { AlertTriangle, Scale, Package } from "lucide-react";
 
@@ -70,16 +71,16 @@ export function CompleteOrderModal({
       size="lg"
       footer={
         <>
-          <button onClick={onClose} className="btn btn-secondary">
+          <Button variant="secondary" onClick={onClose}>
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={handleSubmit}
             disabled={!producedQty || Number(producedQty) <= 0 || isSubmitting}
-            className="btn btn-primary"
           >
             {isSubmitting ? "Completando..." : "Completar Orden"}
-          </button>
+          </Button>
         </>
       }
     >

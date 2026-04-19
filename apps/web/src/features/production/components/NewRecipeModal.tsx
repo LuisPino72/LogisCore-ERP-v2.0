@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import type { Product } from "@/features/products/types/products.types";
 import type { CreateRecipeInput } from "../types/production.types";
 import { Modal } from "@/common/components/Modal";
+import { Button } from "@/common/components/Button";
 import { Badge } from "@/common/components/Badge";
 import { FormField, Select, Input } from "@/common";
 import { Plus, X, Beaker, Scale } from "lucide-react";
@@ -113,16 +114,16 @@ export function NewRecipeModal({
       size="lg"
       footer={
         <>
-          <button onClick={onClose} className="btn btn-secondary">
+          <Button variant="secondary" onClick={onClose}>
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
-            className="btn btn-primary"
           >
             {isSubmitting ? "Guardando..." : "Guardar Receta"}
-          </button>
+          </Button>
         </>
       }
     >
@@ -201,14 +202,15 @@ export function NewRecipeModal({
               </label>
             </div>
             <div className="col-span-1">
-              <button
+              <Button
                 type="button"
                 onClick={handleAddIngredient}
                 disabled={!ingredientProductId || Number(ingredientQty) <= 0}
-                className="btn btn-secondary p-2"
+                variant="secondary"
+                size="sm"
               >
                 <Plus className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           </div>
 

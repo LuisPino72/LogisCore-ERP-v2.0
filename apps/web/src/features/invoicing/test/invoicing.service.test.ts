@@ -65,7 +65,6 @@ const createDbMock = (): InvoicingDb => {
       );
     },
     async createAuditLog() {
-      // No-op for tests
     }
   };
 };
@@ -323,7 +322,7 @@ describe("invoicing.service", () => {
     if (!invoice.ok || !invoice.data.items[0]) {
       return;
     }
-    expect(invoice.data.items[0].taxRate).toBe(0.16); // Ahora obtiene IVA desde TaxRuleService
+    expect(invoice.data.items[0].taxRate).toBe(0.16); 
   });
 
   it("lista facturas del tenant", async () => {

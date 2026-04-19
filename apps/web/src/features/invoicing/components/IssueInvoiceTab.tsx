@@ -1,7 +1,11 @@
 import { useState, useMemo } from "react";
 import type { TaxRule } from "../types/invoicing.types";
 import { Badge } from "@/common/components/Badge";
-import { Search, FilePlus, AlertTriangle } from "lucide-react";
+import { Alert } from "@/common/components/Alert";
+import { Button } from "@/common/components/Button";
+import { SearchInput } from "@/common/components/SearchInput";
+import { Card } from "@/common/components/Card";
+import { FilePlus } from "lucide-react";
 
 interface SaleForInvoice {
   localId: string;
@@ -108,7 +112,7 @@ export function IssueInvoiceTab({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="stack-md">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-content-primary">Emitir Factura</h3>
         <Badge variant="info">
@@ -117,24 +121,18 @@ export function IssueInvoiceTab({
       </div>
 
       {lastError && (
-        <div className="alert alert-error">
-          <AlertTriangle className="w-5 h-5 shrink-0" />
-          <span>{lastError}</span>
-        </div>
+        <Alert variant="error">{lastError}</Alert>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="space-y-3">
+        <div className="stack-sm">
           <label className="label flex items-center gap-2">
-            <Search className="w-4 h-4" />
             Buscar Venta
           </label>
-          <input
-            type="text"
+          <SearchInput
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={setSearchTerm}
             placeholder="Buscar por ID, cliente o RIF..."
-            className="input"
           />
 
           <div className="max-h-64 overflow-y-auto border border-surface-200 rounded-lg">
@@ -184,7 +182,7 @@ export function IssueInvoiceTab({
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="stack-md">
           <div>
             <label className="label">Datos del Cliente</label>
             <input
@@ -225,35 +223,38 @@ export function IssueInvoiceTab({
           </div>
 
           {selectedSale && (
-            <div className="bg-surface-50 p-4 rounded-lg space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-content-tertiary">Subtotal:</span>
-                <span className="font-mono">{formatCurrency(selectedSale.subtotal)}</span>
+            <Card variant="filled">
+              <div className="stack-sm">
+                <div className="flex justify-between">
+                  <span className="text-content-tertiary">Subtotal:</span>
+                  <span className="font-mono">{formatCurrency(selectedSale.subtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-content-tertiary">IVA ({ivaRule?.rate || 16}%):</span>
+                  <span className="font-mono">{formatCurrency(selectedSale.taxTotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-content-tertiary">IGTF ({igtfRule?.rate || 3}%):</span>
+                  <span className="font-mono">{formatCurrency(selectedSale.igtfAmount || 0)}</span>
+                </div>
+                <div className="divider" />
+                <div className="flex justify-between font-medium">
+                  <span>Total:</span>
+                  <span className="font-mono">{formatCurrency(selectedSale.total)}</span>
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-content-tertiary">IVA ({ivaRule?.rate || 16}%):</span>
-                <span className="font-mono">{formatCurrency(selectedSale.taxTotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-content-tertiary">IGTF ({igtfRule?.rate || 3}%):</span>
-                <span className="font-mono">{formatCurrency(selectedSale.igtfAmount || 0)}</span>
-              </div>
-              <div className="divider" />
-              <div className="flex justify-between font-medium">
-                <span>Total:</span>
-                <span className="font-mono">{formatCurrency(selectedSale.total)}</span>
-              </div>
-            </div>
+            </Card>
           )}
 
-          <button
+          <Button
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
-            className="btn btn-primary w-full"
+            variant="primary"
+            className="w-full"
           >
             <FilePlus className="w-4 h-4" />
             {isSubmitting ? "Creando..." : "Crear Factura"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
