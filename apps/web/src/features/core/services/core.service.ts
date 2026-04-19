@@ -246,7 +246,13 @@ export const createCoreService = ({
       return ok(fallbackIsActive);
     }
 
-    if (!subscriptionQuery.data || typeof subscriptionQuery.data.isActive !== "boolean") {
+    const subscriptionData = Array.isArray(subscriptionQuery.data) 
+      ? subscriptionQuery.data[0] 
+      : subscriptionQuery.data;
+    
+    const isActive = subscriptionData?.is_active ?? subscriptionData?.isActive;
+    
+    if (isActive === undefined || typeof isActive !== "boolean") {
       return err(
         createAppError({
           code: "SUBSCRIPTION_RESPONSE_INVALID",
@@ -257,7 +263,6 @@ export const createCoreService = ({
       );
     }
 
-    const isActive = subscriptionQuery.data.isActive;
     if (!isActive) {
       eventBus.emit("SUBSCRIPTION.BLOCKED", { tenantSlug });
     }
@@ -296,13 +301,6 @@ export const createCoreService = ({
           supabaseAny.from(table).select(columns).eq("is_global", true).is("deleted_at", null).order("created_at", { ascending: true })
         ]);
 
-        console.log('[BOOTSTRAP] Categories fetch:', {
-          tenant: tenantResponse.data?.length ?? 0,
-          global: globalResponse.data?.length ?? 0,
-          tenantSlug,
-          tenantId
-        });
-
         const dedup = new Map<string, Record<string, unknown>>();
         [...(tenantResponse.data || []), ...(globalResponse.data || [])].forEach((row) => {
           const key = row.local_id as string;
@@ -310,7 +308,6 @@ export const createCoreService = ({
         });
         return { data: Array.from(dedup.values()), error: tenantResponse.error };
       }
-      console.log('[BOOTSTRAP] Categories fetch skipped - no tenantId');
       return { data: [], error: null };
     };
 
@@ -497,6 +494,7 @@ export const createCoreService = ({
     }
 
     const userId = sessionResponse.data.session.user.id;
+    
     const tenantResult = await resolveTenantContext(userId);
     if (!tenantResult.ok) {
       eventBus.emit("CORE.BOOTSTRAP_FAILED", { error: tenantResult.error });

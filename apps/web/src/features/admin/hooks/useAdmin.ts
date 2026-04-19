@@ -10,7 +10,7 @@
 
 import { useCallback, useState } from "react";
 import type { AdminService } from "../services/admin.service";
-import type { AdminUiState, AdminModule, DashboardStats, Tenant, BusinessType, Plan, Subscription, SecurityUser, GlobalConfig, AuditLogEntry } from "../types/admin.types";
+import type { AdminUiState, AdminModule, DashboardStats, SystemMetrics, Tenant, BusinessType, Plan, Subscription, SecurityUser, GlobalConfig, AuditLogEntry } from "../types/admin.types";
 
 interface UseAdminOptions {
   service: AdminService;
@@ -29,6 +29,7 @@ const initialState: AdminUiState = {
 export const useAdmin = ({ service }: UseAdminOptions) => {
   const [state, setState] = useState<AdminUiState>(initialState);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [businessTypes, setBusinessTypes] = useState<BusinessType[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -47,6 +48,17 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
       return;
     }
     setStats(result.data);
+    setState(prev => ({ ...prev, isLoading: false }));
+  }, [service]);
+
+  const loadMetrics = useCallback(async () => {
+    setState(prev => ({ ...prev, isLoading: true, lastError: null }));
+    const result = await service.getSystemMetrics();
+    if (!result.ok) {
+      setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      return;
+    }
+    setMetrics(result.data);
     setState(prev => ({ ...prev, isLoading: false }));
   }, [service]);
 
@@ -299,6 +311,7 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
   return {
     state,
     stats,
+    metrics,
     tenants,
     businessTypes,
     plans,
@@ -308,6 +321,7 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     activeModule,
     setActiveModule,
     loadStats,
+    loadMetrics,
     loadTenants,
     loadBusinessTypes,
     loadPlans,

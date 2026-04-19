@@ -136,9 +136,10 @@ export function validateAuditDetails(
 
   const result = schema.safeParse(details);
   if (!result.success) {
+    const errorMessages = result.error.issues?.map((e) => e.message).join(", ") ?? "Validation failed";
     return err({
       code: "AUDIT_DETAILS_MISMATCH",
-      message: result.error.errors.map((e) => e.message).join(", "),
+      message: errorMessages,
       retryable: false,
     });
   }

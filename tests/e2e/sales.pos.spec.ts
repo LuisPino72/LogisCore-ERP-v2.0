@@ -42,18 +42,6 @@ test('Auth & Bootstrap - Dexie accessible after page load', async ({ page }) => 
 
 test('Auth & Bootstrap - Login and verify bootstrap completes with real tenant', async ({ page }) => {
   const dbUtil = new DexieUtil(page);
-  
-  page.on('console', msg => {
-    if (msg.type() === 'error') {
-      console.log('[BROWSER ERROR]', msg.text());
-    } else if (msg.text().includes('BOOTSTRAP')) {
-      console.log('[BROWSER CONSOLE]', msg.text());
-    }
-  });
-  
-  page.on('requestfailed', request => {
-    console.log('[NETWORK FAIL]', request.url(), request.failure()?.errorText);
-  });
 
   await page.goto('/');
   await page.waitForLoadState('networkidle');

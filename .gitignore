@@ -69,7 +69,7 @@ temp/
 .cache/
 .parcel-cache/
 .DS_Store
-[Mm]emoria/
+memoria/
 
 # Código Generado
 **/generated/

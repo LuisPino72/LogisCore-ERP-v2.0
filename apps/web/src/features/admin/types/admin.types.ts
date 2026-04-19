@@ -263,6 +263,21 @@ export interface UpdateGlobalConfigInput {
 }
 
 /**
+ * Métricas críticas del sistema en tiempo real.
+ * Used by the Admin Dashboard to monitor system health.
+ */
+export interface SystemMetrics {
+  activeSessionsToday: number;
+  transactionsToday: number;
+  errorsThisWeek: number;
+  lastDeployment: string;
+  uptime: number;
+  totalTenants: number;
+  totalUsers: number;
+  activeSubscriptions: number;
+}
+
+/**
  * Entrada de log de auditoría.
  */
 export interface AuditLogEntry {
@@ -292,7 +307,8 @@ export type AdminModule =
   | "businessTypes"
   | "subscriptions"
   | "settings"
-  | "globalCatalog";
+  | "globalCatalog"
+  | "metrics";
 
 /**
  * Categoría global asignada a un tipo de negocio.

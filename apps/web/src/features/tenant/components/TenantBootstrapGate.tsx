@@ -6,7 +6,7 @@ import { BlockedAccessScreen } from "@/features/core/components/BlockedAccessScr
 import { useTenantData } from "../hooks/useTenantData";
 import { adminService } from "@/features/admin/services/admin.service.instance";
 import { useAdmin } from "@/features/admin/hooks/useAdmin";
-import { AdminLayout, Dashboard, TenantsList, SecurityPanel, BusinessTypesPanel, SubscriptionsPanel, SettingsPanel, GlobalCatalogPanel } from "@/features/admin";
+import { AdminLayout, Dashboard, TenantsList, SecurityPanel, BusinessTypesPanel, SubscriptionsPanel, SettingsPanel, GlobalCatalogPanel, SystemMetricsPanel } from "@/features/admin";
 import { LoadingSpinner } from "@/common";
 import { type AdminModule, type Tenant } from "@/features/admin/types/admin.types";
 import type { TenantContext } from "../types/tenant.types";
@@ -142,6 +142,13 @@ export function TenantBootstrapGate({
             stats={admin.stats}
             isLoading={admin.state.isLoading}
             onRefresh={admin.loadStats}
+          />
+        )}
+        {activeAdminModule === "metrics" && (
+          <SystemMetricsPanel
+            metrics={admin.metrics}
+            isLoading={admin.state.isLoading}
+            onRefresh={admin.loadMetrics}
           />
         )}
         {activeAdminModule === "tenants" && (

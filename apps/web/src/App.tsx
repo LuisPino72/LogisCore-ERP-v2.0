@@ -5,6 +5,7 @@ import { ModuleRenderer } from "@/common/components/ModuleRenderer";
 import { TenantBootstrapGate } from "@/features/tenant/components/TenantBootstrapGate";
 import { authService } from "@/features/auth/services/auth.service.instance";
 import { tenantService } from "@/features/tenant/services/tenant.service.instance";
+import { coreService } from "@/features/core/services/core.service.instance";
 import { syncEngine } from "@/lib/core/runtime";
 import { type TenantContext } from "@/features/tenant/types/tenant.types";
 
@@ -14,9 +15,9 @@ import { type TenantContext } from "@/features/tenant/types/tenant.types";
 export function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>("dashboard");
 
-  const coreService = {
+  const appCoreService = {
     startSync: () => syncEngine.startPeriodicSync(),
-    bootstrapSession: async () => {}
+    bootstrapSession: () => coreService.bootstrapSession()
   };
 
   return (
@@ -24,7 +25,7 @@ export function App() {
       <TenantBootstrapGate
         authService={authService}
         tenantService={tenantService}
-        coreService={coreService}
+        coreService={appCoreService}
         renderApp={(tenantSlug, actor, onLogout, tenant) => {
           // En LogisCore, el bootstrap asegura que si llegamos aquí, tenemos el contexto necesario.
           // Si estamos en modo suplantación (admin), el tenantContext puede venir del servicio de admin o ser el base.
