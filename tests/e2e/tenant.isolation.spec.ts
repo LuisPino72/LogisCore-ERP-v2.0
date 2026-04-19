@@ -36,7 +36,9 @@ async function ensureTestDataExists(page: import('@playwright/test').Page) {
     await page.evaluate(async () => {
       const db = (window as any).logiscoreDb;
       if (!db || !db.products) return;
+      const localId = `test-prod-iso-${Date.now()}`;
       await db.products.add({
+        localId,
         tenantId: 'prueba',
         name: 'Producto Test A',
         sku: 'TEST-A-001',
