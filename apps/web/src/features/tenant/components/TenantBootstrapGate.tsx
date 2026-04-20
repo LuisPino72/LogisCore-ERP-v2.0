@@ -7,7 +7,7 @@ import { useTenantData } from "../hooks/useTenantData";
 import { adminService } from "@/features/admin/services/admin.service.instance";
 import { useAdmin } from "@/features/admin/hooks/useAdmin";
 import { AdminLayout, Dashboard, TenantsList, SecurityPanel, BusinessTypesPanel, SubscriptionsPanel, SettingsPanel, GlobalCatalogPanel, SystemMetricsPanel } from "@/features/admin";
-import { LoadingSpinner } from "@/common";
+import { LoadingSpinner, Button } from "@/common";
 import { type AdminModule, type Tenant } from "@/features/admin/types/admin.types";
 import type { TenantContext } from "../types/tenant.types";
 import { type ActorContext, type ActorPermissions } from "@/lib/permissions/permissions.types";
@@ -117,9 +117,9 @@ export function TenantBootstrapGate({
           <div className="alert alert-error mb-6">
             <span>{state.lastError.message}</span>
           </div>
-          <button onClick={() => window.location.reload()} className="btn btn-primary w-full">
+          <Button onClick={() => window.location.reload()} className="w-full">
             Reintentar
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -231,12 +231,13 @@ export function TenantBootstrapGate({
         {impersonatedTenantSlug && state.userRole?.role === "admin" && (
           <div className="bg-brand-600 text-white p-2 text-center text-sm font-medium flex items-center justify-center gap-4">
             Viewing as admin: <span className="font-bold">{impersonatedTenantSlug}</span>
-            <button 
+            <Button 
               onClick={() => setImpersonatedTenantSlug(null)}
-              className="bg-white text-brand-600 px-3 py-1 rounded text-xs font-bold hover:bg-surface-100"
+              variant="secondary"
+              size="sm"
             >
               Back to Admin Panel
-            </button>
+            </Button>
           </div>
         )}
         {state.isLastDay && <SubscriptionExpirationBanner />}

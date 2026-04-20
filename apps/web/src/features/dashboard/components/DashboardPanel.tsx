@@ -203,18 +203,18 @@ export function DashboardPanel({
           <h3 className="text-lg font-bold mb-2">LogisCore Pro</h3>
           <p className="text-brand-100 text-sm mb-6">Optimiza tu operación con vistas avanzadas y reportes en tiempo real.</p>
           <div className="grid grid-cols-2 gap-3">
-            <button 
-              className="w-full py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-sm font-semibold transition-all border border-white/20"
+            <Button 
+              variant="secondary"
               onClick={() => onNavigate?.("sales")}
             >
               Abrir Punto de Venta
-            </button>
-            <button 
-              className="w-full py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-sm font-semibold transition-all border border-white/20"
+            </Button>
+            <Button 
+              variant="secondary"
               onClick={() => onNavigate?.("inventory")}
             >
               Ver Inventario
-            </button>
+            </Button>
           </div>
         </div>
         <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />

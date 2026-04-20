@@ -1,7 +1,7 @@
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "../../types/inventory.types";
 import { Button } from "@/common/components/Button";
-import { FormField, Select, Input } from "@/common";
+import { FormField, Select, Input, Textarea } from "@/common";
 
 interface CountFormProps {
   products: Product[];
@@ -56,12 +56,12 @@ export function CountForm({
         />
       </FormField>
       <FormField label="Razón / Observación" htmlFor="reason">
-        <textarea 
+        <Textarea 
           id="reason"
           value={form.reason}
           onChange={(e) => onChange({ ...form, reason: e.target.value })}
           placeholder="Motivo del conteo..."
-          className="input min-h-[80px]"
+          className="min-h-[80px]"
         />
       </FormField>
       <div className="flex justify-end gap-3">

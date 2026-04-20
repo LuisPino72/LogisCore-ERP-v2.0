@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import type { KardexEntryExtended, ReportsFilters } from "../types/reports.types";
 import { SearchInput } from "@/common/components/SearchInput";
 import { Badge } from "@/common/components/Badge";
+import { Select } from "@/common/components/Select";
 import { Package, ArrowDownLeft, ArrowUpRight, RotateCcw } from "lucide-react";
 
 interface KardexTabProps {
@@ -166,18 +167,15 @@ export function KardexTab({ kardex, isLoading, warehouses, onFiltersChange: _onF
             onChange={setSearchQuery}
           />
         </div>
-        <select
-          className="input w-full sm:w-48"
+        <Select
+          className="w-full sm:w-48"
           value={selectedWarehouse}
-          onChange={(e) => setSelectedWarehouse(e.target.value)}
-        >
-          <option value="">Todas las bodegas</option>
-          {warehouses.map((w) => (
-            <option key={w.localId} value={w.localId}>
-              {w.name}
-            </option>
-          ))}
-        </select>
+          onChange={(val) => setSelectedWarehouse(val)}
+          options={[
+            { label: "Todas las bodegas", value: "" },
+            ...warehouses.map((w) => ({ label: w.name, value: w.localId }))
+          ]}
+        />
       </div>
 
       <div className="flex gap-4 text-sm">

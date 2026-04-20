@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/common/components/Badge";
 import { Button } from "@/common/components/Button";
+import { Select } from "@/common/components/Select";
 import type { BoxClosing } from "../types/sales.types";
 import { getBoxStatusLabel, getBoxStatusVariant } from "../utils/sales.utils";
 
@@ -34,16 +35,15 @@ export function BoxClosingsList({
   return (
     <div className="space-y-4">
       <div className="flex gap-4 flex-wrap">
-        <select
+        <Select
           value={warehouseFilter}
-          onChange={(e) => setWarehouseFilter(e.target.value)}
-          className="input w-48"
-        >
-          <option value="all">Todas las bodegas</option>
-          {warehouses.map(w => (
-            <option key={w.localId} value={w.localId}>{w.name}</option>
-          ))}
-        </select>
+          onChange={(val) => setWarehouseFilter(val)}
+          options={[
+            { label: "Todas las bodegas", value: "all" },
+            ...warehouses.map(w => ({ label: w.name, value: w.localId }))
+          ]}
+          className="w-48"
+        />
       </div>
 
       {filteredClosings.length === 0 ? (

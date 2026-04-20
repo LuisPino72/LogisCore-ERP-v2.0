@@ -310,22 +310,20 @@ export function PurchasesPanel({
 
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-1 bg-surface-100 p-1 rounded-lg">
-          <button
+          <Button
+            variant={activeMainTab === "orders" ? "primary" : "ghost"}
+            size="sm"
             onClick={() => setActiveMainTab("orders")}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${
-              activeMainTab === "orders" ? "bg-white shadow-sm text-content-primary" : "text-content-tertiary hover:text-content-secondary"
-            }`}
           >
             Gestión de Órdenes
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={activeMainTab === "catalog" ? "primary" : "ghost"}
+            size="sm"
             onClick={() => setActiveMainTab("catalog")}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${
-              activeMainTab === "catalog" ? "bg-white shadow-sm text-content-primary" : "text-content-tertiary hover:text-content-secondary"
-            }`}
           >
             Gestión del Catálogo
-          </button>
+          </Button>
         </div>
         
         <div className="flex items-center gap-2 text-xs text-content-tertiary">

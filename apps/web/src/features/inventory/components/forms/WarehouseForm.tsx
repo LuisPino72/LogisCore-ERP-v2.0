@@ -1,5 +1,6 @@
 import type { CreateWarehouseInput } from "../../types/inventory.types";
 import { Button } from "@/common/components/Button";
+import { Checkbox } from "@/common/components/Checkbox";
 import { FormField, Input } from "@/common";
 
 interface WarehouseFormProps {
@@ -44,12 +45,10 @@ export function WarehouseForm({
         />
       </FormField>
       <div className="flex items-center gap-2">
-        <input 
-          type="checkbox"
+        <Checkbox 
           id="isDefault"
           checked={form.isDefault}
           onChange={(e) => onChange({ ...form, isDefault: e.target.checked })}
-          className="w-4 h-4"
         />
         <label htmlFor="isDefault" className="text-sm text-content-secondary">
           Bodega Principal (predeterminada)

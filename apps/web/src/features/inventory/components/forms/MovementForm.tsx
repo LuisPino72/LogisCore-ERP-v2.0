@@ -2,7 +2,7 @@ import type { StockMovementType } from "../../types/inventory.types";
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "../../types/inventory.types";
 import { Button } from "@/common/components/Button";
-import { FormField, Select } from "@/common";
+import { FormField, Select, Textarea, Input } from "@/common";
 
 interface MovementFormProps {
   products: Product[];
@@ -67,23 +67,22 @@ export function MovementForm({
         />
       </FormField>
       <FormField label="Cantidad" htmlFor="quantity" required>
-        <input 
+        <Input 
           id="quantity"
           type="number"
           step="0.0001"
           min="0.0001"
           value={form.quantity}
-          onChange={(e) => onChange({ ...form, quantity: Number(e.target.value) })}
-          className="input"
+          onChange={(value) => onChange({ ...form, quantity: Number(value) })}
         />
       </FormField>
       <FormField label="Notas (obligatorio para ajustes)" htmlFor="notes">
-        <textarea 
+        <Textarea 
           id="notes"
           value={form.notes}
           onChange={(e) => onChange({ ...form, notes: e.target.value })}
           placeholder="Motivo del movimiento..."
-          className="input min-h-[80px]"
+          className="min-h-[80px]"
         />
       </FormField>
 <div className="flex justify-end gap-3">

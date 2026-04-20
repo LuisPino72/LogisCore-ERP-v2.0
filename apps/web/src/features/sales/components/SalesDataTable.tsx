@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Search, RotateCcw, Ban, CreditCard } from "lucide-react";
 import { Badge } from "@/common/components/Badge";
+import { Input, Select, Button } from "@/common";
 import type { Sale } from "../types/sales.types";
 import {
   formatCurrency,
@@ -51,24 +52,25 @@ export function SalesDataTable({
       <div className="flex gap-4 flex-wrap">
         <div className="flex-1 min-w-[200px] relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary" />
-          <input
+          <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar por número o ID..."
-            className="input pl-10"
+            className="pl-10"
           />
         </div>
-        <select
+        <Select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="input w-40"
-        >
-          <option value="all">Todos los estados</option>
-          <option value="completed">Completadas</option>
-          <option value="voided">Anuladas</option>
-          <option value="refunded">Reembolsadas</option>
-        </select>
+          onChange={(value) => setStatusFilter(value)}
+          options={[
+            { value: "all", label: "Todos los estados" },
+            { value: "completed", label: "Completadas" },
+            { value: "voided", label: "Anuladas" },
+            { value: "refunded", label: "Reembolsadas" }
+          ]}
+          className="w-40"
+        />
       </div>
 
       {filteredSales.length === 0 ? (
@@ -112,29 +114,33 @@ export function SalesDataTable({
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
+                      <Button
                         onClick={() => onView(sale)}
-                        className="p-1.5 rounded hover:bg-surface-100 text-content-secondary"
+                        variant="ghost"
+                        size="sm"
                         title="Ver detalles"
                       >
                         <CreditCard className="w-4 h-4" />
-                      </button>
+                      </Button>
                       {sale.status === "completed" && (
                         <>
-                          <button
+                          <Button
                             onClick={() => onRefund(sale.localId)}
-                            className="p-1.5 rounded hover:bg-surface-100 text-state-info"
+                            variant="ghost"
+                            size="sm"
                             title="Reembolsar"
                           >
                             <RotateCcw className="w-4 h-4" />
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             onClick={() => onVoid(sale.localId)}
-                            className="p-1.5 rounded hover:bg-surface-100 text-state-error"
+                            variant="ghost"
+                            size="sm"
+                            className="text-state-error"
                             title="Anular"
                           >
                             <Ban className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </>
                       )}
                     </div>

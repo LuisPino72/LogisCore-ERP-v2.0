@@ -63,23 +63,25 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
                 </p>
               </div>
 
-              {resetSent ? (
-                <div className="text-center">
-                  <Alert variant="success" className="mb-4">
-                    <span>Correo enviado. Revisa tu bandeja de entrada.</span>
-                  </Alert>
-                  <button
-                    onClick={() => {
-                      setShowForgotPassword(false);
-                      setResetSent(false);
-                      setResetEmail("");
-                    }}
-                    className="text-sm text-brand-600 hover:text-brand-700 font-medium"
-                  >
-                    Volver al login
-                  </button>
-                </div>
-              ) : (
+                   {resetSent ? (
+                     <div className="text-center">
+                       <Alert variant="success" className="mb-4">
+                         <span>Correo enviado. Revisa tu bandeja de entrada.</span>
+                       </Alert>
+                       <Button
+                         variant="ghost"
+                         onClick={() => {
+                           setShowForgotPassword(false);
+                           setResetSent(false);
+                           setResetEmail("");
+                         }}
+                         className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+                       >
+                         Volver al login
+                       </Button>
+                     </div>
+                   ) : (
+
                 <form onSubmit={handleResetPassword} className="stack-md">
                   {resetError && (
                     <Alert variant="error">{resetError}</Alert>
@@ -98,29 +100,31 @@ export function LoginPage({ onLogin, onResetPassword, isLoading, error }: LoginP
                     />
                   </FormField>
 
-                  <Button
-                    type="submit"
-                    disabled={isLoading}
-                    variant="primary"
-                    className="w-full"
-                  >
-                    {isLoading ? (
-                      <>
-                        <span className="spinner" />
-                        Enviando...
-                      </>
-                    ) : (
-                      "Enviar Enlace"
-                    )}
-                  </Button>
+                   <Button
+                     type="submit"
+                     disabled={isLoading}
+                     variant="primary"
+                     className="w-full"
+                   >
+                     {isLoading ? (
+                       <>
+                         <span className="spinner" />
+                         Enviando...
+                       </>
+                     ) : (
+                       "Enviar Enlace"
+                     )}
+                   </Button>
+ 
+                   <Button
+                     type="button"
+                     variant="ghost"
+                     onClick={() => setShowForgotPassword(false)}
+                     className="w-full text-center text-sm text-brand-600 hover:text-brand-700 font-medium"
+                   >
+                     Volver al login
+                   </Button>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotPassword(false)}
-                    className="w-full text-center text-sm text-brand-600 hover:text-brand-700 font-medium"
-                  >
-                    Volver al login
-                  </button>
                 </form>
               )}
             </div>
@@ -215,25 +219,27 @@ export function LoginForm({ onLogin, isLoading, error, onForgotPassword }: Login
         htmlFor="password" 
         required
       >
-        <div className="relative">
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={isLoading}
-            placeholder="••••••••"
-            autoComplete="current-password"
-          />
-          <button
-            type="button"
-            onClick={onForgotPassword}
-            className="absolute right-0 -top-7 text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors"
-          >
-            Olvidé mi contraseña
-          </button>
-        </div>
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          disabled={isLoading}
+                          placeholder="••••••••"
+                          autoComplete="current-password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={onForgotPassword}
+                          className="absolute right-0 -top-7 text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors"
+                        >
+                          Olvidé mi contraseña
+                        </Button>
+                      </div>
+
       </FormField>
 
       <Button

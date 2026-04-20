@@ -3,6 +3,7 @@ import type { Invoice, InvoiceStatusFilter } from "../types/invoicing.types";
 import { DataTable } from "@/common/components/DataTable";
 import { Badge } from "@/common/components/Badge";
 import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
+import { Button, Select } from "@/common";
 import { FileText, Eye, XCircle } from "lucide-react";
 
 interface InvoicesTabProps {
@@ -114,21 +115,23 @@ export function InvoicesTab({
       align: "center" as const,
       render: (_: unknown, row: Invoice) => (
         <div className="flex items-center gap-2 justify-center">
-          <button
+          <Button
             onClick={() => onViewInvoice(row)}
-            className="p-1.5 rounded-lg hover:bg-surface-100 text-content-secondary hover:text-content-primary transition-colors"
+            variant="ghost"
+            size="sm"
             title="Ver detalles"
           >
             <Eye className="w-4 h-4" />
-          </button>
+          </Button>
           {row.status !== "voided" && canVoid && (
-            <button
+            <Button
               onClick={() => onVoidInvoice(row)}
-              className="p-1.5 rounded-lg hover:bg-state-error/10 text-content-secondary hover:text-state-error transition-colors"
+              variant="ghost"
+              size="sm"
               title="Anular factura"
             >
               <XCircle className="w-4 h-4" />
-            </button>
+            </Button>
           )}
         </div>
       ),
@@ -140,16 +143,16 @@ export function InvoicesTab({
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-content-primary">Facturas</h3>
         <div className="flex items-center gap-2">
-          <select
+          <Select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as InvoiceStatusFilter)}
-            className="input py-1.5 px-3 text-sm w-auto"
+            onChange={(value) => setStatusFilter(value as InvoiceStatusFilter)}
+            className="py-1.5 px-3 text-sm w-auto"
           >
             <option value="all">Todas</option>
             <option value="draft">Borrador</option>
             <option value="issued">Emitidas</option>
             <option value="voided">Anuladas</option>
-          </select>
+          </Select>
         </div>
       </div>
 

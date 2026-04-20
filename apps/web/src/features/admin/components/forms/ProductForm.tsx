@@ -2,6 +2,7 @@
  * Formulario de producto global.
  */
 
+import { Button, Input, Select, Checkbox, Card, Textarea } from "@/common";
 import type { GlobalProductPresentation, BusinessType, CreateGlobalProductInput } from "../../types/admin.types";
 
 const UNIT_OPTIONS = [
@@ -42,7 +43,7 @@ export function ProductForm({
   const filteredCategories = categories.filter(c => c.businessTypeId === form.businessTypeId);
 
   return (
-    <div className="card">
+    <Card>
       <div className="card-header">
         <h2 className="font-semibold">
           {isEditing ? "Editar Producto" : "Nuevo Producto Global"}
@@ -53,9 +54,8 @@ export function ProductForm({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Nombre del Producto</label>
-              <input
+              <Input
                 type="text"
-                className="input"
                 value={form.name}
                 onChange={(e) => onChange("name", e.target.value)}
                 placeholder="Ej. Arroz Premium"
@@ -64,9 +64,8 @@ export function ProductForm({
             </div>
             <div>
               <label className="label">SKU</label>
-              <input
+              <Input
                 type="text"
-                className="input"
                 value={form.sku}
                 onChange={(e) => onChange("sku", e.target.value)}
                 placeholder="Ej. ARR-001"
@@ -77,8 +76,8 @@ export function ProductForm({
 
           <div>
             <label className="label">Descripción</label>
-            <textarea
-              className="input min-h-[60px]"
+            <Textarea
+              className="min-h-[60px]"
               value={form.description || ""}
               onChange={(e) => onChange("description", e.target.value)}
               placeholder="Descripción opcional..."
@@ -88,109 +87,76 @@ export function ProductForm({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Tipo de Negocio</label>
-              <select
-                className="input"
+              <Select
                 value={form.businessTypeId}
-                onChange={(e) => {
-                  onChange("businessTypeId", e.target.value);
+                onChange={(val) => {
+                  onChange("businessTypeId", val);
                   onChange("categoryId", "");
                 }}
+                options={businessTypes.map(bt => ({ label: bt.name, value: bt.id }))}
+                placeholder="Seleccionar..."
                 required
-              >
-                <option value="">Seleccionar...</option>
-                {businessTypes.map(bt => (
-                  <option key={bt.id} value={bt.id}>{bt.name}</option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="label">Categoría</label>
-              <select
-                className="input"
+              <Select
                 value={form.categoryId || ""}
-                onChange={(e) => onChange("categoryId", e.target.value)}
-              >
-                <option value="">Seleccionar...</option>
-                {filteredCategories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
+                onChange={(val) => onChange("categoryId", val)}
+                options={filteredCategories.map(cat => ({ label: cat.name, value: cat.id }))}
+                placeholder="Seleccionar..."
+              />
             </div>
           </div>
 
           <div className="border-t border-border pt-4">
             <h3 className="font-medium mb-4">Características</h3>
             <div className="grid grid-cols-4 gap-4">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isWeighted"
-                  checked={form.isWeighted}
-                  onChange={(e) => onChange("isWeighted", e.target.checked)}
-                  className="checkbox"
-                />
-                <label htmlFor="isWeighted" className="text-sm">¿Es pesable?</label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isTaxable"
-                  checked={form.isTaxable}
-                  onChange={(e) => onChange("isTaxable", e.target.checked)}
-                  className="checkbox"
-                />
-                <label htmlFor="isTaxable" className="text-sm">¿Es grabable?</label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isSerialized"
-                  checked={form.isSerialized}
-                  onChange={(e) => onChange("isSerialized", e.target.checked)}
-                  className="checkbox"
-                />
-                <label htmlFor="isSerialized" className="text-sm">¿Tiene serie?</label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="visible"
-                  checked={form.visible}
-                  onChange={(e) => onChange("visible", e.target.checked)}
-                  className="checkbox"
-                />
-                <label htmlFor="visible" className="text-sm">Visible</label>
-              </div>
+              <Checkbox
+                label="¿Es pesable?"
+                checked={form.isWeighted}
+                onChange={(checked) => onChange("isWeighted", checked)}
+              />
+              <Checkbox
+                label="¿Es grabable?"
+                checked={form.isTaxable}
+                onChange={(checked) => onChange("isTaxable", checked)}
+              />
+              <Checkbox
+                label="¿Tiene serie?"
+                checked={form.isSerialized}
+                onChange={(checked) => onChange("isSerialized", checked)}
+              />
+              <Checkbox
+                label="Visible"
+                checked={form.visible}
+                onChange={(checked) => onChange("visible", checked)}
+              />
             </div>
             <div className="mt-4">
               <label className="label">Unidad de Medida</label>
-              <select
-                className="input"
+              <Select
                 value={form.unitOfMeasure}
-                onChange={(e) => onChange("unitOfMeasure", e.target.value)}
-              >
-                {UNIT_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                onChange={(val) => onChange("unitOfMeasure", val)}
+                options={UNIT_OPTIONS}
+              />
             </div>
           </div>
 
           <div className="border-t border-border pt-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-medium">Presentaciones</h3>
-              <button type="button" onClick={onAddPresentation} className="btn btn-secondary text-sm">
+              <Button variant="secondary" size="sm" onClick={onAddPresentation}>
                 + Agregar Presentación
-              </button>
+              </Button>
             </div>
             <div className="space-y-3">
               {form.presentations.map((pres, index) => (
                 <div key={index} className="flex gap-3 items-end bg-surface-50 p-3 rounded">
                   <div className="flex-1">
                     <label className="label text-xs">Nombre</label>
-                    <input
+                    <Input
                       type="text"
-                      className="input"
                       value={pres.name}
                       onChange={(e) => onUpdatePresentation(index, "name", e.target.value)}
                       placeholder="Ej. 500ml, 1kg"
@@ -199,10 +165,9 @@ export function ProductForm({
                   </div>
                   <div className="w-24">
                     <label className="label text-xs">Factor</label>
-                    <input
+                    <Input
                       type="number"
                       step="0.01"
-                      className="input"
                       value={isNaN(pres.factor) ? "" : pres.factor}
                       onChange={(e) => onUpdatePresentation(index, "factor", e.target.value === "" ? 0 : parseFloat(e.target.value))}
                       required
@@ -210,33 +175,30 @@ export function ProductForm({
                   </div>
                   <div className="w-32">
                     <label className="label text-xs">Precio</label>
-                    <input
+                    <Input
                       type="number"
                       step="0.01"
-                      className="input"
                       value={isNaN(pres.price) ? "" : pres.price}
                       onChange={(e) => onUpdatePresentation(index, "price", e.target.value === "" ? 0 : parseFloat(e.target.value))}
                       required
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      label="Default"
                       checked={pres.isDefault}
-                      onChange={(e) => onUpdatePresentation(index, "isDefault", e.target.checked)}
-                      className="checkbox"
-                      id={`default-${index}`}
+                      onChange={(checked) => onUpdatePresentation(index, "isDefault", checked)}
                     />
-                    <label htmlFor={`default-${index}`} className="text-xs">Default</label>
                   </div>
                   {form.presentations.length > 1 && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => onRemovePresentation(index)}
-                      className="text-state-error hover:text-state-error/70"
+                      className="text-state-error hover:bg-state-error/10"
                     >
                       ✕
-                    </button>
+                    </Button>
                   )}
                 </div>
               ))}
@@ -244,15 +206,15 @@ export function ProductForm({
           </div>
 
           <div className="flex gap-3 pt-4">
-            <button type="submit" className="btn btn-primary">
+            <Button type="submit" variant="primary">
               {isEditing ? "Guardar Cambios" : "Crear Producto"}
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={onCancel}>
+            </Button>
+            <Button type="button" variant="secondary" onClick={onCancel}>
               Cancelar
-            </button>
+            </Button>
           </div>
         </form>
       </div>
-    </div>
+    </Card>
   );
 }

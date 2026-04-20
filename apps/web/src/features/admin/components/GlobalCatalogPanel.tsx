@@ -14,6 +14,7 @@ import type {
 } from "../types/admin.types";
 import { ConfirmDialog } from "@/common/components/ConfirmDialog";
 import { Button } from "@/common/components/Button";
+import { Select } from "@/common/components/Select";
 import { Tabs } from "@/common/components/Tabs";
 import { adminService } from "../services/admin.service.instance";
 import { useToast } from "@/common/stores/toastStore";
@@ -324,16 +325,15 @@ export function GlobalCatalogPanel({
 
       <div className="flex gap-4 items-center">
         <label className="text-sm font-medium text-content-secondary">Tipo de Negocio:</label>
-        <select
-          className="input w-64"
+        <Select
+          className="w-64"
           value={selectedBusinessType}
-          onChange={(e) => setSelectedBusinessType(e.target.value)}
-        >
-          <option value="">Todos</option>
-          {businessTypes.map(bt => (
-            <option key={bt.id} value={bt.id}>{bt.name}</option>
-          ))}
-        </select>
+          onChange={(value) => setSelectedBusinessType(value)}
+          options={[
+            { value: "", label: "Todos" },
+            ...businessTypes.map(bt => ({ value: bt.id, label: bt.name }))
+          ]}
+        />
       </div>
 
       <Tabs

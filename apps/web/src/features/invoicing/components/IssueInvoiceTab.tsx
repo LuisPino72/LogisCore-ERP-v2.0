@@ -5,6 +5,7 @@ import { Alert } from "@/common/components/Alert";
 import { Button } from "@/common/components/Button";
 import { SearchInput } from "@/common/components/SearchInput";
 import { Card } from "@/common/components/Card";
+import { Input, Textarea } from "@/common";
 import { FilePlus } from "lucide-react";
 
 interface SaleForInvoice {
@@ -185,22 +186,21 @@ export function IssueInvoiceTab({
         <div className="stack-md">
           <div>
             <label className="label">Datos del Cliente</label>
-            <input
+            <Input
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="Nombre o razón social"
-              className="input"
               disabled={!selectedSaleId}
             />
           </div>
 
           <div>
             <label className="label">RIF del Cliente</label>
-            <input
+            <Input
               value={customerRif}
               onChange={(e) => setCustomerRif(e.target.value.toUpperCase())}
               placeholder="Ej: J123456789"
-              className={`input ${customerRif && !isValidRif ? "border-state-error" : ""}`}
+              className={customerRif && !isValidRif ? "border-state-error" : ""}
               disabled={!selectedSaleId}
               maxLength={10}
             />
@@ -213,11 +213,11 @@ export function IssueInvoiceTab({
 
           <div>
             <label className="label">Notas (opcional)</label>
-            <textarea
+            <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Observaciones de la factura..."
-              className="input min-h-[80px]"
+              className="min-h-[80px]"
               disabled={!selectedSaleId}
             />
           </div>

@@ -2,6 +2,7 @@ import type { InventoryCount } from "../types/inventory.types";
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "../types/inventory.types";
 import { Badge } from "@/common/components/Badge";
+import { Button } from "@/common/components/Button";
 
 interface CountsTableProps {
   counts: InventoryCount[];
@@ -77,12 +78,14 @@ export function CountsTable({ counts, products, warehouses, onPostCount }: Count
                 </td>
                 <td className="px-4 py-3">
                   {c.status === "draft" && (
-                    <button 
+                    <Button 
+                      variant="ghost"
+                      size="sm"
                       onClick={() => onPostCount(c.localId)}
                       className="text-sm text-brand-600 hover:text-brand-700 font-medium"
                     >
                       Publicar
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>

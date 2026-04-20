@@ -2,6 +2,7 @@
  * Formulario de almacén para nuevo tenant.
  */
 
+import { Input, Checkbox } from "@/common";
 import type { WarehouseInput } from "../TenantForm";
 import { VALIDATION_RULES } from "@/common";
 
@@ -17,22 +18,19 @@ export function WarehouseForm({ formData, errors, onChangeWarehouse, onChange }:
     <div>
       <h3 className="text-sm font-medium text-content-primary mb-3 border-b pb-1">Almacén</h3>
       <div className="flex items-center gap-3 mb-3">
-        <input
-          type="checkbox"
-          id="hasWarehouse"
+        <Checkbox
+          label="¿Este tenant tiene almacén?"
           checked={formData.hasWarehouse}
-          onChange={(e) => onChange("hasWarehouse", e.target.checked)}
-          className="w-4 h-4"
+          onChange={(checked) => onChange("hasWarehouse", checked)}
         />
-        <label htmlFor="hasWarehouse" className="text-sm">¿Este tenant tiene almacén?</label>
       </div>
       {formData.hasWarehouse && (
         <div className="grid grid-cols-2 gap-4 p-3 bg-surface-50 rounded-lg border">
           <div>
             <label className="label">Nombre del Almacén</label>
-            <input
+            <Input
               type="text"
-              className={`input ${errors.warehouseName ? "border-state-error" : ""}`}
+              className={errors.warehouseName ? "border-state-error" : ""}
               value={formData.warehouse.name}
               onChange={(e) => onChangeWarehouse("name", e.target.value)}
               placeholder="Almacén Principal"
@@ -43,23 +41,19 @@ export function WarehouseForm({ formData, errors, onChangeWarehouse, onChange }:
           </div>
           <div>
             <label className="label">Dirección</label>
-            <input
+            <Input
               type="text"
-              className="input"
               value={formData.warehouse.address || ""}
               onChange={(e) => onChangeWarehouse("address", e.target.value)}
               placeholder="Dirección del almacén"
             />
           </div>
           <div className="col-span-2 flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="isDefault"
+            <Checkbox
+              label="¿Es el almacén principal?"
               checked={formData.warehouse.isDefault}
-              onChange={(e) => onChangeWarehouse("isDefault", e.target.checked)}
-              className="w-4 h-4"
+              onChange={(checked) => onChangeWarehouse("isDefault", checked)}
             />
-            <label htmlFor="isDefault" className="text-sm">¿Es el almacén principal?</label>
           </div>
         </div>
       )}

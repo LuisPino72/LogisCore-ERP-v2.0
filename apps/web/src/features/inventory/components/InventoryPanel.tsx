@@ -18,6 +18,7 @@ import { Tabs, type TabItem } from "@/common/components/Tabs";
 import { SearchInput } from "@/common/components/SearchInput";
 import { Modal } from "@/common/components/Modal";
 import { Button } from "@/common/components/Button";
+import { Select } from "@/common/components/Select";
 
 import type { 
   InventoryActorContext, 
@@ -248,16 +249,15 @@ export function InventoryPanel({ tenantSlug, actor, products }: InventoryPanelPr
         onChange={setSearchQuery}
         className="max-w-xs"
       />
-      <select 
+      <Select 
         value={warehouseFilter}
-        onChange={(e) => setWarehouseFilter(e.target.value)}
-        className="input max-w-xs"
-      >
-        <option value="all">Todas las bodegas</option>
-        {state.warehouses.map(w => (
-          <option key={w.localId} value={w.localId}>{w.name}</option>
-        ))}
-      </select>
+        onChange={(val) => setWarehouseFilter(val)}
+        options={[
+          { label: "Todas las bodegas", value: "all" },
+          ...state.warehouses.map(w => ({ label: w.name, value: w.localId }))
+        ]}
+        className="max-w-xs"
+      />
     </div>
   );
 

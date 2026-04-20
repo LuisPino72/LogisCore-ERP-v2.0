@@ -3,6 +3,7 @@
  */
 
 import type { Subscription } from "../../types/admin.types";
+import { Button } from "@/common";
 
 interface SubscriptionTableProps {
   subscriptions: Subscription[];
@@ -94,12 +95,12 @@ export function SubscriptionTable({ subscriptions, isLoading, onRenew }: Subscri
                   </td>
                   <td className="px-4 py-3">
                     {shouldShowRenewButton(sub) ? (
-                      <button
+                      <Button
                         onClick={() => onRenew(sub)}
-                        className="btn btn-primary text-sm py-1 px-3"
+                        size="sm"
                       >
                         Renovar
-                      </button>
+                      </Button>
                     ) : (
                       <span className="text-content-secondary text-xs">-</span>
                     )}

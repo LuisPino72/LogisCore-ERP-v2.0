@@ -1,5 +1,6 @@
 import { Eye, Scale, Receipt, Pencil, DollarSign, Trash2 } from "lucide-react";
 import { Badge } from "@/common/components/Badge";
+import { Button } from "@/common";
 import type { Category, Product, ProductPresentation } from "../types/products.types";
 import { getCategoryName, formatPrice, getProductPresentationPrice } from "../utils/products.utils";
 
@@ -88,27 +89,30 @@ export function ProductsDataTable({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <button
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={(e) => { e.stopPropagation(); onEdit(product); }}
-                        className="p-1.5 rounded-lg text-content-tertiary hover:text-brand-600 hover:bg-brand-50 transition-colors"
                         title="Editar"
                       >
                         <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={(e) => { e.stopPropagation(); onPrice(product); }}
-                        className="p-1.5 rounded-lg text-content-tertiary hover:text-state-success hover:bg-state-success/10 transition-colors"
                         title="Precios"
                       >
                         <DollarSign className="w-4 h-4" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={(e) => { e.stopPropagation(); onDelete(product); }}
-                        className="p-1.5 rounded-lg text-content-tertiary hover:text-state-error hover:bg-state-error/10 transition-colors"
                         title="Eliminar"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>

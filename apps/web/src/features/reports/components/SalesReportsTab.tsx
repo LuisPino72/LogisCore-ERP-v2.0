@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import type { SaleWithDetails, ReportsFilters } from "../types/reports.types";
 import { SearchInput } from "@/common/components/SearchInput";
 import { Badge } from "@/common/components/Badge";
+import { Select, Input } from "@/common";
 import { Calendar, Filter } from "lucide-react";
 
 interface SalesReportsTabProps {
@@ -75,33 +76,30 @@ export function SalesReportsTab({
           />
         </div>
         
-        <select
-          className="input w-full sm:w-48"
-          value={selectedWarehouse}
-          onChange={(e) => setSelectedWarehouse(e.target.value)}
-        >
-          <option value="">Todas las bodegas</option>
-          {warehouses.map((w) => (
-            <option key={w.localId} value={w.localId}>
-              {w.name}
-            </option>
-          ))}
-        </select>
+        <Select
+            value={selectedWarehouse}
+            onChange={(value: string) => setSelectedWarehouse(value)}
+            options={[
+              { value: "", label: "Todas las bodegas" },
+              ...warehouses.map(w => ({ value: w.localId, label: w.name }))
+            ]}
+            className="w-full sm:w-48"
+          />
 
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-content-tertiary" />
-          <input
+          <Input
             type="date"
-            className="input w-36"
+            className="w-36"
             value={dateRange?.start || ""}
-            onChange={(e) => setDateRange((prev) => ({ start: e.target.value, end: prev?.end || "" }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDateRange((prev) => ({ start: e.target.value, end: prev?.end || "" }))}
           />
           <span className="text-content-tertiary">-</span>
-          <input
+          <Input
             type="date"
-            className="input w-36"
+            className="w-36"
             value={dateRange?.end || ""}
-            onChange={(e) => setDateRange((prev) => ({ start: prev?.start || "", end: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDateRange((prev) => ({ start: prev?.start || "", end: e.target.value }))}
           />
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { Modal } from "@/common/components/Modal";
 import { Button } from "@/common/components/Button";
 import { LoadingSpinner } from "@/common/components/EmptyState";
+import { Input } from "@/common/components/FormField";
 import { Check } from "lucide-react";
 import type { Purchase } from "../../types/purchases.types";
 import type { Product } from "@/features/products/types/products.types";
@@ -54,17 +55,17 @@ export function ReceivePurchaseModal({
               <span className="text-xs text-content-tertiary">
                 (ordenado: {originalItem?.qty || 0})
               </span>
-              <input
+              <Input
                 type="number"
-                min="0"
+                min={0}
                 max={originalItem?.qty || 0}
-                value={item.qty}
+                value={String(item.qty)}
                 onChange={(e) => {
                   const newForm = [...receiveForm];
                   newForm[index] = { ...newForm[index]!, qty: Number(e.target.value) };
                   setReceiveForm(newForm);
                 }}
-                className="input w-20"
+                className="w-20"
               />
             </div>
           );

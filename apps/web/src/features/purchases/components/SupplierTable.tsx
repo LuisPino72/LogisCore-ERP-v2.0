@@ -72,12 +72,12 @@ export function SupplierTable({ suppliers, isLoading, onAddNew, onEdit, onDelete
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex gap-1">
-                      <button onClick={() => onEdit(supplier)} className="p-1 hover:text-brand-500 transition-colors" title="Editar">
+                      <Button variant="ghost" size="sm" onClick={() => onEdit(supplier)} title="Editar">
                         <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => onDelete(supplier)} className="p-1 hover:text-state-error transition-colors" title="Eliminar">
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-state-error" onClick={() => onDelete(supplier)} title="Eliminar">
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>

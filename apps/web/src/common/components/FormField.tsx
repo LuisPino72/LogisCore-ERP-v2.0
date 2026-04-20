@@ -13,7 +13,7 @@ export function FormField({ label, htmlFor, error, hint, required, children }: F
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <label htmlFor={htmlFor} className="text-sm font-medium text-content-primary">
+        <label htmlFor={htmlFor} className="label">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -32,11 +32,11 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 export function Input({ error, className = "", ...props }: InputProps) {
   return (
     <input
-      className={`w-full px-3 py-2 text-sm border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
+      className={`input ${
         error
           ? "border-red-500 bg-red-50 focus:border-red-500"
-          : "border-surface-300 bg-white focus:border-brand-500"
-      } placeholder:text-content-tertiary ${className}`}
+          : ""
+      } ${className}`}
       {...props}
     />
   );
@@ -49,12 +49,29 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 export function Textarea({ error, className = "", ...props }: TextareaProps) {
   return (
     <textarea
-      className={`w-full px-3 py-2 text-sm border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
+      className={`input resize-none ${
         error
           ? "border-red-500 bg-red-50 focus:border-red-500"
-          : "border-surface-300 bg-white focus:border-brand-500"
-      } placeholder:text-content-tertiary resize-none ${className}`}
+          : ""
+      } ${className}`}
       {...props}
     />
+  );
+}
+
+export interface RadioProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label: string;
+}
+
+export function Radio({ label, className = "", ...props }: RadioProps) {
+  return (
+    <label className={`flex items-center gap-2 cursor-pointer text-sm ${className}`}>
+      <input
+        type="radio"
+        className="w-4 h-4 rounded border-surface-300 text-brand-500 focus:ring-brand-500"
+        {...props}
+      />
+      <span>{label}</span>
+    </label>
   );
 }

@@ -5,6 +5,9 @@
 import type { EmployeeManagement } from "../TenantForm";
 import { VALIDATION_RULES } from "@/common";
 import { PERMISSIONS, PERMISSION_MODULES } from "@/lib/permissions/rbac-constants";
+import { Button } from "@/common/components/Button";
+import { Input } from "@/common/components/FormField";
+import { Checkbox } from "@/common";
 
 interface ExistingEmployeesSectionProps {
   formData: { existingEmployees: EmployeeManagement[] };
@@ -42,13 +45,11 @@ function PermissionsChecklist({
             <div className="flex flex-wrap gap-2">
               {permsList.map(perm => (
                 <label key={perm} className="flex items-center gap-1 text-xs">
-                  <input
-                    type="checkbox"
+                  <Checkbox
+                    label={perm.split(":")[1]}
                     checked={selectedPermissions.includes(perm)}
                     onChange={() => handleToggle(perm)}
-                    className="rounded border-surface-300 text-accent-primary focus:ring-accent-primary"
                   />
-                  <span className="text-content-secondary">{perm.split(":")[1]}</span>
                 </label>
               ))}
             </div>
@@ -81,38 +82,35 @@ export function ExistingEmployeesSection({
                 <span className={`w-2 h-2 rounded-full ${employee.isActive ? 'bg-state-success' : 'bg-state-error'}`}></span>
                 <span className="text-xs font-medium text-content-secondary">{employee.email}</span>
               </div>
-              <button 
-                type="button" 
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => onMarkForDeletion(index)}
-                className="text-xs text-state-error hover:text-state-error/70"
+                className="text-state-error"
               >
                 Eliminar
-              </button>
+              </Button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="label text-xs">Nombre Completo</label>
-                <input
+                <Input
                   type="text"
-                  className={`input ${errors[`existing_${index}_fullName`] ? "border-state-error" : ""}`}
+                  error={errors[`existing_${index}_fullName`] || ""}
                   value={employee.fullName}
-                  onChange={(e) => onUpdateEmployee(index, "fullName", e.target.value)}
+                  onChange={(value) => onUpdateEmployee(index, "fullName", value)}
                   placeholder="María García"
                   maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
                 />
-                {errors[`existing_${index}_fullName`] && (
-                  <p className="text-xs text-state-error mt-1">{errors[`existing_${index}_fullName`]}</p>
-                )}
               </div>
               <div className="col-span-2">
                 <label className="flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
+                  <Checkbox
+                    label="Activo"
                     checked={employee.isActive}
-                    onChange={(e) => onUpdateEmployee(index, "isActive", e.target.checked)}
-                    className="rounded border-surface-300 text-accent-primary"
+                    onChange={(checked) => onUpdateEmployee(index, "isActive", checked)}
                   />
-                  <span className="text-content-secondary">Activo</span>
                 </label>
               </div>
             </div>
@@ -123,13 +121,15 @@ export function ExistingEmployeesSection({
           </div>
         ))}
       </div>
-      <button 
-        type="button" 
+      <Button
+        type="button"
         onClick={onAddNew}
-        className="mt-3 btn btn-secondary text-sm"
+        variant="secondary"
+        size="sm"
+        className="mt-3"
       >
         + Agregar Nuevo Empleado
-      </button>
+      </Button>
     </div>
   );
 }

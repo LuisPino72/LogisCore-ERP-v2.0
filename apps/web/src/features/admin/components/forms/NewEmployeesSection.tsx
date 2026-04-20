@@ -4,6 +4,8 @@
 
 import type { EmployeeInput } from "../TenantForm";
 import { VALIDATION_RULES } from "@/common";
+import { Button } from "@/common/components/Button";
+import { Input } from "@/common/components/FormField";
 
 interface NewEmployeesSectionProps {
   formData: { employees: EmployeeInput[] };
@@ -31,67 +33,62 @@ export function NewEmployeesSection({
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-medium text-content-secondary">Nuevo Empleado {index + 1}</span>
               {formData.employees.length > 1 && (
-                <button 
-                  type="button" 
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => onRemove(index)}
-                  className="text-xs text-state-error hover:text-state-error/70"
+                  className="text-state-error"
                 >
                   Eliminar
-                </button>
+                </Button>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label text-xs">Email</label>
-                <input
+                <Input
                   type="email"
-                  className={`input ${errors[`employee_${index}_email`] ? "border-state-error" : ""}`}
+                  error={errors[`employee_${index}_email`] || ""}
                   value={employee.email}
-                  onChange={(e) => onUpdateEmployee(index, "email", e.target.value)}
+                  onChange={(value) => onUpdateEmployee(index, "email", value)}
                   placeholder="empleado@empresa.com"
                 />
-                {errors[`employee_${index}_email`] && (
-                  <p className="text-xs text-state-error mt-1">{errors[`employee_${index}_email`]}</p>
-                )}
               </div>
               <div>
                 <label className="label text-xs">Nombre Completo</label>
-                <input
+                <Input
                   type="text"
-                  className={`input ${errors[`employee_${index}_fullName`] ? "border-state-error" : ""}`}
+                  error={errors[`employee_${index}_fullName`] || ""}
                   value={employee.fullName}
-                  onChange={(e) => onUpdateEmployee(index, "fullName", e.target.value)}
+                  onChange={(value) => onUpdateEmployee(index, "fullName", value)}
                   placeholder="María García"
                   maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
                 />
-                {errors[`employee_${index}_fullName`] && (
-                  <p className="text-xs text-state-error mt-1">{errors[`employee_${index}_fullName`]}</p>
-                )}
               </div>
               <div className="col-span-2">
                 <label className="label text-xs">Contraseña</label>
-                <input
+                <Input
                   type="password"
-                  className={`input ${errors[`employee_${index}_password`] ? "border-state-error" : ""}`}
+                  error={errors[`employee_${index}_password`] || ""}
                   value={employee.password}
-                  onChange={(e) => onUpdateEmployee(index, "password", e.target.value)}
+                  onChange={(value) => onUpdateEmployee(index, "password", value)}
                   placeholder="Mínimo 6 caracteres"
                 />
-                {errors[`employee_${index}_password`] && (
-                  <p className="text-xs text-state-error mt-1">{errors[`employee_${index}_password`]}</p>
-                )}
               </div>
             </div>
           </div>
         ))}
       </div>
-      <button 
-        type="button" 
-        onClick={onAdd}
-        className="mt-3 btn btn-secondary text-sm"
-      >
-        + Agregar Otro
-      </button>
+<Button
+          type="button"
+          onClick={onAdd}
+          variant="secondary"
+          size="sm"
+          className="mt-3"
+        >
+          + Agregar Otro
+        </Button>
     </div>
   );
 }

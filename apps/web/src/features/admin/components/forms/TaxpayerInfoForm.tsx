@@ -3,6 +3,7 @@
  */
 
 import type { TaxpayerInfo } from "../TenantForm";
+import { Input } from "@/common/components/FormField";
 
 interface TaxpayerInfoFormProps {
   taxpayerInfo: TaxpayerInfo;
@@ -17,32 +18,29 @@ export function TaxpayerInfoForm({ taxpayerInfo, errors, onChange }: TaxpayerInf
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="label">RIF</label>
-          <input
+          <Input
             type="text"
-            className={`input ${errors.rif ? "border-state-error" : ""}`}
+            error={errors.rif || ""}
             value={taxpayerInfo.rif}
-            onChange={(e) => onChange("rif", e.target.value.toUpperCase())}
+            onChange={(value) => onChange("rif", value.toUpperCase())}
             placeholder="J-123456789"
           />
-          {errors.rif && <p className="text-xs text-state-error mt-1">{errors.rif}</p>}
         </div>
         <div className="col-span-2">
           <label className="label">Razón Social</label>
-          <input
+          <Input
             type="text"
-            className="input"
             value={taxpayerInfo.razonSocial}
-            onChange={(e) => onChange("razonSocial", e.target.value)}
+            onChange={(value) => onChange("razonSocial", value)}
             placeholder="Nombre de la empresa"
           />
         </div>
         <div className="col-span-2">
           <label className="label">Dirección Fiscal</label>
-          <input
+          <Input
             type="text"
-            className="input"
             value={taxpayerInfo.direccionFiscal}
-            onChange={(e) => onChange("direccionFiscal", e.target.value)}
+            onChange={(value) => onChange("direccionFiscal", value)}
             placeholder="Dirección fiscal completa"
           />
         </div>

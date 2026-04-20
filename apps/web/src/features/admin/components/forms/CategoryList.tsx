@@ -3,6 +3,7 @@
  */
 
 import type { GlobalCategory } from "../../types/admin.types";
+import { Button } from "@/common/components/Button";
 
 interface CategoryListProps {
   categories: GlobalCategory[];
@@ -35,18 +36,21 @@ export function CategoryList({ categories, isLoading, selectedBusinessType, onEd
               <span className="text-sm text-content-secondary">{cat.businessTypeName}</span>
             </div>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => onEdit(cat)}
-                className="text-brand-600 hover:text-brand-700 text-sm"
               >
                 Editar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => onDelete(cat)}
-                className="text-state-error hover:text-red-700 text-sm"
+                className="text-state-error"
               >
                 Eliminar
-              </button>
+              </Button>
             </div>
           </div>
         </div>

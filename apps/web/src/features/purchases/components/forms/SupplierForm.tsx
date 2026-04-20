@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
 import { Button } from "@/common/components/Button";
 import { LoadingSpinner } from "@/common/components/EmptyState";
-import { FormField, Input } from "@/common";
+import { FormField, Input, Textarea } from "@/common";
 
 interface SupplierFormProps {
   isOpen: boolean;
@@ -101,12 +101,12 @@ export function SupplierForm({
         <fieldset>
           <legend className="label mb-3">Notas</legend>
           <FormField label="" htmlFor="supplierNotes">
-            <textarea
+            <Textarea
               id="supplierNotes"
               value={form.notes}
               onChange={(e) => onChange({ ...form, notes: e.target.value })}
               placeholder="Notas adicionales sobre el proveedor..."
-              className="input min-h-[80px] resize-none"
+              className="min-h-[80px]"
               rows={3}
             />
           </FormField>

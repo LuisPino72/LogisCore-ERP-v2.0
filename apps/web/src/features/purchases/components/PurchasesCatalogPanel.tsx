@@ -11,12 +11,13 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { Category, Product, ProductPresentation, CreateProductInput } from "@/features/products/types/products.types";
 import type { PurchasesActorContext, Supplier, CreateSupplierInput, UpdateSupplierInput } from "../types/purchases.types";
 import { eventBus } from "@/lib/core/runtime";
 import { Tabs, type TabItem } from "@/common/components/Tabs";
 import { Button } from "@/common/components/Button";
+import { SearchInput } from "@/common/components/SearchInput";
 import { purchasesService } from "../services/purchases.service.instance";
 import { purchasesCatalogService } from "../services/purchases-catalog.service.instance";
 import type { PurchasesTenantContext } from "../types/purchases.types";
@@ -347,10 +348,12 @@ export function PurchasesCatalogPanel({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="card-title">Gestión del Catálogo</h2>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar..." className="input pl-10 w-full sm:w-64" />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Buscar..."
+          className="w-full sm:w-64"
+        />
       </div>
 
       <div className="flex gap-2 flex-wrap">

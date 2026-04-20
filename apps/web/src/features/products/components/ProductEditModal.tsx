@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Modal } from "@/common/components/Modal";
 import { Button } from "@/common/components/Button";
-import { FormField, Select, Input } from "@/common";
+import { FormField, Select, Input, Textarea, Checkbox, Radio } from "@/common";
 import type { Product, Category } from "../types/products.types";
 import { UNITS_OF_MEASURE } from "../utils/products.utils";
 
@@ -121,9 +121,8 @@ export function ProductEditModal({
               />
             </FormField>
             <FormField label="Descripción" htmlFor="productDescription">
-              <textarea
+              <Textarea
                 id="productDescription"
-                className="input"
                 rows={3}
                 value={formData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
@@ -143,49 +142,34 @@ export function ProductEditModal({
         <div>
           <h4 className="label mb-3">Configuración Fiscal</h4>
           <div className="space-y-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.isTaxable}
-                onChange={(e) => handleChange("isTaxable", e.target.checked)}
-                className="w-4 h-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
-              />
-              <span className="text-sm">Gravable (IVA 16%)</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.isWeighted}
-                onChange={(e) => handleChange("isWeighted", e.target.checked)}
-                className="w-4 h-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
-              />
-              <span className="text-sm">Pesable (báscula)</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.visible}
-                onChange={(e) => handleChange("visible", e.target.checked)}
-                className="w-4 h-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
-              />
-              <span className="text-sm">Visible en POS</span>
-            </label>
+            <Checkbox
+              label="Gravable (IVA 16%)"
+              checked={formData.isTaxable}
+              onChange={(checked) => handleChange("isTaxable", checked)}
+            />
+            <Checkbox
+              label="Pesable (báscula)"
+              checked={formData.isWeighted}
+              onChange={(checked) => handleChange("isWeighted", checked)}
+            />
+            <Checkbox
+              label="Visible en POS"
+              checked={formData.visible}
+              onChange={(checked) => handleChange("visible", checked)}
+            />
           </div>
 
           <h4 className="label mb-3 mt-6">Unidad de Medida</h4>
           <div className="grid grid-cols-2 gap-2">
             {UNITS_OF_MEASURE.map(unit => (
-              <label key={unit} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="unitOfMeasure"
-                  value={unit}
-                  checked={formData.unitOfMeasure === unit}
-                  onChange={(e) => handleChange("unitOfMeasure", e.target.value)}
-                  className="w-4 h-4 border-surface-300 text-brand-600 focus:ring-brand-500"
-                />
-                <span className="text-sm capitalize">{unit}</span>
-              </label>
+              <Radio
+                key={unit}
+                name="unitOfMeasure"
+                value={unit}
+                label={unit}
+                checked={formData.unitOfMeasure === unit}
+                onChange={(e) => handleChange("unitOfMeasure", e.target.value)}
+              />
             ))}
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { LoadingSpinner } from "@/common/components/EmptyState";
-import { Button } from "@/common/components/Button";
+import { Button, Select, Input, Card } from "@/common";
 import { Plus, Check, X } from "lucide-react";
 import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "@/features/inventory/types/inventory.types";
@@ -53,52 +53,44 @@ export function PurchaseForm({
   const canSubmit = warehouseLocalId && items.length > 0;
 
   return (
-    <div className="card">
+    <Card>
+      <div className="card-header">
+        <h3 className="card-title">Nueva Orden de Compra</h3>
+      </div>
       <div className="card-body">
-        <h3 className="card-title mb-4">Nueva Orden de Compra</h3>
-        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="label">Bodega *</label>
-            <select data-warehouse-select value={warehouseLocalId} onChange={(e) => setWarehouseLocalId(e.target.value)} className="input">
-              <option value="">Seleccionar bodega</option>
-              {warehouses?.map((wh) => (<option key={wh.localId} value={wh.localId}>{wh.name}</option>))}
-            </select>
+            <Select data-warehouse-select value={warehouseLocalId} onChange={(val) => setWarehouseLocalId(val as string)} options={warehouses?.map((wh) => ({ label: wh.name, value: wh.localId }))} placeholder="Seleccionar bodega" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-content-secondary mb-1">Proveedor</label>
-            <select value={supplierLocalId} onChange={(e) => { setSupplierLocalId(e.target.value); setSupplierName(""); }} className="input">
-              <option value="">Seleccionar proveedor</option>
-              {suppliers.filter(s => s.isActive).map((sup) => (<option key={sup.localId} value={sup.localId}>{sup.name}</option>))}
-            </select>
+            <label className="label">Proveedor</label>
+            <Select value={supplierLocalId} onChange={(val) => { setSupplierLocalId(val as string); setSupplierName(""); }} options={suppliers.filter(s => s.isActive).map((sup) => ({ label: sup.name, value: sup.localId }))} placeholder="Seleccionar proveedor" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-content-secondary mb-1">O nombre manual</label>
-            <input value={supplierName} onChange={(e) => { setSupplierName(e.target.value); if (e.target.value) setSupplierLocalId(""); }} placeholder="Nombre del proveedor" className="input" />
+            <label className="label">O nombre manual</label>
+            <Input value={supplierName} onChange={(e) => { setSupplierName(e.target.value); if (e.target.value) setSupplierLocalId(""); }} placeholder="Nombre del proveedor" />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-content-secondary mb-1">Producto</label>
-            <select value={productLocalId} onChange={(e) => setProductLocalId(e.target.value)} className="input">
-              <option value="">Seleccionar producto</option>
-              {products.map((product) => (<option key={product.localId} value={product.localId}>{product.name}</option>))}
-            </select>
+            <label className="label">Producto</label>
+            <Select value={productLocalId} onChange={(val) => setProductLocalId(val as string)} options={products.map((product) => ({ label: product.name, value: product.localId }))} placeholder="Seleccionar producto" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-content-secondary mb-1">Cantidad</label>
-            <input type="number" min="0.0001" step="0.0001" value={qty} onChange={(e) => setQty(e.target.value)} className="input" />
+            <label className="label">Cantidad</label>
+            <Input type="number" min="0.0001" step="0.0001" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Cant" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-content-secondary mb-1">Costo Unit.</label>
-            <input type="number" min="0" step="0.0001" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} className="input" />
+            <label className="label">Costo Unit.</label>
+            <Input type="number" min="0" step="0.0001" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} placeholder="Costo" />
           </div>
           <div className="flex items-end">
-<Button type="button" onClick={onAddItem} disabled={!productLocalId} variant="secondary" className="w-full">
-            <Plus className="w-4 h-4" />
-            Agregar
-          </Button>
+            <Button type="button" onClick={onAddItem} disabled={!productLocalId} variant="secondary" className="w-full">
+              <Plus className="w-4 h-4" />
+              Agregar
+            </Button>
           </div>
         </div>
 
@@ -115,7 +107,9 @@ export function PurchaseForm({
                       <span className="text-sm text-content-secondary font-mono">
                         {formatQty(item.qty, product?.isWeighted)} x ${item.unitCost.toFixed(2)}
                       </span>
-                      <button onClick={() => onRemoveItem(index)} className="text-state-error hover:text-state-error text-xs"><X className="w-4 h-4" /></button>
+                      <Button variant="ghost" size="sm" onClick={() => onRemoveItem(index)} className="text-state-error hover:bg-state-error/10 p-1">
+                        <X className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 );
@@ -129,6 +123,6 @@ export function PurchaseForm({
           {isSubmitting ? <LoadingSpinner size="sm" /> : <><Check className="w-4 h-4" /> Crear Orden de Compra</>}
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }

@@ -13,6 +13,7 @@ import type {
   StockMovementType,
   Warehouse
 } from "../types/inventory.types";
+import { Button, FormField, Input, Select } from "@/common";
 
 interface InventoryFormProps {
   products: Product[];
@@ -76,18 +77,17 @@ export function InventoryForm({
       <h2 style={{ marginTop: 0 }}>Inventario y Bodegas</h2>
 
       <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
-        <input
+        <Input
           placeholder="Nombre de bodega"
           value={warehouseName}
           onChange={(event) => setWarehouseName(event.target.value)}
         />
-        <input
+        <Input
           placeholder="Codigo (opcional)"
           value={warehouseCode}
           onChange={(event) => setWarehouseCode(event.target.value)}
         />
-        <button
-          type="button"
+        <Button
           onClick={() =>
             onCreateWarehouse({
               name: warehouseName,
@@ -96,22 +96,21 @@ export function InventoryForm({
           }
         >
           Crear bodega
-        </button>
+        </Button>
       </div>
 
       <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
-        <select value={sizeColorProduct} onChange={(e) => setSizeColorProduct(e.target.value)}>
+        <Select value={sizeColorProduct} onChange={(value) => setSizeColorProduct(String(value))}>
           <option value="">Producto para talla/color</option>
           {products.map((product) => (
             <option key={product.localId} value={product.localId}>
               {product.name}
             </option>
           ))}
-        </select>
-        <input placeholder="Talla" value={size} onChange={(e) => setSize(e.target.value)} />
-        <input placeholder="Color" value={color} onChange={(e) => setColor(e.target.value)} />
-        <button
-          type="button"
+        </Select>
+        <Input placeholder="Talla" value={size} onChange={(e) => setSize(e.target.value)} />
+        <Input placeholder="Color" value={color} onChange={(e) => setColor(e.target.value)} />
+        <Button
           onClick={() =>
             onCreateSizeColor({
               productLocalId: sizeColorProduct,
@@ -121,45 +120,44 @@ export function InventoryForm({
           }
         >
           Agregar talla/color
-        </button>
+        </Button>
       </div>
 
       <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
-        <select value={movementProduct} onChange={(e) => setMovementProduct(e.target.value)}>
+        <Select value={movementProduct} onChange={(value) => setMovementProduct(String(value))}>
           <option value="">Producto</option>
           {products.map((product) => (
             <option key={product.localId} value={product.localId}>
               {product.name}
             </option>
           ))}
-        </select>
-        <select value={movementWarehouse} onChange={(e) => setMovementWarehouse(e.target.value)}>
+        </Select>
+        <Select value={movementWarehouse} onChange={(value) => setMovementWarehouse(String(value))}>
           <option value="">Bodega</option>
           {warehouses.map((warehouse) => (
             <option key={warehouse.localId} value={warehouse.localId}>
               {warehouse.name}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
           value={movementType}
-          onChange={(e) => setMovementType(e.target.value as StockMovementType)}
+          onChange={(value) => setMovementType(value as StockMovementType)}
         >
           {movementOptions.map((item) => (
             <option key={item} value={item}>
               {item}
             </option>
           ))}
-        </select>
-        <input
+        </Select>
+        <Input
           type="number"
           min="0.0001"
           step="0.0001"
           value={movementQty}
           onChange={(e) => setMovementQty(e.target.value)}
         />
-        <button
-          type="button"
+        <Button
           onClick={() =>
             onRecordMovement({
               productLocalId: movementProduct,
@@ -170,35 +168,34 @@ export function InventoryForm({
           }
         >
           Registrar movimiento
-        </button>
+        </Button>
       </div>
 
       <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
-        <select value={countProduct} onChange={(e) => setCountProduct(e.target.value)}>
+        <Select value={countProduct} onChange={(value) => setCountProduct(String(value))}>
           <option value="">Producto</option>
           {products.map((product) => (
             <option key={product.localId} value={product.localId}>
               {product.name}
             </option>
           ))}
-        </select>
-        <select value={countWarehouse} onChange={(e) => setCountWarehouse(e.target.value)}>
+        </Select>
+        <Select value={countWarehouse} onChange={(value) => setCountWarehouse(String(value))}>
           <option value="">Bodega</option>
           {warehouses.map((warehouse) => (
             <option key={warehouse.localId} value={warehouse.localId}>
               {warehouse.name}
             </option>
           ))}
-        </select>
-        <input
+        </Select>
+        <Input
           type="number"
           step="0.0001"
           min="0"
           value={countQty}
           onChange={(e) => setCountQty(e.target.value)}
         />
-        <button
-          type="button"
+        <Button
           onClick={() =>
             onCreateCount({
               productLocalId: countProduct,
@@ -208,20 +205,19 @@ export function InventoryForm({
           }
         >
           Crear conteo
-        </button>
+        </Button>
       </div>
 
       <div style={{ display: "grid", gap: "8px" }}>
         {counts
           .filter((item) => item.status === "draft")
           .map((count) => (
-            <button
+            <Button
               key={count.localId}
-              type="button"
               onClick={() => onPostCount(count.localId)}
             >
               Postear conteo {count.localId.slice(0, 8)}
-            </button>
+            </Button>
           ))}
       </div>
     </section>

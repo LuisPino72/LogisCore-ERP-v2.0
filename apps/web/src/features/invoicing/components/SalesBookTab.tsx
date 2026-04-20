@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Invoice, TaxRule } from "../types/invoicing.types";
 import { Badge } from "@/common/components/Badge";
 import { EmptyState } from "@/common/components/EmptyState";
+import { Select } from "@/common";
 import { BookOpen } from "lucide-react";
 
 interface SalesBookTabProps {
@@ -90,28 +91,28 @@ export function SalesBookTab({ invoices, taxRules }: SalesBookTabProps) {
           Libro de Ventas
         </h3>
         <div className="flex items-center gap-2">
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-            className="input py-1.5 px-3 text-sm w-auto"
+          <Select
+            value={String(selectedMonth)}
+            onChange={(value) => setSelectedMonth(parseInt(String(value)))}
+            className="py-1.5 px-3 text-sm w-auto"
           >
             {months.map((m) => (
               <option key={m.value} value={m.value}>
                 {m.label}
               </option>
             ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="input py-1.5 px-3 text-sm w-auto"
+          </Select>
+          <Select
+            value={String(selectedYear)}
+            onChange={(value) => setSelectedYear(parseInt(String(value)))}
+            className="py-1.5 px-3 text-sm w-auto"
           >
             {[selectedYear, selectedYear - 1, selectedYear - 2].map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 

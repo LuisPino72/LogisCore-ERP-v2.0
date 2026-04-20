@@ -1,5 +1,5 @@
 import { Modal } from "@/common/components/Modal";
-import { Button } from "@/common/components/Button";
+import { Button, Input, Select } from "@/common";
 import { LoadingSpinner } from "@/common/components/EmptyState";
 import { Plus, X } from "lucide-react";
 import type { PurchaseItem } from "../../types/purchases.types";
@@ -61,23 +61,23 @@ export function EditPurchaseModal({
               <span className="flex-1 text-sm text-content-primary truncate">
                 {product?.name || item.productLocalId.slice(0, 8)}
               </span>
-              <input
+              <Input
                 type="number"
                 min="0.0001"
                 step="0.0001"
                 value={item.qty}
                 onChange={(e) => onUpdateQty(index, Number(e.target.value))}
-                className="input w-20"
+                className="w-20"
               />
-              <input
+              <Input
                 type="number"
                 min="0"
                 step="0.0001"
                 value={item.unitCost}
                 onChange={(e) => onUpdateUnitCost(index, Number(e.target.value))}
-                className="input w-24"
+                className="w-24"
               />
-              <button onClick={() => onRemoveItem(index)} className="text-state-error"><X className="w-4 h-4" /></button>
+              <Button onClick={() => onRemoveItem(index)} variant="ghost" size="sm"><X className="w-4 h-4" /></Button>
             </div>
           );
         })}
@@ -85,12 +85,12 @@ export function EditPurchaseModal({
 
       <div className="grid grid-cols-4 gap-2 mb-4">
         <div className="col-span-2">
-          <select value={productLocalId} onChange={(e) => setProductLocalId(e.target.value)} className="input">
+          <Select value={productLocalId} onChange={(value) => setProductLocalId(String(value))}>
             <option value="">Agregar producto</option>
             {products.map((p) => (<option key={p.localId} value={p.localId}>{p.name}</option>))}
-          </select>
+          </Select>
         </div>
-        <input type="number" min="0.0001" step="0.0001" value={qty} onChange={(e) => setQty(e.target.value)} className="input" placeholder="Cant" />
+        <Input type="number" min="0.0001" step="0.0001" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Cant" />
         <Button onClick={onAddItem} disabled={!productLocalId} variant="secondary">
             <Plus className="w-4 h-4" />
           </Button>

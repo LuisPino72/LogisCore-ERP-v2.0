@@ -1,6 +1,7 @@
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import type { RecentActivityEntry } from "../types/dashboard.types";
+import { Button } from "@/common/components/Button";
 
 interface RecentActivityListProps {
   activities: RecentActivityEntry[];
@@ -32,9 +33,9 @@ export function RecentActivityList({ activities, currencySymbol }: RecentActivit
         <h3 className="text-lg font-semibold text-content-primary">
           Actividad Reciente
         </h3>
-        <button className="text-xs font-semibold text-state-info hover:text-brand-600 uppercase tracking-tighter">
+        <Button variant="ghost" size="sm" className="text-xs font-semibold text-state-info hover:text-brand-600 uppercase tracking-tighter">
           Ver todo
-        </button>
+        </Button>
       </div>
       
       <div className="space-y-6 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-px before:bg-surface-200">

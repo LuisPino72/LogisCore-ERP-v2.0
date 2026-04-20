@@ -4,6 +4,8 @@
 
 import type { EmployeeInput } from "../TenantForm";
 import { VALIDATION_RULES } from "@/common";
+import { Button } from "@/common/components/Button";
+import { Input } from "@/common/components/FormField";
 
 interface NewTenantEmployeesFormProps {
   formData: { employees: EmployeeInput[] };
@@ -24,9 +26,9 @@ export function NewTenantEmployeesForm({
     <div>
       <div className="flex items-center justify-between mb-3 border-b pb-1">
         <h3 className="text-sm font-medium text-content-primary">Empleados</h3>
-        <button type="button" onClick={onAdd} className="btn btn-secondary text-sm py-1 px-2">
+        <Button type="button" onClick={onAdd} variant="secondary" size="sm" className="py-1 px-2">
           + Agregar
-        </button>
+        </Button>
       </div>
       <div className="space-y-4">
         {formData.employees.map((employee, index) => (
@@ -34,55 +36,48 @@ export function NewTenantEmployeesForm({
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-medium text-content-secondary">Empleado {index + 1}</span>
               {formData.employees.length > 1 && (
-                <button 
-                  type="button" 
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => onRemove(index)}
-                  className="text-xs text-state-error hover:text-state-error/70"
+                  className="text-state-error"
                 >
                   Eliminar
-                </button>
+                </Button>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label text-xs">Email</label>
-                <input
+                <Input
                   type="email"
-                  className={`input ${errors[`employee_${index}_email`] ? "border-red-500" : ""}`}
+                  error={errors[`employee_${index}_email`] || ""}
                   value={employee.email}
-                  onChange={(e) => onUpdateEmployee(index, "email", e.target.value)}
+                  onChange={(value) => onUpdateEmployee(index, "email", value)}
                   placeholder="empleado@empresa.com"
                 />
-                {errors[`employee_${index}_email`] && (
-                  <p className="text-xs text-state-error mt-1">{errors[`employee_${index}_email`]}</p>
-                )}
               </div>
               <div>
                 <label className="label text-xs">Nombre Completo</label>
-                <input
+                <Input
                   type="text"
-                  className={`input ${errors[`employee_${index}_fullName`] ? "border-red-500" : ""}`}
+                  error={errors[`employee_${index}_fullName`] || ""}
                   value={employee.fullName}
-                  onChange={(e) => onUpdateEmployee(index, "fullName", e.target.value)}
+                  onChange={(value) => onUpdateEmployee(index, "fullName", value)}
                   placeholder="María García"
                   maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
                 />
-                {errors[`employee_${index}_fullName`] && (
-                  <p className="text-xs text-state-error mt-1">{errors[`employee_${index}_fullName`]}</p>
-                )}
               </div>
               <div className="col-span-2">
                 <label className="label text-xs">Contraseña</label>
-                <input
+                <Input
                   type="password"
-                  className={`input ${errors[`employee_${index}_password`] ? "border-red-500" : ""}`}
+                  error={errors[`employee_${index}_password`] || ""}
                   value={employee.password}
-                  onChange={(e) => onUpdateEmployee(index, "password", e.target.value)}
+                  onChange={(value) => onUpdateEmployee(index, "password", value)}
                   placeholder="Mínimo 6 caracteres"
                 />
-                {errors[`employee_${index}_password`] && (
-                  <p className="text-xs text-state-error mt-1">{errors[`employee_${index}_password`]}</p>
-                )}
               </div>
             </div>
           </div>

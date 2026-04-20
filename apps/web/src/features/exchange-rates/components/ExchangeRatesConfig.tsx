@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { exchangeRatesService } from "../services/exchange-rates.service.instance";
 import { eventBus } from "@/lib/core/runtime";
+import { Button, Input } from "@/common";
 
 interface ExchangeRatesConfigProps {
   tenantSlug: string;
@@ -93,46 +94,21 @@ export function ExchangeRatesConfig({ tenantSlug }: ExchangeRatesConfigProps) {
         
         {isEditing ? (
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <input
+            <Input
               type="number"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               placeholder="Nueva tasa"
               min="1"
               step="0.01"
-              style={{
-                padding: "8px",
-                borderRadius: "4px",
-                border: "1px solid var(--color-surface-300)",
-                width: "120px"
-              }}
+              style={{ width: "120px" }}
             />
-            <button
-              onClick={handleSave}
-              style={{
-                padding: "8px 16px",
-                background: "var(--color-state-success)",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer"
-              }}
-            >
+            <Button onClick={handleSave} variant="success">
               Guardar
-            </button>
-            <button
-              onClick={handleCancel}
-              style={{
-                padding: "8px 16px",
-                background: "var(--color-surface-300)",
-                color: "var(--color-content-primary)",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer"
-              }}
-            >
+            </Button>
+            <Button onClick={handleCancel} variant="secondary">
               Cancelar
-            </button>
+            </Button>
           </div>
         ) : (
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -145,21 +121,15 @@ export function ExchangeRatesConfig({ tenantSlug }: ExchangeRatesConfigProps) {
             >
               {exchangeRate.toFixed(2)} Bs/USD
             </span>
-            <button
+            <Button
               onClick={() => {
                 setEditValue(exchangeRate.toString());
                 setIsEditing(true);
               }}
-              style={{
-                padding: "6px 12px",
-                background: "var(--color-surface-200)",
-                border: "1px solid var(--color-surface-300)",
-                borderRadius: "4px",
-                cursor: "pointer"
-              }}
+              variant="outline"
             >
               Editar
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -173,21 +143,12 @@ export function ExchangeRatesConfig({ tenantSlug }: ExchangeRatesConfigProps) {
         </p>
       </div>
 
-      <button
+      <Button
         onClick={handleRefreshFromApi}
         disabled={isLoading}
-        style={{
-          padding: "10px 16px",
-          background: "var(--color-brand-500)",
-          color: "white",
-          border: "none",
-          borderRadius: "4px",
-          cursor: isLoading ? "not-allowed" : "pointer",
-          opacity: isLoading ? 0.7 : 1
-        }}
       >
         {isLoading ? "Actualizando..." : "Actualizar desde API"}
-      </button>
+      </Button>
 
       <div
         style={{

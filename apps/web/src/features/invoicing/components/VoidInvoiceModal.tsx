@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Invoice } from "../types/invoicing.types";
 import { Modal } from "@/common/components/Modal";
-import { FormField } from "@/common";
+import { FormField, Textarea } from "@/common";
 import { Alert } from "@/common/components/Alert";
 import { Card } from "@/common/components/Card";
 import { Button } from "@/common/components/Button";
@@ -91,12 +91,12 @@ export function VoidInvoiceModal({
         </Card>
 
         <FormField label="Motivo de anulación" htmlFor="voidReason">
-          <textarea
+          <Textarea
             id="voidReason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Ingrese el motivo de la anulación..."
-            className="input min-h-[100px]"
+            className="min-h-[100px]"
           />
           <p className="text-xs text-content-tertiary mt-1">
             El motivo será registrado en el log de auditoría.

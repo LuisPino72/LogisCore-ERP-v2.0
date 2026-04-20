@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, X, Grid3X3 } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
 import { Button } from "@/common/components/Button";
-import { FormField, Select, Input } from "@/common";
+import { FormField, Select, Input, Checkbox, Radio } from "@/common";
 import type { Category } from "../types/products.types";
 
 interface VariantGeneratorModalProps {
@@ -223,33 +223,21 @@ export function VariantGeneratorModal({
             </FormField>
           </div>
           <div className="flex gap-4 mt-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={productData.isTaxable}
-                onChange={(e) => setProductData({ ...productData, isTaxable: e.target.checked })}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Gravable (IVA)</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={productData.isWeighted}
-                onChange={(e) => setProductData({ ...productData, isWeighted: e.target.checked })}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Pesable</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={productData.visible}
-                onChange={(e) => setProductData({ ...productData, visible: e.target.checked })}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Visible en POS</span>
-            </label>
+            <Checkbox
+              label="Gravable (IVA)"
+              checked={productData.isTaxable}
+              onChange={(checked) => setProductData({ ...productData, isTaxable: checked })}
+            />
+            <Checkbox
+              label="Pesable"
+              checked={productData.isWeighted}
+              onChange={(checked) => setProductData({ ...productData, isWeighted: checked })}
+            />
+            <Checkbox
+              label="Visible en POS"
+              checked={productData.visible}
+              onChange={(checked) => setProductData({ ...productData, visible: checked })}
+            />
           </div>
         </div>
 
@@ -270,50 +258,49 @@ export function VariantGeneratorModal({
                 {presentations.map((pres, index) => (
                   <tr key={index}>
                     <td className="px-3 py-2">
-                      <input
+                      <Input
                         type="text"
-                        className="input"
                         value={pres.name}
                         onChange={(e) => handlePresentationChange(index, "name", e.target.value)}
                         placeholder="Nombre"
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <input
+                      <Input
                         type="number"
                         min="1"
-                        className="input text-center"
+                        className="text-center"
                         value={pres.factor}
                         onChange={(e) => handlePresentationChange(index, "factor", parseInt(e.target.value) || 1)}
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <input
+                      <Input
                         type="number"
                         step="0.01"
                         min="0"
-                        className="input text-right"
+                        className="text-right"
                         value={pres.price}
                         onChange={(e) => handlePresentationChange(index, "price", parseFloat(e.target.value) || 0)}
                       />
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <input
-                        type="radio"
+                      <Radio
                         name="defaultPresentation"
                         checked={pres.isDefault}
                         onChange={(e) => handlePresentationChange(index, "isDefault", e.target.checked)}
-                        className="w-4 h-4"
                       />
                     </td>
                     <td className="px-3 py-2">
                       {presentations.length > 1 && (
-                        <button
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => handleRemovePresentation(index)}
-                          className="p-1 text-state-error hover:bg-state-error/10 rounded"
+                          className="text-state-error hover:bg-state-error/10"
                         >
                           <X className="w-4 h-4" />
-                        </button>
+                        </Button>
                       )}
                     </td>
                   </tr>
@@ -321,13 +308,15 @@ export function VariantGeneratorModal({
               </tbody>
             </table>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleAddPresentation}
-            className="mt-2 flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700"
+            className="mt-2"
           >
             <Plus className="w-4 h-4" />
             Agregar presentación
-          </button>
+          </Button>
         </div>
 
         <div>
@@ -339,9 +328,9 @@ export function VariantGeneratorModal({
                 {sizes.map(size => (
                   <span key={size} className="badge badge-info flex items-center gap-1">
                     {size}
-                    <button onClick={() => handleRemoveSize(size)} className="hover:text-state-error">
+                    <Button size="sm" variant="ghost" onClick={() => handleRemoveSize(size)} className="hover:text-state-error p-0 h-auto">
                       <X className="w-3 h-3" />
-                    </button>
+                    </Button>
                   </span>
                 ))}
               </div>
@@ -364,9 +353,9 @@ export function VariantGeneratorModal({
                 {colors.map(color => (
                   <span key={color} className="badge badge-warning flex items-center gap-1">
                     {color}
-                    <button onClick={() => handleRemoveColor(color)} className="hover:text-state-error">
+                    <Button size="sm" variant="ghost" onClick={() => handleRemoveColor(color)} className="hover:text-state-error p-0 h-auto">
                       <X className="w-3 h-3" />
-                    </button>
+                    </Button>
                   </span>
                 ))}
               </div>
@@ -387,13 +376,15 @@ export function VariantGeneratorModal({
 
           {hasValidVariants && (
             <div className="mt-4">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowMatrix(!showMatrix)}
-                className="flex items-center gap-2 text-sm text-brand-600 hover:text-brand-700"
+                className="flex items-center gap-2"
               >
                 <Grid3X3 className="w-4 h-4" />
                 {showMatrix ? "Ocultar" : "Ver"} matriz de variantes ({variants.length})
-              </button>
+              </Button>
 
               {showMatrix && (
                 <div className="mt-3 p-4 bg-surface-50 rounded-lg border border-surface-200">

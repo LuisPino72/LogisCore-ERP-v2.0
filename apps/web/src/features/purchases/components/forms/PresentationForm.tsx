@@ -2,6 +2,9 @@ import { Check } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
 import { Button } from "@/common/components/Button";
 import { LoadingSpinner } from "@/common/components/EmptyState";
+import { Select } from "@/common/components/Select";
+import { Input } from "@/common/components/FormField";
+import { Checkbox } from "@/common/components/Checkbox";
 import type { Product } from "@/features/products/types/products.types";
 
 interface PresentationFormProps {
@@ -52,55 +55,44 @@ export function PresentationForm({
       <div className="space-y-4">
         <div>
           <label className="label">Producto *</label>
-          <select
+          <Select
             value={form.productLocalId}
-            onChange={(e) => onChange({ ...form, productLocalId: e.target.value, isDefault: false })}
-            className="input"
-          >
-            <option value="">Selecciona un producto</option>
-            {activeProducts.map((prod) => (
-              <option key={prod.localId} value={prod.localId}>{prod.name} ({prod.sku})</option>
-            ))}
-          </select>
-          {errors.productLocalId && <p className="text-sm text-state-error mt-1">{errors.productLocalId}</p>}
+            onChange={(value) => onChange({ ...form, productLocalId: value, isDefault: false })}
+            options={activeProducts.map((prod) => ({ value: prod.localId, label: `${prod.name} (${prod.sku})` }))}
+            placeholder="Selecciona un producto"
+            error={errors.productLocalId}
+          />
         </div>
 
         <div>
           <label className="label">Nombre *</label>
-          <input
-            type="text"
+          <Input
             value={form.name}
             onChange={(e) => onChange({ ...form, name: e.target.value })}
             placeholder="Ej: 1kg, 500ml, 2L"
-            className="input"
+            error={errors.name}
           />
-          {errors.name && <p className="text-sm text-state-error mt-1">{errors.name}</p>}
         </div>
 
         <div>
           <label className="label">Factor de conversión *</label>
-          <input
+          <Input
             type="number"
             value={form.factor}
             onChange={(e) => onChange({ ...form, factor: e.target.value })}
             placeholder="1"
             step="0.0001"
             min="0.0001"
-            className="input"
+            error={errors.factor}
           />
           <p className="text-xs text-content-tertiary mt-1">Cantidad de unidades base que representa esta presentación</p>
-          {errors.factor && <p className="text-sm text-state-error mt-1">{errors.factor}</p>}
         </div>
 
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={form.isDefault}
-            onChange={(e) => onChange({ ...form, isDefault: e.target.checked })}
-            className="w-4 h-4 rounded border-surface-300 text-brand-500"
-          />
-          <span className="text-sm text-content-primary">Presentación por defecto</span>
-        </label>
+        <Checkbox
+          checked={form.isDefault}
+          onChange={(e) => onChange({ ...form, isDefault: e.target.checked })}
+          label="Presentación por defecto"
+        />
 
         {errors.submit && <div className="alert alert-error">{errors.submit}</div>}
       </div>

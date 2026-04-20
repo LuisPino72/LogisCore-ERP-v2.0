@@ -2,6 +2,7 @@
  * Formulario de categoría global.
  */
 
+import { Button, Input, Select, Card } from "@/common";
 import type { BusinessType } from "../../types/admin.types";
 
 interface CategoryFormProps {
@@ -26,7 +27,7 @@ export function CategoryForm({
   onCancel
 }: CategoryFormProps) {
   return (
-    <div className="card">
+    <Card>
       <div className="card-header">
         <h2 className="font-semibold">
           {isEditing ? "Editar Categoría" : "Nueva Categoría Global"}
@@ -36,9 +37,8 @@ export function CategoryForm({
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="label">Nombre</label>
-            <input
+            <Input
               type="text"
-              className="input"
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
               placeholder="Ej. Abarrotes y Víveres"
@@ -47,28 +47,24 @@ export function CategoryForm({
           </div>
           <div>
             <label className="label">Tipo de Negocio</label>
-            <select
-              className="input"
+            <Select
               value={businessTypeId}
-              onChange={(e) => onBusinessTypeChange(e.target.value)}
+              onChange={onBusinessTypeChange}
+              options={businessTypes.map(bt => ({ label: bt.name, value: bt.id }))}
+              placeholder="Seleccionar..."
               required
-            >
-              <option value="">Seleccionar...</option>
-              {businessTypes.map(bt => (
-                <option key={bt.id} value={bt.id}>{bt.name}</option>
-              ))}
-            </select>
+            />
           </div>
           <div className="flex gap-3">
-            <button type="submit" className="btn btn-primary">
+            <Button type="submit" variant="primary">
               {isEditing ? "Guardar Cambios" : "Crear Categoría"}
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={onCancel}>
+            </Button>
+            <Button type="button" variant="secondary" onClick={onCancel}>
               Cancelar
-            </button>
+            </Button>
           </div>
         </form>
       </div>
-    </div>
+    </Card>
   );
 }

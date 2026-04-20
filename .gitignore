@@ -72,6 +72,7 @@ temp/
 memoria/
 .opencode-instructions.md
 pre-commit
+.husky
 
 # Código Generado
 **/generated/

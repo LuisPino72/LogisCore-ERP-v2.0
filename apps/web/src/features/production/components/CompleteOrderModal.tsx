@@ -4,6 +4,7 @@ import type { Product } from "@/features/products/types/products.types";
 import { Modal } from "@/common/components/Modal";
 import { Button } from "@/common/components/Button";
 import { Badge } from "@/common/components/Badge";
+import { Input } from "@/common";
 import { AlertTriangle, Scale, Package } from "lucide-react";
 
 interface CompleteOrderModalProps {
@@ -111,14 +112,13 @@ export function CompleteOrderModal({
             <Package className="w-4 h-4" />
             Cantidad Producida
           </label>
-          <input
+          <Input
             type="number"
             min="0.0001"
             step="0.0001"
             value={producedQty}
             onChange={(e) => setProducedQty(e.target.value)}
             placeholder="Ingrese la cantidad produced"
-            className="input"
           />
           {producedQty && (
             <div className="mt-2 flex items-center gap-2">

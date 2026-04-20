@@ -1,10 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Scale, Plus, Minus, X, ShoppingCart, Package, Box } from "lucide-react";
-import { Button } from "@/common/components/Button";
-import { Card } from "@/common/components/Card";
-import { Badge } from "@/common/components/Badge";
-import { Alert } from "@/common/components/Alert";
-import { SearchInput } from "@/common/components/SearchInput";
+import { Button, Card, Badge, Alert, SearchInput, Input, Select, Textarea } from "@/common";
 import type { Product } from "@/features/products/types/products.types";
 import type { SaleItem, SalePayment, SalesCurrency } from "../types/sales.types";
 import {
@@ -116,24 +112,22 @@ export function TerminalView({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-4 items-center">
-        <div className="flex-1">
-          <SearchInput 
-            value={searchQuery} 
-            onChange={setSearchQuery} 
-            placeholder="Buscar producto por nombre o SKU..." 
-          />
-        </div>
-        <select
-          value={selectedWarehouse}
-          onChange={(e) => onSelectWarehouse(e.target.value)}
-          className="input w-48"
-        >
-          {warehouses.map(w => (
-            <option key={w.localId} value={w.localId}>{w.name}</option>
-          ))}
-        </select>
-      </div>
+       <div className="flex gap-4 items-center">
+         <div className="flex-1">
+           <SearchInput 
+             value={searchQuery} 
+             onChange={setSearchQuery} 
+             placeholder="Buscar producto por nombre o SKU..." 
+           />
+         </div>
+         <Select
+           value={selectedWarehouse}
+           onChange={(val) => onSelectWarehouse(val as string)}
+           options={warehouses.map(w => ({ label: w.name, value: w.localId }))}
+           className="w-48"
+         />
+       </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
@@ -188,37 +182,43 @@ export function TerminalView({
                           ${item.unitPrice.toFixed(2)} x {formatQty(item.qty, isWeighted)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => onUpdateCartItem(index, Math.max(step, item.qty - step))}
-                          className="p-1 rounded hover:bg-surface-200"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <input
-                          type="number"
-                          step={step}
-                          min={step}
-                          value={item.qty}
-                          onChange={(e) => onUpdateCartItem(index, Number(e.target.value))}
-                          className="w-16 text-center text-sm border rounded px-1 py-0.5"
-                        />
-                        <button
-                          onClick={() => onUpdateCartItem(index, item.qty + step)}
-                          className="p-1 rounded hover:bg-surface-200"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-                      <div className="text-sm font-medium w-20 text-right">
-                        ${(item.qty * item.unitPrice).toFixed(2)}
-                      </div>
-                      <button
-                        onClick={() => onRemoveCartItem(index)}
-                        className="p-1 rounded text-state-error hover:bg-state-error/10"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                       <div className="flex items-center gap-1">
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => onUpdateCartItem(index, Math.max(step, item.qty - step))}
+                           className="p-1"
+                         >
+                           <Minus className="w-3 h-3" />
+                         </Button>
+                         <Input
+                           type="number"
+                           step={step}
+                           min={step}
+                           value={item.qty}
+                           onChange={(e) => onUpdateCartItem(index, Number(e.target.value))}
+                           className="w-16 text-center px-1 py-0.5"
+                         />
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => onUpdateCartItem(index, item.qty + step)}
+                           className="p-1"
+                         >
+                           <Plus className="w-3 h-3" />
+                         </Button>
+                       </div>
+                       <div className="text-sm font-medium w-20 text-right">
+                         ${(item.qty * item.unitPrice).toFixed(2)}
+                       </div>
+                       <Button
+                         variant="ghost"
+                         onClick={() => onRemoveCartItem(index)}
+                         className="p-1 text-state-error hover:bg-state-error/10"
+                       >
+                         <X className="w-4 h-4" />
+                       </Button>
+
                     </div>
                   );
                 })}
@@ -262,47 +262,51 @@ export function TerminalView({
                     <span className="font-medium">
                       {formatCurrency(payment.amount, payment.currency)}
                     </span>
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={() => onRemovePayment(index)}
                       className="p-1 text-state-error"
                     >
                       <X className="w-3 h-3" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
 
             <div className="mt-3 pt-3 border-t border-surface-200 space-y-2">
-              <div className="flex gap-2">
-                <select
-                  value={newPaymentMethod}
-                  onChange={(e) => setNewPaymentMethod(e.target.value as SalePayment["method"])}
-                  className="input w-24"
-                >
-                  <option value="cash">Efectivo</option>
-                  <option value="card">Tarjeta</option>
-                  <option value="transfer">Transferencia</option>
-                  <option value="mobile">Pago Móvil</option>
-                </select>
-                <select
-                  value={newPaymentCurrency}
-                  onChange={(e) => setNewPaymentCurrency(e.target.value as SalesCurrency)}
-                  className="input w-20"
-                >
-                  <option value="VES">VES</option>
-                  <option value="USD">USD</option>
-                </select>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newPaymentAmount}
-                  onChange={(e) => setNewPaymentAmount(e.target.value)}
-                  placeholder="Monto"
-                  className="input flex-1"
-                />
-              </div>
+               <div className="flex gap-2">
+                 <Select
+                   value={newPaymentMethod}
+                   onChange={(val) => setNewPaymentMethod(val as SalePayment["method"])}
+                   options={[
+                     { label: "Efectivo", value: "cash" },
+                     { label: "Tarjeta", value: "card" },
+                     { label: "Transferencia", value: "transfer" },
+                     { label: "Pago Móvil", value: "mobile" },
+                   ]}
+                   className="w-24"
+                 />
+                 <Select
+                   value={newPaymentCurrency}
+                   onChange={(val) => setNewPaymentCurrency(val as SalesCurrency)}
+                   options={[
+                     { label: "VES", value: "VES" },
+                     { label: "USD", value: "USD" },
+                   ]}
+                   className="w-20"
+                 />
+                 <Input
+                   type="number"
+                   step="0.01"
+                   min="0"
+                   value={newPaymentAmount}
+                   onChange={(e) => setNewPaymentAmount(e.target.value)}
+                   placeholder="Monto"
+                   className="flex-1"
+                 />
+               </div>
+
               <Button
                 onClick={handleAddPayment}
                 disabled={!newPaymentAmount || Number(newPaymentAmount) <= 0}
@@ -376,15 +380,16 @@ export function TerminalView({
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
             <h3 className="text-lg font-semibold mb-4">Suspender Venta</h3>
             <div className="space-y-4">
-              <div>
-                <label className="label">Notas (opcional)</label>
-                <textarea
-                  value={suspendNotes}
-                  onChange={(e) => setSuspendNotes(e.target.value)}
-                  placeholder="Agregue una nota para esta venta..."
-                  className="input min-h-[80px]"
-                />
-              </div>
+               <div>
+                 <label className="label">Notas (opcional)</label>
+                 <Textarea
+                   value={suspendNotes}
+                   onChange={(e) => setSuspendNotes(e.target.value)}
+                   placeholder="Agregue una nota para esta venta..."
+                   className="min-h-[80px]"
+                 />
+               </div>
+
               <div className="flex justify-end gap-3">
                 <Button onClick={() => setShowSuspendModal(false)} variant="secondary">
                   Cancelar
@@ -402,41 +407,42 @@ export function TerminalView({
 }
 
 function ProductButton({ 
-  product, 
-  exchangeRate, 
-  onAdd 
-}: { 
-  product: Product; 
-  exchangeRate: number; 
-  onAdd: (p: Product) => void;
-}) {
-  const handleClick = useCallback(() => onAdd(product), [onAdd, product]);
-
-  return (
-    <button
-      onClick={handleClick}
-      className="p-3 rounded-lg border border-surface-200 hover:border-brand-300 hover:shadow-md transition-all text-left bg-white"
-    >
-      <div className="flex items-start justify-between">
-        <span className="font-medium text-sm text-content-primary truncate flex-1">
-          {product.name}
-        </span>
-        {product.isWeighted && (
-          <Scale className="w-3 h-3 text-brand-600 shrink-0 ml-1" />
-        )}
-      </div>
-      <div className="text-xs text-content-secondary mt-1">
-        {(product as { price?: number }).price !== undefined ? (
-          formatCurrencyDual((product as { price?: number }).price ?? 0, exchangeRate)
-        ) : (
-          <span className="text-xs text-content-tertiary">Sin precio</span>
-        )}
-      </div>
-      {product.sku && (
-        <div className="text-xs text-content-tertiary mt-1">
-          SKU: {product.sku}
-        </div>
-      )}
-    </button>
-  );
-}
+   product, 
+   exchangeRate, 
+   onAdd 
+ }: { 
+   product: Product; 
+   exchangeRate: number; 
+   onAdd: (p: Product) => void;
+ }) {
+   const handleClick = useCallback(() => onAdd(product), [onAdd, product]);
+ 
+   return (
+     <Button
+       variant="ghost"
+       onClick={handleClick}
+       className="p-3 rounded-lg border border-surface-200 hover:border-brand-300 hover:shadow-md transition-all text-left bg-white h-auto align-start"
+     >
+       <div className="flex items-start justify-between w-full">
+         <span className="font-medium text-sm text-content-primary truncate flex-1">
+           {product.name}
+         </span>
+         {product.isWeighted && (
+           <Scale className="w-3 h-3 text-brand-600 shrink-0 ml-1" />
+         )}
+       </div>
+       <div className="text-xs text-content-secondary mt-1">
+         {(product as { price?: number }).price !== undefined ? (
+           formatCurrencyDual((product as { price?: number }).price ?? 0, exchangeRate)
+         ) : (
+           <span className="text-xs text-content-tertiary">Sin precio</span>
+         )}
+       </div>
+       {product.sku && (
+         <div className="text-xs text-content-tertiary mt-1">
+           SKU: {product.sku}
+         </div>
+       )}
+     </Button>
+   );
+ }

@@ -3,6 +3,9 @@
  */
 
 import type { Subscription, Plan } from "../../types/admin.types";
+import { Button } from "@/common/components/Button";
+import { Select } from "@/common/components/Select";
+import { Checkbox } from "@/common";
 
 interface RenewModalProps {
   isOpen: boolean;
@@ -69,31 +72,25 @@ export function RenewModal({
           </div>
 
           <div className="border-t pt-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={changePlan}
-                onChange={(e) => onChangePlan(e.target.checked)}
-                className="w-4 h-4"
-              />
-              <span className="text-sm text-content-primary">¿Desea cambiar de plan?</span>
-            </label>
+            <Checkbox
+              label="¿Desea cambiar de plan?"
+              checked={changePlan}
+              onChange={(checked) => onChangePlan(checked)}
+            />
           </div>
 
           {changePlan && (
             <div>
               <label className="label">Seleccionar Nuevo Plan</label>
-              <select
-                className="input"
+              <Select
                 value={selectedPlanId}
-                onChange={(e) => onSelectPlan(e.target.value)}
+                onChange={(value) => onSelectPlan(String(value))}
+                options={[
+                  { value: "", label: "Seleccione un plan..." },
+                  ...plans.map(p => ({ value: p.id, label: `${p.name} - ${p.price} USD/mes` }))
+                ]}
                 required
-              >
-                <option value="">Seleccione un plan...</option>
-                {plans.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} - {p.price} USD/mes</option>
-                ))}
-              </select>
+              />
             </div>
           )}
 
@@ -104,20 +101,22 @@ export function RenewModal({
           )}
 
           <div className="flex gap-3 pt-4 border-t">
-            <button 
+            <Button 
               onClick={onConfirm}
               disabled={isRenewing || (changePlan && !selectedPlanId)}
-              className="btn btn-primary flex-1"
+              variant="primary"
+              className="flex-1"
             >
               {isRenewing ? "Renovando..." : "Confirmar Renovación"}
-            </button>
-            <button 
+            </Button>
+            <Button 
               onClick={onCancel}
               disabled={isRenewing}
-              className="btn btn-secondary flex-1"
+              variant="secondary"
+              className="flex-1"
             >
               Cancelar
-            </button>
+            </Button>
           </div>
         </div>
       </div>

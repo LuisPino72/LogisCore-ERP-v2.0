@@ -4,7 +4,7 @@ import type { CreateRecipeInput } from "../types/production.types";
 import { Modal } from "@/common/components/Modal";
 import { Button } from "@/common/components/Button";
 import { Badge } from "@/common/components/Badge";
-import { FormField, Select, Input } from "@/common";
+import { FormField, Select, Input, Checkbox } from "@/common";
 import { Plus, X, Beaker, Scale } from "lucide-react";
 
 interface IngredientInput {
@@ -166,10 +166,9 @@ export function NewRecipeModal({
 
           <div className="grid grid-cols-12 gap-2 mb-3">
             <div className="col-span-5">
-              <select
+              <Select
                 value={ingredientProductId}
-                onChange={(e) => setIngredientProductId(e.target.value)}
-                className="input"
+                onChange={(value) => setIngredientProductId(String(value))}
               >
                 <option value="">Producto...</option>
                 {availableIngredients.map((p) => (
@@ -177,28 +176,25 @@ export function NewRecipeModal({
                     {p.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="col-span-3">
-              <input
+              <Input
                 type="number"
                 min="0.0001"
                 step={isWeighted ? "0.0001" : "0.01"}
                 value={ingredientQty}
                 onChange={(e) => setIngredientQty(e.target.value)}
-                className="input"
               />
             </div>
             <div className="col-span-3 flex items-center gap-2">
               <label className="flex items-center gap-1 text-xs cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox
+                  label="Pesable"
                   checked={isWeighted}
-                  onChange={(e) => setIsWeighted(e.target.checked)}
-                  className="rounded"
+                  onChange={(checked) => setIsWeighted(checked)}
                 />
                 <Scale className="w-3 h-3" />
-                Pesable
               </label>
             </div>
             <div className="col-span-1">
@@ -236,13 +232,15 @@ export function NewRecipeModal({
                     <span className="font-mono text-sm">
                       {ing.requiredQty.toFixed(4)}
                     </span>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => handleRemoveIngredient(index)}
-                      className="text-state-error hover:bg-state-error/10 p-1 rounded"
+                      variant="ghost"
+                      size="sm"
+                      className="text-state-error hover:bg-state-error/10 p-1"
                     >
                       <X className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}

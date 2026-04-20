@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Modal } from "@/common/components/Modal";
 import { Button } from "@/common/components/Button";
+import { Input } from "@/common";
 import type { Product, ProductPresentation } from "../types/products.types";
 import { formatPrice } from "../utils/products.utils";
 
@@ -109,11 +110,11 @@ export function PriceManagementModal({
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <span className="text-sm text-content-secondary">$</span>
-                        <input
+                        <Input
                           type="number"
                           step="0.01"
                           min="0"
-                          className="input w-24 text-right"
+                          className="w-24 text-right"
                           value={prices[pres.id] ?? 0}
                           onChange={(e) => handlePriceChange(pres.id, e.target.value)}
                         />

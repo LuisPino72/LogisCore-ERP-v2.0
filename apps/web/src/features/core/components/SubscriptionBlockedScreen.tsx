@@ -1,5 +1,6 @@
 // Core - Pantalla de bloqueo cuando la suscripción está inactiva
 import type { EventBus, Result, AppError } from "@logiscore/core";
+import { Button } from "@/common/components/Button";
 
 interface SubscriptionBlockedScreenProps {
   tenantName: string;
@@ -63,13 +64,14 @@ export function SubscriptionBlockedScreen({ tenantName, eventBus, onLogout }: Su
         </div>
 
         {/* Botón de acción */}
-        <button
+        <Button
           type="button"
           onClick={handleLogout}
-          className="w-full rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-600 focus:ring-offset-2 active:bg-brand-800"
+          variant="primary"
+          className="w-full"
         >
           Volver al Login
-        </button>
+        </Button>
       </div>
     </div>
   );

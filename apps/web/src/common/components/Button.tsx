@@ -9,6 +9,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  iconOnly?: boolean;
 }
 
 export const Button = ({
@@ -18,6 +19,7 @@ export const Button = ({
   isLoading = false,
   leftIcon,
   rightIcon,
+  iconOnly = false,
   className = "",
   ...props
 }: ButtonProps) => {
@@ -28,9 +30,9 @@ export const Button = ({
   };
 
   const sizeClasses = {
-    sm: "px-2 py-1 text-xs",
-    md: "px-4 py-2 text-sm",
-    lg: "px-6 py-3 text-base",
+    sm: iconOnly ? "p-1.5" : "px-2 py-1 text-xs",
+    md: iconOnly ? "p-2" : "px-4 py-2 text-sm",
+    lg: iconOnly ? "p-3" : "px-6 py-3 text-base",
   };
 
   return (

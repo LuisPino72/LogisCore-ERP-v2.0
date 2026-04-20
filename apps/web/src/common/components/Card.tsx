@@ -27,7 +27,7 @@ export const Card = ({
         {children}
       </div>
       {footer && (
-        <div className="p-4 border-t border-surface-200 bg-surface-50 rounded-b-xl">
+        <div className={`card-footer ${className}`}>
           {footer}
         </div>
       )}

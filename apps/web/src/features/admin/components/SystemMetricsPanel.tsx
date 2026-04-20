@@ -1,7 +1,7 @@
 /**
  * Panel de Métricas del Sistema.
  * Muestra métricas críticas en tiempo real para monitoreo del sistema.
- * 
+ *
  * Métricas mostradas:
  * - Sesiones activas hoy
  * - Transacciones hoy
@@ -12,6 +12,7 @@
 
 import { useEffect } from "react";
 import type { SystemMetrics } from "../types/admin.types";
+import { Button } from "@/common/components/Button";
 
 interface SystemMetricsPanelProps {
   metrics: SystemMetrics | null;
@@ -83,20 +84,13 @@ export function SystemMetricsPanel({ metrics, isLoading, onRefresh }: SystemMetr
           <h1 className="text-2xl font-bold text-content-primary">Métricas del Sistema</h1>
           <p className="text-content-secondary">Monitoreo en tiempo real</p>
         </div>
-        <button
+        <Button
           onClick={onRefresh}
-          disabled={isLoading}
-          className="btn btn-secondary"
+          isLoading={isLoading}
+          variant="secondary"
         >
-          {isLoading ? (
-            <>
-              <span className="spinner" />
-              Actualizando...
-            </>
-          ) : (
-            "Actualizar"
-          )}
-        </button>
+          {isLoading ? "Actualizando..." : "Actualizar"}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

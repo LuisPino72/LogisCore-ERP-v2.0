@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Tenant, SecurityUser } from "../types/admin.types";
+import { Button } from "@/common";
 
 interface TenantTableProps {
   tenants: Tenant[];
@@ -56,12 +57,12 @@ export function TenantTable({ tenants, securityUsers, onEdit, onDelete, onDeacti
                 </td>
                 <td className="px-4 py-3">
                    <div className="flex gap-3">
-                      <button onClick={() => onAccess(tenant)} className="text-sm text-brand-600 hover:text-brand-700 font-medium">Entrar</button>
-                      <button onClick={() => onEdit(tenant)} className="text-sm text-content-secondary hover:text-content-primary">Editar</button>
+                      <Button onClick={() => onAccess(tenant)} variant="ghost" size="sm">Entrar</Button>
+                      <Button onClick={() => onEdit(tenant)} variant="ghost" size="sm">Editar</Button>
                       {tenant.isActive ? (
-                        <button onClick={() => onDeactivate(tenant)} className="text-sm text-state-warning hover:text-state-warning/70">Desactivar</button>
+                        <Button onClick={() => onDeactivate(tenant)} variant="ghost" size="sm">Desactivar</Button>
                       ) : (
-                        <button onClick={() => onDelete(tenant.id, true)} className="text-sm text-state-error hover:text-state-error/70">Eliminar</button>
+                        <Button onClick={() => onDelete(tenant.id, true)} variant="ghost" size="sm">Eliminar</Button>
                       )}
                    </div>
                 </td>

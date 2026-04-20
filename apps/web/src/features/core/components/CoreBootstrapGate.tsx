@@ -5,6 +5,7 @@ import { useCore } from "../hooks/useCore";
 import { coreService } from "../services/core.service.instance";
 import { eventBus } from "@/lib/core/runtime";
 import { Result, AppError } from "@logiscore/core";
+import { Button } from "@/common/components/Button";
 
 // Gestiona estados de bootstrap: bootstrapping, error, blocked, success
 export function CoreBootstrapGate() {
@@ -22,9 +23,9 @@ export function CoreBootstrapGate() {
     return (
       <section style={{ color: "var(--color-state-error)" }}>
         <p>{state.lastError.message}</p>
-        <button onClick={clearLastError} type="button">
+        <Button onClick={clearLastError} type="button" variant="secondary">
           Cerrar
-        </button>
+        </Button>
       </section>
     );
   }

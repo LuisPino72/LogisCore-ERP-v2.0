@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import type { BusinessType, CreateBusinessTypeInput, UpdateBusinessTypeInput } from "../types/admin.types";
 import { ConfirmDialog } from "@/common/components/ConfirmDialog";
-import { Button } from "@/common/components/Button";
+import { Button, Input, Textarea } from "@/common";
 import { Card } from "@/common/components/Card";
 
 interface BusinessTypesPanelProps {
@@ -100,9 +100,8 @@ export function BusinessTypesPanel({
             <form onSubmit={handleSubmit} className="stack-sm">
               <div>
                 <label className="label">Nombre del Tipo</label>
-                <input 
+                <Input 
                   type="text" 
-                  className="input" 
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ej. Restaurante, Ferretería, Farmacia"
@@ -111,8 +110,8 @@ export function BusinessTypesPanel({
               </div>
               <div>
                 <label className="label">Descripción</label>
-                <textarea 
-                  className="input min-h-[100px]" 
+                <Textarea 
+                  className="min-h-[100px]" 
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Describa para qué tipo de negocios aplica..."
@@ -133,18 +132,20 @@ export function BusinessTypesPanel({
               <div className="flex items-start justify-between">
                 <h3 className="font-bold text-content-primary">{type.name}</h3>
                 <div className="flex gap-2">
-                  <button 
+                  <Button 
                     onClick={() => startEdit(type)}
-                    className="text-brand-600 hover:text-brand-700"
+                    variant="ghost"
+                    size="sm"
                   >
                     Editar
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={() => setDeletingType(type)}
-                    className="text-state-error hover:text-red-700 text-sm"
+                    variant="ghost"
+                    size="sm"
                   >
                     Eliminar
-                  </button>
+                  </Button>
                 </div>
               </div>
               <p className="text-sm text-content-secondary mt-2">

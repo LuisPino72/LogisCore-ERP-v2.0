@@ -45,11 +45,9 @@ export function Select({ options, value, onChange, placeholder = "Seleccionar...
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`w-full px-3 py-2 text-sm text-left border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
-          error
-            ? "border-red-500 bg-red-50 focus:border-red-500"
-            : "border-surface-300 bg-white focus:border-brand-500"
-        } ${disabled ? "bg-surface-100 cursor-not-allowed" : "cursor-pointer"} flex items-center justify-between`}
+        className={`input text-left flex items-center justify-between ${
+          disabled ? "bg-surface-100 cursor-not-allowed" : "cursor-pointer"
+        }`}
       >
         <span className={selectedOption ? "text-content-primary" : "text-content-tertiary"}>
           {selectedOption?.label ?? placeholder}

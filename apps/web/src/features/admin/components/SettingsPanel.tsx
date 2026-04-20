@@ -6,7 +6,7 @@
 import { useState } from "react";
 import type { GlobalConfig, UpdateGlobalConfigInput } from "../types/admin.types";
 import { ConfirmDialog } from "@/common/components/ConfirmDialog";
-import { Button } from "@/common/components/Button";
+import { Button, Input, Select } from "@/common";
 import { Card } from "@/common/components/Card";
 
 interface SettingsPanelProps {
@@ -79,9 +79,9 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end bg-surface-100 p-3 rounded-lg border border-border">
                 <div className="md:col-span-1">
                   <label className="label text-xs">Nombre</label>
-                  <input
+                  <Input
                     type="text"
-                    className="input input-sm"
+                    className="input-sm"
                     value={newTax.name}
                     onChange={e => setNewTax({ ...newTax, name: e.target.value })}
                     placeholder="Ej. IVA 16%"
@@ -89,9 +89,9 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
                 </div>
                 <div>
                   <label className="label text-xs">Tasa (%)</label>
-                  <input
+                  <Input
                     type="number"
-                    className="input input-sm"
+                    className="input-sm"
                     value={newTax.rate}
                     onChange={e => {
                       const val = parseFloat(e.target.value);
@@ -108,15 +108,15 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
                 </div>
                 <div>
                   <label className="label text-xs">Tipo</label>
-                  <select
-                    className="input input-sm"
+                  <Select
+                    className="input-sm"
                     value={newTax.type}
-                    onChange={e => setNewTax({ ...newTax, type: e.target.value as "iva" | "islr" | "igtf" })}
+                    onChange={value => setNewTax({ ...newTax, type: value as "iva" | "islr" | "igtf" })}
                   >
                     <option value="iva">IVA</option>
                     <option value="islr">ISLR</option>
                     <option value="igtf">IGTF</option>
-                  </select>
+                  </Select>
                 </div>
                 <Button type="button" onClick={addTaxRule} variant="secondary" size="sm" className="h-[40px]">
                   Añadir Regla
@@ -134,13 +134,14 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-sm font-bold text-brand-600">{rule.rate}%</span>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => confirmDeleteRule(idx)}
-                        className="text-state-error hover:text-red-700 text-xs font-medium"
+                        variant="ghost"
+                        size="sm"
                       >
                         Eliminar
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}

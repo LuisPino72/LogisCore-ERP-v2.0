@@ -11,6 +11,7 @@
 
 import { useEffect } from "react";
 import type { DashboardStats } from "../types/admin.types";
+import { Button } from "@/common/components/Button";
 
 interface DashboardProps {
   stats: DashboardStats | null;
@@ -41,10 +42,10 @@ export function Dashboard({ stats, isLoading, onRefresh }: DashboardProps) {
           <h1 className="text-2xl font-bold text-content-primary">Dashboard</h1>
           <p className="text-content-secondary">Resumen global del sistema</p>
         </div>
-        <button
+        <Button
           onClick={onRefresh}
           disabled={isLoading}
-          className="btn btn-secondary"
+          variant="secondary"
         >
           {isLoading ? (
             <>
@@ -54,7 +55,7 @@ export function Dashboard({ stats, isLoading, onRefresh }: DashboardProps) {
           ) : (
             "Actualizar"
           )}
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

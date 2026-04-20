@@ -1,6 +1,7 @@
-import { Search, Edit2, X } from "lucide-react";
+import { Edit2, X } from "lucide-react";
 import { Badge } from "@/common/components/Badge";
 import { Button } from "@/common/components/Button";
+import { SearchInput } from "@/common/components/SearchInput";
 import type { Purchase, Supplier } from "../types/purchases.types";
 import type { Warehouse } from "@/features/inventory/types/inventory.types";
 
@@ -59,9 +60,8 @@ export function PurchaseOrdersList({
     return (
       <div className="card">
         <div className="card-body">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary" />
-            <input type="text" value={searchQuery} onChange={(e) => onSearchChange(e.target.value)} placeholder="Buscar órdenes..." className="input pl-10" />
+          <div className="mb-4">
+            <SearchInput value={searchQuery} onChange={onSearchChange} placeholder="Buscar órdenes..." />
           </div>
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <h3 className="text-lg font-semibold text-content-primary mb-1">No hay órdenes de compra</h3>
@@ -77,9 +77,8 @@ export function PurchaseOrdersList({
       <div className="card-body">
         <h3 className="card-title mb-4">Órdenes de Compra</h3>
         
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary" />
-          <input type="text" value={searchQuery} onChange={(e) => onSearchChange(e.target.value)} placeholder="Buscar órdenes..." className="input pl-10" />
+        <div className="mb-4">
+          <SearchInput value={searchQuery} onChange={onSearchChange} placeholder="Buscar órdenes..." />
         </div>
 
         <div className="space-y-2">

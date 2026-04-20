@@ -4,6 +4,7 @@
  */
 
 import { useState } from "react";
+import { Button, Input, Select, Checkbox, Card } from "@/common";
 import type {
   Category,
   CreateCategoryInput,
@@ -50,137 +51,115 @@ export function ProductsForm({
   const [presentationPrice, setPresentationPrice] = useState("");
 
   return (
-    <section
-      style={{
-        border: "1px solid var(--border)",
-        borderRadius: "8px",
-        padding: "12px",
-        marginBottom: "16px",
-        background: "white"
-      }}
-    >
-      <h2 style={{ marginTop: 0 }}>Catalogo</h2>
-      <div style={{ display: "grid", gap: "8px", marginBottom: "10px" }}>
-        <input
-          value={categoryName}
-          onChange={(event) => setCategoryName(event.target.value)}
-          placeholder="Nueva categoria"
-        />
-        <button
-          type="button"
-          onClick={() =>
-            onCreateCategory({ name: categoryName, sourceModule: "purchases" })
-          }
-        >
-          Crear categoria
-        </button>
+    <Card>
+      <div className="card-header">
+        <h2 className="card-title">Catálogo</h2>
       </div>
-      <div style={{ display: "grid", gap: "8px" }}>
-        <input
-          value={productName}
-          onChange={(event) => setProductName(event.target.value)}
-          placeholder="Nuevo producto"
-        />
-        <input
-          value={productSku}
-          onChange={(event) => setProductSku(event.target.value)}
-          placeholder="SKU (codigo)"
-        />
-        <select
-          value={selectedCategoryId}
-          onChange={(event) => setSelectedCategoryId(event.target.value)}
-        >
-          <option value="">Sin categoria</option>
-          {categories.map((category) => (
-            <option key={category.localId} value={category.localId}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={selectedDefaultPresentationId}
-          onChange={(event) => setSelectedDefaultPresentationId(event.target.value)}
-        >
-          <option value="">Sin presentacion por defecto</option>
-          {presentations.map((presentation) => (
-            <option key={presentation.id} value={presentation.id}>
-              {presentation.name}
-            </option>
-          ))}
-        </select>
-        <label style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "14px" }}>
-          <input
-            type="checkbox"
-            checked={isTaxable}
-            onChange={(e) => setIsTaxable(e.target.checked)}
+      <div className="card-body space-y-4">
+        <div className="grid gap-3">
+          <Input
+            value={categoryName}
+            onChange={(e) => setCategoryName(e.target.value)}
+            placeholder="Nueva categoria"
           />
-          Aplicar IVA (Impuestos globales)
-        </label>
-        <button
-          type="button"
-          onClick={() =>
-            onCreateProduct({
-              name: productName,
-              sku: productSku || crypto.randomUUID(),
-              categoryId: selectedCategoryId || "",
-              defaultPresentationId: selectedDefaultPresentationId || "",
-              visible: true,
-              isTaxable: isTaxable,
-              sourceModule: "purchases"
-            })
-          }
-        >
-          Crear producto
-        </button>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              onCreateCategory({ name: categoryName, sourceModule: "purchases" })
+            }
+          >
+            Crear categoria
+          </Button>
+        </div>
+        <div className="grid gap-3">
+          <Input
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            placeholder="Nuevo producto"
+          />
+          <Input
+            value={productSku}
+            onChange={(e) => setProductSku(e.target.value)}
+            placeholder="SKU (codigo)"
+          />
+          <Select
+            value={selectedCategoryId}
+            onChange={(val) => setSelectedCategoryId(val as string)}
+            options={categories.map((c) => ({ label: c.name, value: c.localId }))}
+            placeholder="Sin categoria"
+          />
+          <Select
+            value={selectedDefaultPresentationId}
+            onChange={(val) => setSelectedDefaultPresentationId(val as string)}
+            options={presentations.map((p) => ({ label: p.name, value: p.id }))}
+            placeholder="Sin presentacion por defecto"
+          />
+          <Checkbox
+            label="Aplicar IVA (Impuestos globales)"
+            checked={isTaxable}
+            onChange={(checked) => setIsTaxable(checked)}
+          />
+          <Button
+            variant="primary"
+            onClick={() =>
+              onCreateProduct({
+                name: productName,
+                sku: productSku || crypto.randomUUID(),
+                categoryId: selectedCategoryId || "",
+                defaultPresentationId: selectedDefaultPresentationId || "",
+                visible: true,
+                isTaxable: isTaxable,
+                sourceModule: "purchases"
+              })
+            }
+          >
+            Crear producto
+          </Button>
+        </div>
+        <div className="divider" />
+        <div className="grid gap-3">
+          <Select
+            value={selectedProductForPresentation}
+            onChange={(val) => setSelectedProductForPresentation(val as string)}
+            options={products.map((p) => ({ label: p.name, value: p.localId }))}
+            placeholder="Producto para presentacion"
+          />
+          <Input
+            value={presentationName}
+            onChange={(e) => setPresentationName(e.target.value)}
+            placeholder="Nombre de presentacion"
+          />
+          <Input
+            value={presentationFactor}
+            onChange={(e) => setPresentationFactor(e.target.value)}
+            placeholder="Factor"
+            type="number"
+            min="0.0001"
+            step="0.0001"
+          />
+          <Input
+            value={presentationPrice}
+            onChange={(e) => setPresentationPrice(e.target.value)}
+            placeholder="Precio en USD"
+            type="number"
+            min="0"
+            step="0.01"
+          />
+          <Button
+            variant="primary"
+            onClick={() =>
+              onCreatePresentation({
+                productLocalId: selectedProductForPresentation,
+                name: presentationName,
+                factor: Number(presentationFactor),
+                price: presentationPrice ? Number(presentationPrice) : 0
+              })
+            }
+          >
+            Crear presentacion
+          </Button>
+        </div>
       </div>
-      <hr style={{ margin: "12px 0" }} />
-      <div style={{ display: "grid", gap: "8px" }}>
-        <select
-          value={selectedProductForPresentation}
-          onChange={(event) => setSelectedProductForPresentation(event.target.value)}
-        >
-          <option value="">Producto para presentacion</option>
-          {products.map((product) => (
-            <option key={product.localId} value={product.localId}>
-              {product.name}
-            </option>
-          ))}
-        </select>
-        <input
-          value={presentationName}
-          onChange={(event) => setPresentationName(event.target.value)}
-          placeholder="Nombre de presentacion"
-        />
-        <input
-          value={presentationFactor}
-          onChange={(event) => setPresentationFactor(event.target.value)}
-          placeholder="Factor"
-          type="number"
-          min="0.0001"
-          step="0.0001"
-        />
-        <input
-          value={presentationPrice}
-          onChange={(event) => setPresentationPrice(event.target.value)}
-          placeholder="Precio en USD"
-          type="number"
-          min="0"
-          step="0.01"
-        />
-        <button
-          type="button"
-          onClick={() =>
-            onCreatePresentation({
-              productLocalId: selectedProductForPresentation,
-              name: presentationName,
-              factor: Number(presentationFactor),
-              price: presentationPrice ? Number(presentationPrice) : 0
-            })
-          }
-        >
-          Crear presentacion
-        </button>
-      </div>
-    </section>
+    </Card>
   );
 }

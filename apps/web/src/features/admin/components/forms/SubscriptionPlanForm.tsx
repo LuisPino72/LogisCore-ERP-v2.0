@@ -2,6 +2,10 @@
  * Formulario de plan de suscripción para nuevo tenant.
  */
 
+import { Select } from "@/common/components/Select";
+import { Input } from "@/common/components/FormField";
+import { Checkbox } from "@/common";
+
 interface SubscriptionPlanFormProps {
   formData: { planId: string; trialDays: number };
   plans: { id: string; name: string; price: number }[];
@@ -15,34 +19,29 @@ export function SubscriptionPlanForm({ formData, plans, onChange }: Subscription
       <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="label">Elegir un Plan</label>
-          <select
-            className="input"
+          <Select
             value={formData.planId}
-            onChange={(e) => onChange("planId", e.target.value)}
+            onChange={(value) => onChange("planId", value)}
+            options={[
+              { value: "", label: "Seleccionar plan..." },
+              ...(plans || []).map(p => ({ value: p.id, label: `${p.name} - $${p.price}/mes` }))
+            ]}
             required
-          >
-            <option value="">Seleccionar plan...</option>
-            {(plans || []).map(p => (
-              <option key={p.id} value={p.id}>{p.name} - ${p.price}/mes</option>
-            ))}
-          </select>
+          />
         </div>
         {formData.planId && (
           <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="enableTrial"
+            <Checkbox
+              label="Habilitar período de prueba"
               checked={formData.trialDays > 0}
-              onChange={(e) => onChange("trialDays", e.target.checked ? 7 : 0)}
-              className="w-4 h-4"
+              onChange={(checked) => onChange("trialDays", checked ? 7 : 0)}
             />
-            <label htmlFor="enableTrial" className="text-sm">Habilitar período de prueba</label>
             {formData.trialDays > 0 && (
-              <input
+              <Input
                 type="number"
-                className="input w-20"
+                className="w-20"
                 value={formData.trialDays}
-                onChange={(e) => onChange("trialDays", Math.min(7, Math.max(1, parseInt(e.target.value) || 1)))}
+                onChange={(value) => onChange("trialDays", Math.min(7, Math.max(1, parseInt(value) || 1)))}
                 min={1}
                 max={7}
               />

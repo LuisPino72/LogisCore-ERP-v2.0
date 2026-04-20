@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { TaxRule, ExchangeRate } from "../types/invoicing.types";
 import { DataTable } from "@/common/components/DataTable";
 import { Badge } from "@/common/components/Badge";
-import { EmptyState, LoadingSpinner } from "@/common/components/EmptyState";
+import { EmptyState, LoadingSpinner, Button } from "@/common";
 import { Settings } from "lucide-react";
 
 interface ConfigTabProps {
@@ -152,26 +152,20 @@ export function ConfigTab({
       </div>
 
       <div className="flex gap-2 border-b border-surface-200 pb-2">
-        <button
+        <Button
           onClick={() => setActiveSection("taxes")}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeSection === "taxes"
-              ? "border-b-2 border-brand-500 text-brand-600"
-              : "text-content-secondary hover:text-content-primary"
-          }`}
+          variant={activeSection === "taxes" ? "primary" : "ghost"}
+          size="sm"
         >
           Impuestos
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setActiveSection("rates")}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeSection === "rates"
-              ? "border-b-2 border-brand-500 text-brand-600"
-              : "text-content-secondary hover:text-content-primary"
-          }`}
+          variant={activeSection === "rates" ? "primary" : "ghost"}
+          size="sm"
         >
           Tipos de Cambio
-        </button>
+        </Button>
       </div>
 
       {activeSection === "taxes" && (

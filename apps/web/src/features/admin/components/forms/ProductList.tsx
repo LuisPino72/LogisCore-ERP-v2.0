@@ -3,6 +3,7 @@
  */
 
 import type { GlobalProduct } from "../../types/admin.types";
+import { Button } from "@/common/components/Button";
 
 interface ProductListProps {
   products: GlobalProduct[];
@@ -46,18 +47,21 @@ export function ProductList({ products, isLoading, selectedBusinessType, onEdit,
                 </div>
               </div>
               <div className="flex gap-2">
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => onEdit(prod)}
-                  className="text-brand-600 hover:text-brand-700 text-sm"
                 >
                   Editar
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => onDelete(prod)}
-                  className="text-state-error hover:text-red-700 text-sm"
+                  className="text-state-error"
                 >
                   Eliminar
-                </button>
+                </Button>
               </div>
             </div>
           </div>

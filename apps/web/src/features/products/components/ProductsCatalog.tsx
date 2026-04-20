@@ -11,6 +11,7 @@ import { Alert } from "@/common/components/Alert";
 import { Button } from "@/common/components/Button";
 import { Card } from "@/common/components/Card";
 import { Badge } from "@/common/components/Badge";
+import { Checkbox } from "@/common";
 import { KPIHeader } from "./KPIHeader";
 import { ProductsDataTable } from "./ProductsDataTable";
 import { ProductsFilters, type ProductsFiltersState } from "./ProductsFilters";
@@ -64,11 +65,10 @@ function VirtualizedGlobalProductList({
               }}
             >
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox
+                  label=""
                   checked={selectedProducts.has(product.id)}
                   onChange={() => onToggle(product.id)}
-                  className="w-4 h-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
                 />
               </label>
               <div className="flex-1">
@@ -513,11 +513,10 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
                         className="flex items-center gap-3 p-3 hover:bg-surface-50 border-b border-surface-100"
                       >
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
+                          <Checkbox
+                            label=""
                             checked={selectedGlobalProducts.has(product.id)}
                             onChange={() => handleToggleGlobalProduct(product.id)}
-                            className="w-4 h-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
                           />
                         </label>
                         <div className="flex-1">

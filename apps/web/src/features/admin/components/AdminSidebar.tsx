@@ -1,7 +1,7 @@
 /**
  * Sidebar del Admin Panel.
  * Barra de navegación lateral fija con acceso a todos los módulos administrativos.
- * 
+ *
  * Módulos disponibles:
  * - Dashboard: Estadísticas globales
  * - Tenants: Gestión de empresas
@@ -12,6 +12,7 @@
  */
 
 import type { AdminModule } from "../types/admin.types";
+import { Button } from "@/common/components/Button";
 
 interface AdminSidebarProps {
   activeModule: AdminModule;
@@ -60,33 +61,31 @@ export function AdminSidebar({ activeModule, onModuleChange, onLogout, userEmail
               <h1 className="font-bold text-lg">LogisCore</h1>
               <p className="text-xs text-surface-400 hidden md:block">Panel de Administración</p>
             </div>
-            <button 
+            <Button
               onClick={onClose}
-              className="md:hidden ml-auto p-1 text-surface-400 hover:text-white"
+              variant="ghost"
+              className="md:hidden ml-auto"
             >
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
 
         <nav className="flex-1 p-2 md:p-4 space-y-1 overflow-y-auto">
           {modules.map(module => (
-            <button
+            <Button
               key={module.id}
               onClick={() => handleModuleClick(module.id)}
-              className={`w-full flex items-center gap-3 px-3 md:px-4 py-3 rounded-lg text-left transition-colors ${
-                activeModule === module.id
-                  ? "bg-brand-600 text-white"
-                  : "text-surface-300 hover:bg-surface-800 hover:text-white"
-              }`}
+              variant={activeModule === module.id ? "primary" : "ghost"}
+              className="w-full justify-start"
             >
               <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={module.icon} />
               </svg>
               <span className="font-medium truncate">{module.label}</span>
-            </button>
+            </Button>
           ))}
         </nav>
 
@@ -94,15 +93,16 @@ export function AdminSidebar({ activeModule, onModuleChange, onLogout, userEmail
           {userEmail && (
             <p className="text-xs text-surface-400 mb-2 md:mb-3 truncate px-2">{userEmail}</p>
           )}
-          <button
+          <Button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-3 md:px-4 py-2 rounded-lg text-surface-400 hover:bg-surface-800 hover:text-white transition-colors"
+            variant="ghost"
+            className="w-full justify-start"
           >
             <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             <span className="truncate">Cerrar Sesión</span>
-          </button>
+          </Button>
         </div>
       </aside>
     </>

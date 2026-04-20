@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 import { Modal } from "@/common/components/Modal";
 import { Button } from "@/common/components/Button";
 import { LoadingSpinner } from "@/common/components/EmptyState";
-import { FormField, Select, Input } from "@/common";
+import { FormField, Select, Input, Checkbox } from "@/common";
 import type { Category } from "@/features/products/types/products.types";
 import type { Supplier } from "../../types/purchases.types";
 
@@ -106,20 +106,16 @@ export function ProductForm({
           <legend className="label mb-3">Atributos Técnicos</legend>
           <div className="space-y-4">
             <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={form.isTaxable}
                 onChange={(e) => onChange({ ...form, isTaxable: e.target.checked })}
-                className="w-4 h-4 rounded border-surface-300 text-brand-500"
               />
               <span className="text-sm text-content-primary">Gravable con IVA</span>
             </label>
             <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={form.isWeighted}
                 onChange={(e) => onChange({ ...form, isWeighted: e.target.checked })}
-                className="w-4 h-4 rounded border-surface-300 text-brand-500"
               />
               <span className="text-sm text-content-primary">Producto pesable (maneja 4 decimales)</span>
             </label>
