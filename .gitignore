@@ -70,6 +70,8 @@ temp/
 .parcel-cache/
 .DS_Store
 memoria/
+.opencode-instructions.md
+pre-commit
 
 # Código Generado
 **/generated/
