@@ -38,6 +38,7 @@ async function ensureTestDataViaDexie(page: import('@playwright/test').Page, ten
       
       await db.products.bulkAdd([
         {
+          localId: `sync-prod-${Date.now()}`,
           tenantId: slug,
           name: 'Producto Sync Test',
           sku: 'SYNC-001',
@@ -57,6 +58,7 @@ async function ensureTestDataViaDexie(page: import('@playwright/test').Page, ten
       if (!db || !db.warehouses) return;
       
       await db.warehouses.add({
+        localId: `sync-wh-${Date.now()}`,
         tenantId: slug,
         name: 'Bodega Principal',
         code: 'WH-001',
