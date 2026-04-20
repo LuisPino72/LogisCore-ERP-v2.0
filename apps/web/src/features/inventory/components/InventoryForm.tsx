@@ -13,7 +13,7 @@ import type {
   StockMovementType,
   Warehouse
 } from "../types/inventory.types";
-import { Button, FormField, Input, Select } from "@/common";
+import { Button, Input, Select } from "@/common";
 
 interface InventoryFormProps {
   products: Product[];

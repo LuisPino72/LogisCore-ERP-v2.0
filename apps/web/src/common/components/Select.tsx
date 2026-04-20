@@ -7,11 +7,10 @@ export interface SelectProps {
   onChange?: (value: string | number) => void;
   placeholder?: string;
   disabled?: boolean;
-  error?: boolean;
   className?: string;
 }
 
-export function Select({ options, value, onChange, placeholder = "Seleccionar...", disabled, error, className = "" }: SelectProps) {
+export function Select({ options, value, onChange, placeholder = "Seleccionar...", disabled, className = "" }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
