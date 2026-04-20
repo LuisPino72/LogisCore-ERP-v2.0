@@ -850,8 +850,30 @@ export class LogisCoreDexie extends Dexie {
       production_orders: "&localId, tenantId, recipeLocalId, warehouseLocalId, status, createdAt",
       production_logs:
         "&localId, tenantId, productionOrderLocalId, recipeLocalId, warehouseLocalId, createdAt",
+      // Stores de normalización añadidas en versión 15
+      sale_items: "&id, saleLocalId, productLocalId, qty, unitPrice",
+      sale_payments: "&id, saleLocalId, method, currency, amount",
+      invoice_items: "&id, invoiceLocalId, productLocalId, qty, unitPrice",
+      invoice_payments: "&id, invoiceLocalId, method, currency, amount",
+      purchase_items: "&id, purchaseLocalId, productLocalId, qty, unitCost",
+      purchase_received_items: "&id, purchaseLocalId, productLocalId, qtyReceived",
+      receiving_items: "&id, receivingLocalId, productLocalId, qty, unitCost",
+      receiving_received_items: "&id, receivingLocalId, productLocalId, qtyReceived",
+      recipe_ingredients: "&id, recipeLocalId, productLocalId, requiredQty",
+      production_ingredients: "&id, productionLogLocalId, productLocalId, qtyUsed",
       invoices:
         "&localId, [tenantId+createdAt], saleLocalId, customerId, status, createdAt",
+      // Nuevas stores para normalización de JSONB (items/payments/ingredients)
+      sale_items: "&id, saleLocalId, productLocalId, qty, unitPrice",
+      sale_payments: "&id, saleLocalId, method, currency, amount",
+      invoice_items: "&id, invoiceLocalId, productLocalId, qty, unitPrice",
+      invoice_payments: "&id, invoiceLocalId, method, currency, amount",
+      purchase_items: "&id, purchaseLocalId, productLocalId, qty, unitCost",
+      purchase_received_items: "&id, purchaseLocalId, productLocalId, qtyReceived",
+      receiving_items: "&id, receivingLocalId, productLocalId, qty, unitCost",
+      receiving_received_items: "&id, receivingLocalId, productLocalId, qtyReceived",
+      recipe_ingredients: "&id, recipeLocalId, productLocalId, requiredQty",
+      production_ingredients: "&id, productionLogLocalId, productLocalId, qtyUsed",
       tax_rules:
         "&localId, tenantId, type, isActive, createdAt",
       exchange_rates:
@@ -860,6 +882,20 @@ export class LogisCoreDexie extends Dexie {
         "&localId, tenantId, isActive, createdAt",
       security_audit_log:
         "&localId, tenantId, userId, eventType, createdAt"
+    });
+
+    // Nueva versión para introducir stores normalizadas
+    this.version(15).stores({
+      sale_items: "&id, saleLocalId, productLocalId, qty, unitPrice",
+      sale_payments: "&id, saleLocalId, method, currency, amount",
+      invoice_items: "&id, invoiceLocalId, productLocalId, qty, unitPrice",
+      invoice_payments: "&id, invoiceLocalId, method, currency, amount",
+      purchase_items: "&id, purchaseLocalId, productLocalId, qty, unitCost",
+      purchase_received_items: "&id, purchaseLocalId, productLocalId, qtyReceived",
+      receiving_items: "&id, receivingLocalId, productLocalId, qty, unitCost",
+      receiving_received_items: "&id, receivingLocalId, productLocalId, qtyReceived",
+      recipe_ingredients: "&id, recipeLocalId, productLocalId, requiredQty",
+      production_ingredients: "&id, productionLogLocalId, productLocalId, qtyUsed"
     });
   }
 }
