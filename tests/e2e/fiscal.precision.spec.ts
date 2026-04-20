@@ -72,7 +72,24 @@ test.describe('Fiscal & Weighted Precision E2E', () => {
     
     console.log(`Testing product: ${targetProduct.name}`);
     
-    const warehouses = await dbUtil.getWarehouses(TEST_TENANT_SLUG);
+    let warehouses = await dbUtil.getWarehouses(TEST_TENANT_SLUG);
+    if (warehouses.length === 0) {
+      console.log('No warehouses found, creating one directly in Dexie...');
+      await page.evaluate(async (tenantSlug) => {
+        const db = (window as any).logiscoreDb;
+        if (!db || !db.warehouses) throw new Error('logiscoreDb.warehouses not available');
+        await db.warehouses.add({
+          localId: `test-wh-${Date.now()}`,
+          tenantId: tenantSlug,
+          name: 'Fiscal Test Warehouse',
+          code: 'WH-TEST',
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }, TEST_TENANT_SLUG);
+      warehouses = await dbUtil.getWarehouses(TEST_TENANT_SLUG);
+    }
     const warehouseId = (warehouses[0] as Record<string, unknown>).localId as string;
     
     const lots = await dbUtil.getActiveInventoryLots(targetProduct.localId as string, warehouseId);

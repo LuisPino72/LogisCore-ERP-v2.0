@@ -495,6 +495,9 @@ export interface SyncMetadataRecord {
   updatedAt: string;
 }
 
+// Helper tipo para evitar `any` en migraciones/lecturas dinámicas
+type AnyRecord = Record<string, unknown>;
+
 export class LogisCoreDexie extends Dexie {
   bootstrap_state!: EntityTable<CoreBootstrapState, "id">;
   sync_queue!: EntityTable<SyncQueueEntity, "id">;
@@ -929,49 +932,48 @@ export class LogisCoreDexie extends Dexie {
 
     // Upgrade migration: move nested arrays (items/payments/ingredients) into normalized stores
     this.version(15).upgrade(async (tx) => {
-      const getServerId = (record: any): string | undefined => record?.id ?? record?.serverId ?? undefined;
+      const getServerId = (record: AnyRecord): string | undefined => (record as AnyRecord)?.id as string | undefined ?? (record as AnyRecord)?.serverId as string | undefined ?? undefined;
 
       // Migrate sales -> sale_items, sale_payments
-      try {
-        const allSales = await tx.table("sales").toArray();
-        for (const s of allSales) {
-          const saleLocalId = s.localId;
-          const saleId = getServerId(s);
-          if (Array.isArray(s.items)) {
-            const items = s.items.map((it: any) => ({
-              id: crypto.randomUUID(),
-              saleLocalId,
-              saleId,
-              productLocalId: it.productLocalId,
-              qty: it.qty,
-              unitPrice: it.unitPrice,
-              unitCost: it.unitCost ?? null,
-              taxAmount: it.taxAmount ?? 0,
-              discountAmount: it.discountAmount ?? 0
-            }));
-            // @ts-ignore - tx.table typings are loose in upgrade context
-            await tx.table("sale_items").bulkPut(items);
-          }
+        try {
+          const allSales = await tx.table("sales").toArray();
+          for (const s of allSales) {
+            const ss = s as AnyRecord;
+            const saleLocalId = ss.localId as string;
+            const saleId = getServerId(ss);
+            if (Array.isArray(ss.items)) {
+              const items = (ss.items as AnyRecord[]).map((it) => ({
+                id: crypto.randomUUID(),
+                saleLocalId,
+                saleId,
+                productLocalId: it.productLocalId as string,
+                qty: it.qty as number,
+                unitPrice: it.unitPrice as number,
+                unitCost: (it.unitCost as number) ?? null,
+                taxAmount: (it.taxAmount as number) ?? 0,
+                discountAmount: (it.discountAmount as number) ?? 0
+              }));
+              // tx.table typings are loose in upgrade context; use cast to unknown to satisfy TS
+              await (tx.table("sale_items") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(items);
+            }
 
-          if (Array.isArray(s.payments)) {
-            const payments = s.payments.map((p: any) => ({
-              id: crypto.randomUUID(),
-              saleLocalId,
-              saleId,
-              method: p.method,
-              currency: p.currency,
-              amount: p.amount,
-              reference: p.reference ?? null
-            }));
-            // @ts-ignore
-            await tx.table("sale_payments").bulkPut(payments);
+            if (Array.isArray(ss.payments)) {
+              const payments = (ss.payments as AnyRecord[]).map((p) => ({
+                id: crypto.randomUUID(),
+                saleLocalId,
+                saleId,
+                method: p.method as string,
+                currency: p.currency as string,
+                amount: p.amount as number,
+                reference: (p.reference as string) ?? null
+              }));
+              await (tx.table("sale_payments") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(payments);
+            }
           }
+        } catch (err) {
+          // Migration should not fail hard; log and continue
+          console.error("Dexie migration (sales) failed:", err);
         }
-      } catch (err) {
-        // Migration should not fail hard; log and continue
-        // eslint-disable-next-line no-console
-        console.error("Dexie migration (sales) failed:", err);
-      }
 
       // Migrate invoices -> invoice_items, invoice_payments
       try {
@@ -980,40 +982,37 @@ export class LogisCoreDexie extends Dexie {
           const invoiceLocalId = inv.localId;
           const invoiceId = getServerId(inv);
           if (Array.isArray(inv.items)) {
-            const items = inv.items.map((it: any) => ({
+            const items = (inv.items as AnyRecord[]).map((it) => ({
               id: crypto.randomUUID(),
               invoiceLocalId,
               invoiceId,
-              productLocalId: it.productLocalId,
-              description: it.description ?? null,
-              qty: it.qty,
-              unitPrice: it.unitPrice,
-              taxRate: it.taxRate ?? 0,
-              taxAmount: it.taxAmount ?? 0,
-              subtotal: it.subtotal ?? 0,
-              discountPercent: it.discountPercent ?? null,
-              discountAmount: it.discountAmount ?? 0
+              productLocalId: it.productLocalId as string,
+              description: (it.description as string) ?? null,
+              qty: it.qty as number,
+              unitPrice: it.unitPrice as number,
+              taxRate: (it.taxRate as number) ?? 0,
+              taxAmount: (it.taxAmount as number) ?? 0,
+              subtotal: (it.subtotal as number) ?? 0,
+              discountPercent: (it.discountPercent as number) ?? null,
+              discountAmount: (it.discountAmount as number) ?? 0
             }));
-            // @ts-ignore
-            await tx.table("invoice_items").bulkPut(items);
+            await (tx.table("invoice_items") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(items);
           }
 
           if (Array.isArray(inv.payments)) {
-            const payments = inv.payments.map((p: any) => ({
+            const payments = (inv.payments as AnyRecord[]).map((p) => ({
               id: crypto.randomUUID(),
               invoiceLocalId,
               invoiceId,
-              method: p.method,
-              currency: p.currency,
-              amount: p.amount,
-              reference: p.reference ?? null
+              method: p.method as string,
+              currency: p.currency as string,
+              amount: p.amount as number,
+              reference: (p.reference as string) ?? null
             }));
-            // @ts-ignore
-            await tx.table("invoice_payments").bulkPut(payments);
+            await (tx.table("invoice_payments") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(payments);
           }
         }
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.error("Dexie migration (invoices) failed:", err);
       }
 
@@ -1024,34 +1023,31 @@ export class LogisCoreDexie extends Dexie {
           const purchaseLocalId = pch.localId;
           const purchaseId = getServerId(pch);
           if (Array.isArray(pch.items)) {
-            const items = pch.items.map((it: any) => ({
+            const items = (pch.items as AnyRecord[]).map((it) => ({
               id: crypto.randomUUID(),
               purchaseLocalId,
               purchaseId,
-              productLocalId: it.productLocalId,
-              qty: it.qty,
-              unitCost: it.unitCost
+              productLocalId: it.productLocalId as string,
+              qty: it.qty as number,
+              unitCost: it.unitCost as number
             }));
-            // @ts-ignore
-            await tx.table("purchase_items").bulkPut(items);
+            await (tx.table("purchase_items") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(items);
           }
 
           if (Array.isArray(pch.receivedItems)) {
-            const ritems = pch.receivedItems.map((it: any) => ({
+            const ritems = (pch.receivedItems as AnyRecord[]).map((it) => ({
               id: crypto.randomUUID(),
               purchaseLocalId,
               purchaseId,
-              productLocalId: it.productLocalId,
-              qtyReceived: it.qtyReceived ?? it.qtyReceived
+              productLocalId: it.productLocalId as string,
+              qtyReceived: (it.qtyReceived as number) ?? (it.qtyReceived as number)
             }));
-            // @ts-ignore
-            await tx.table("purchase_received_items").bulkPut(ritems);
+            await (tx.table("purchase_received_items") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(ritems);
           }
         }
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("Dexie migration (purchases) failed:", err);
-      }
+       } catch (err) {
+         console.error("Dexie migration (purchases) failed:", err);
+       }
 
       // Migrate receivings -> receiving_items, receiving_received_items
       try {
@@ -1060,34 +1056,31 @@ export class LogisCoreDexie extends Dexie {
           const receivingLocalId = r.localId;
           const receivingId = getServerId(r);
           if (Array.isArray(r.items)) {
-            const items = r.items.map((it: any) => ({
+            const items = (r.items as AnyRecord[]).map((it) => ({
               id: crypto.randomUUID(),
               receivingLocalId,
               receivingId,
-              productLocalId: it.productLocalId,
-              qty: it.qty,
-              unitCost: it.unitCost
+              productLocalId: it.productLocalId as string,
+              qty: it.qty as number,
+              unitCost: it.unitCost as number
             }));
-            // @ts-ignore
-            await tx.table("receiving_items").bulkPut(items);
+            await (tx.table("receiving_items") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(items);
           }
 
           if (Array.isArray(r.receivedItems)) {
-            const ritems = r.receivedItems.map((it: any) => ({
+            const ritems = (r.receivedItems as AnyRecord[]).map((it) => ({
               id: crypto.randomUUID(),
               receivingLocalId,
               receivingId,
-              productLocalId: it.productLocalId,
-              qtyReceived: it.qtyReceived ?? it.qtyReceived
+              productLocalId: it.productLocalId as string,
+              qtyReceived: (it.qtyReceived as number) ?? (it.qtyReceived as number)
             }));
-            // @ts-ignore
-            await tx.table("receiving_received_items").bulkPut(ritems);
+            await (tx.table("receiving_received_items") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(ritems);
           }
         }
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("Dexie migration (receivings) failed:", err);
-      }
+       } catch (err) {
+         console.error("Dexie migration (receivings) failed:", err);
+       }
 
       // Migrate recipes -> recipe_ingredients
       try {
@@ -1096,21 +1089,20 @@ export class LogisCoreDexie extends Dexie {
           const recipeLocalId = rc.localId;
           const recipeId = getServerId(rc);
           if (Array.isArray(rc.ingredients)) {
-            const ingr = rc.ingredients.map((it: any) => ({
+            const ingr = (rc.ingredients as AnyRecord[]).map((it) => ({
               id: crypto.randomUUID(),
               recipeLocalId,
               recipeId,
-              productLocalId: it.productLocalId,
-              requiredQty: it.requiredQty
+              productLocalId: (it.productLocalId as string) ?? "",
+              requiredQty: (it.requiredQty as number) ?? 0
             }));
-            // @ts-ignore
-            await tx.table("recipe_ingredients").bulkPut(ingr);
+            // use a safe cast for bulkPut in upgrade transaction
+            await (tx.table("recipe_ingredients") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(ingr);
           }
         }
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("Dexie migration (recipes) failed:", err);
-      }
+       } catch (err) {
+         console.error("Dexie migration (recipes) failed:", err);
+       }
 
       // Migrate production_logs -> production_ingredients
       try {
@@ -1119,21 +1111,19 @@ export class LogisCoreDexie extends Dexie {
           const productionLogLocalId = pl.localId;
           const productionLogId = getServerId(pl);
           if (Array.isArray(pl.ingredientsUsed)) {
-            const ingr = pl.ingredientsUsed.map((it: any) => ({
+            const ingr = (pl.ingredientsUsed as AnyRecord[]).map((it) => ({
               id: crypto.randomUUID(),
               productionLogLocalId,
               productionLogId,
-              productLocalId: it.productLocalId,
-              qtyUsed: it.requiredQty ?? it.qtyUsed ?? 0
+              productLocalId: (it.productLocalId as string) ?? "",
+              qtyUsed: (it.requiredQty as number) ?? (it.qtyUsed as number) ?? 0
             }));
-            // @ts-ignore
-            await tx.table("production_ingredients").bulkPut(ingr);
+            await (tx.table("production_ingredients") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(ingr);
           }
         }
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("Dexie migration (production_logs) failed:", err);
-      }
+       } catch (err) {
+         console.error("Dexie migration (production_logs) failed:", err);
+       }
     });
   }
 }
