@@ -4,6 +4,7 @@
  */
 
 import { db, type InvoiceRecord, type TaxRuleRecord, type ExchangeRateRecord, type SecurityAuditLogRecord } from "@/lib/db/dexie";
+import { normalizedDb } from "@/lib/db/normalized";
 import type { InvoicingDb } from "./invoicing.service";
 
 export class DexieInvoicingDbAdapter implements InvoicingDb {
@@ -12,22 +13,18 @@ export class DexieInvoicingDbAdapter implements InvoicingDb {
   }
 
   async listInvoices(tenantId: string): Promise<InvoiceRecord[]> {
-    return db.invoices
-      .where("tenantId")
-      .equals(tenantId)
-      .and((item) => !item.deletedAt)
-      .sortBy("createdAt");
+    return normalizedDb.listInvoicesWithItems(tenantId) as Promise<InvoiceRecord[]>;
   }
 
   async getInvoiceByLocalId(
     tenantId: string,
     invoiceLocalId: string
   ): Promise<InvoiceRecord | undefined> {
-    const invoice = await db.invoices.get(invoiceLocalId);
+    const invoice = await normalizedDb.getInvoiceWithItems(invoiceLocalId);
     if (!invoice || invoice.tenantId !== tenantId || invoice.deletedAt) {
       return undefined;
     }
-    return invoice;
+    return invoice as InvoiceRecord;
   }
 
   async updateInvoice(

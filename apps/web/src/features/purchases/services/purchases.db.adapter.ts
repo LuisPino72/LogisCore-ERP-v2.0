@@ -9,6 +9,8 @@ import {
 } from "@/lib/db/dexie";
 import type { PurchasesDb } from "./purchases.service";
 import type { Purchase, Receiving, InventoryLot, Supplier } from "../types/purchases.types";
+import { normalizedDb } from "@/lib/db/normalized";
+type AnyRecord = Record<string, unknown>;
 
 function toSupplierRecord(s: Supplier): SupplierRecord {
   const record: SupplierRecord = {
@@ -144,47 +146,40 @@ export class DexiePurchasesDbAdapter implements PurchasesDb {
   }
 
   async listPurchases(tenantId: string): Promise<Purchase[]> {
-    const records = await db.purchases
-      .where("tenantId")
-      .equals(tenantId)
-      .and((item) => !item.deletedAt)
-      .sortBy("createdAt");
-    return records.map(fromPurchaseRecord);
+    return (await normalizedDb.listPurchasesWithItems(tenantId)).map(fromPurchaseRecord);
   }
 
   async getPurchaseByLocalId(
     tenantId: string,
     localId: string
   ): Promise<Purchase | undefined> {
-    const purchase = await db.purchases.get(localId);
+    const purchase = await normalizedDb.getPurchaseWithItems(localId);
     if (!purchase || purchase.tenantId !== tenantId || purchase.deletedAt) {
       return undefined;
     }
-    return fromPurchaseRecord(purchase);
+    return fromPurchaseRecord((purchase as unknown) as PurchaseRecord);
   }
 
   async listReceivings(tenantId: string): Promise<Receiving[]> {
-    const records = await db.receivings
-      .where("tenantId")
-      .equals(tenantId)
-      .and((item) => !item.deletedAt)
-      .sortBy("createdAt");
+    const records = await normalizedDb.listReceivingsWithItems(tenantId);
     return records.map((r) => {
+      const rr = r as AnyRecord;
       const item: Receiving = {
-        localId: r.localId,
-        tenantId: r.tenantId,
-        purchaseLocalId: r.purchaseLocalId,
-        warehouseLocalId: r.warehouseLocalId,
-        status: r.status,
-        items: r.items,
-        totalItems: r.totalItems,
-        totalCost: r.totalCost,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt
+        localId: rr.localId as string,
+        tenantId: rr.tenantId as string,
+        purchaseLocalId: rr.purchaseLocalId as string,
+        warehouseLocalId: rr.warehouseLocalId as string,
+        status: rr.status as any,
+        items: (rr.items as any[]) ?? [],
+        receivedItems: (rr.receivedItems as any[]) ?? [],
+        totalItems: rr.totalItems as number,
+        totalCost: rr.totalCost as number,
+        createdAt: rr.createdAt as string,
+        updatedAt: rr.updatedAt as string
       };
-      if (r.receivedBy) item.receivedBy = r.receivedBy;
-      if (r.notes) item.notes = r.notes;
-      if (r.deletedAt) item.deletedAt = r.deletedAt;
+      if (rr.receivedBy) item.receivedBy = rr.receivedBy as string;
+      if (rr.notes) item.notes = rr.notes as string;
+      if (rr.deletedAt) item.deletedAt = rr.deletedAt as string;
       return item;
     });
   }

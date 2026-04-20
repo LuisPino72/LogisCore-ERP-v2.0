@@ -11,6 +11,7 @@ import {
   type SuspendedSaleRecord,
   type SecurityAuditLogRecord
 } from "@/lib/db/dexie";
+import { normalizedDb } from "@/lib/db/normalized";
 import type { SalesDb } from "./sales.service";
 
 // Implementa la interfaz SalesDb usando Dexie/IndexedDB
@@ -20,11 +21,8 @@ export class DexieSalesDbAdapter implements SalesDb {
   }
 
   async listSales(tenantId: string): Promise<SaleRecord[]> {
-    return db.sales
-      .where("tenantId")
-      .equals(tenantId)
-      .and((item) => !item.deletedAt)
-      .sortBy("createdAt");
+    // Use normalized stores to recompose items/payments when available
+    return normalizedDb.listSalesWithItems(tenantId) as Promise<SaleRecord[]>;
   }
 
   async createSuspendedSale(sale: SuspendedSaleRecord): Promise<void> {

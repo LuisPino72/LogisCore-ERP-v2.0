@@ -140,6 +140,9 @@ export interface InventoryCountRecord {
 }
 
 export interface SaleItemRecord {
+  id?: string; // UUID for normalized store rows
+  saleLocalId?: string;
+  saleId?: string; // server uuid when available
   productLocalId: string;
   qty: number;
   unitPrice: number;
@@ -149,6 +152,9 @@ export interface SaleItemRecord {
 }
 
 export interface SalePaymentRecord {
+  id?: string;
+  saleLocalId?: string;
+  saleId?: string;
   method: "cash" | "card" | "transfer" | "mobile" | "mixed";
   currency: "VES" | "USD";
   amount: number;
@@ -234,12 +240,18 @@ export interface SupplierRecord {
 }
 
 export interface PurchaseItemRecord {
+  id?: string;
+  purchaseLocalId?: string;
+  purchaseId?: string;
   productLocalId: string;
   qty: number;
   unitCost: number;
 }
 
 export interface PurchaseReceivedItemRecord {
+  id?: string;
+  purchaseLocalId?: string;
+  purchaseId?: string;
   productLocalId: string;
   qtyOrdered: number;
   qtyReceived: number;
@@ -266,6 +278,9 @@ export interface PurchaseRecord {
 }
 
 export interface ReceivingItemRecord {
+  id?: string;
+  receivingLocalId?: string;
+  receivingId?: string;
   productLocalId: string;
   qty: number;
   unitCost: number;
@@ -304,8 +319,21 @@ export interface InventoryLotRecord {
 }
 
 export interface RecipeIngredientRecord {
+  id?: string;
+  recipeLocalId?: string;
+  recipeId?: string;
   productLocalId: string;
   requiredQty: number;
+}
+
+export interface ProductionIngredientRecord {
+  id?: string;
+  productionLogLocalId?: string;
+  productionLogId?: string;
+  productLocalId: string;
+  qtyUsed: number;
+  qtyPlanned?: number;
+  costPerUnit?: number;
 }
 
 export interface RecipeRecord {
@@ -494,6 +522,17 @@ export class LogisCoreDexie extends Dexie {
   exchange_rates!: EntityTable<ExchangeRateRecord, "localId">;
   invoice_ranges!: EntityTable<InvoiceRangeRecord, "localId">;
   security_audit_log!: EntityTable<SecurityAuditLogRecord, "localId">;
+  // Normalized stores for items/payments/ingredients
+  sale_items!: EntityTable<SaleItemRecord, "id">;
+  sale_payments!: EntityTable<SalePaymentRecord, "id">;
+  invoice_items!: EntityTable<InvoiceItemRecord, "id">;
+  invoice_payments!: EntityTable<InvoicePaymentRecord, "id">;
+  purchase_items!: EntityTable<PurchaseItemRecord, "id">;
+  purchase_received_items!: EntityTable<PurchaseReceivedItemRecord, "id">;
+  receiving_items!: EntityTable<ReceivingItemRecord, "id">;
+  receiving_received_items!: EntityTable<PurchaseReceivedItemRecord, "id">;
+  recipe_ingredients!: EntityTable<RecipeIngredientRecord, "id">;
+  production_ingredients!: EntityTable<ProductionIngredientRecord, "id">;
 
   constructor() {
     super("logiscore_erp");
@@ -851,29 +890,19 @@ export class LogisCoreDexie extends Dexie {
       production_logs:
         "&localId, tenantId, productionOrderLocalId, recipeLocalId, warehouseLocalId, createdAt",
       // Stores de normalización añadidas en versión 15
-      sale_items: "&id, saleLocalId, productLocalId, qty, unitPrice",
-      sale_payments: "&id, saleLocalId, method, currency, amount",
-      invoice_items: "&id, invoiceLocalId, productLocalId, qty, unitPrice",
-      invoice_payments: "&id, invoiceLocalId, method, currency, amount",
-      purchase_items: "&id, purchaseLocalId, productLocalId, qty, unitCost",
-      purchase_received_items: "&id, purchaseLocalId, productLocalId, qtyReceived",
-      receiving_items: "&id, receivingLocalId, productLocalId, qty, unitCost",
-      receiving_received_items: "&id, receivingLocalId, productLocalId, qtyReceived",
-      recipe_ingredients: "&id, recipeLocalId, productLocalId, requiredQty",
-      production_ingredients: "&id, productionLogLocalId, productLocalId, qtyUsed",
+      sale_items: "&id, saleLocalId, saleId, productLocalId, qty, unitPrice",
+      sale_payments: "&id, saleLocalId, saleId, method, currency, amount",
+      invoice_items: "&id, invoiceLocalId, invoiceId, productLocalId, qty, unitPrice",
+      invoice_payments: "&id, invoiceLocalId, invoiceId, method, currency, amount",
+      purchase_items: "&id, purchaseLocalId, purchaseId, productLocalId, qty, unitCost",
+      purchase_received_items: "&id, purchaseLocalId, purchaseId, productLocalId, qtyReceived",
+      receiving_items: "&id, receivingLocalId, receivingId, productLocalId, qty, unitCost",
+      receiving_received_items: "&id, receivingLocalId, receivingId, productLocalId, qtyReceived",
+      recipe_ingredients: "&id, recipeLocalId, recipeId, productLocalId, requiredQty",
+      production_ingredients: "&id, productionLogLocalId, productionLogId, productLocalId, qtyUsed",
       invoices:
         "&localId, [tenantId+createdAt], saleLocalId, customerId, status, createdAt",
-      // Nuevas stores para normalización de JSONB (items/payments/ingredients)
-      sale_items: "&id, saleLocalId, productLocalId, qty, unitPrice",
-      sale_payments: "&id, saleLocalId, method, currency, amount",
-      invoice_items: "&id, invoiceLocalId, productLocalId, qty, unitPrice",
-      invoice_payments: "&id, invoiceLocalId, method, currency, amount",
-      purchase_items: "&id, purchaseLocalId, productLocalId, qty, unitCost",
-      purchase_received_items: "&id, purchaseLocalId, productLocalId, qtyReceived",
-      receiving_items: "&id, receivingLocalId, productLocalId, qty, unitCost",
-      receiving_received_items: "&id, receivingLocalId, productLocalId, qtyReceived",
-      recipe_ingredients: "&id, recipeLocalId, productLocalId, requiredQty",
-      production_ingredients: "&id, productionLogLocalId, productLocalId, qtyUsed",
+      // Deduplicated: normalización de JSONB handled above
       tax_rules:
         "&localId, tenantId, type, isActive, createdAt",
       exchange_rates:
@@ -886,16 +915,225 @@ export class LogisCoreDexie extends Dexie {
 
     // Nueva versión para introducir stores normalizadas
     this.version(15).stores({
-      sale_items: "&id, saleLocalId, productLocalId, qty, unitPrice",
-      sale_payments: "&id, saleLocalId, method, currency, amount",
-      invoice_items: "&id, invoiceLocalId, productLocalId, qty, unitPrice",
-      invoice_payments: "&id, invoiceLocalId, method, currency, amount",
-      purchase_items: "&id, purchaseLocalId, productLocalId, qty, unitCost",
-      purchase_received_items: "&id, purchaseLocalId, productLocalId, qtyReceived",
-      receiving_items: "&id, receivingLocalId, productLocalId, qty, unitCost",
-      receiving_received_items: "&id, receivingLocalId, productLocalId, qtyReceived",
-      recipe_ingredients: "&id, recipeLocalId, productLocalId, requiredQty",
-      production_ingredients: "&id, productionLogLocalId, productLocalId, qtyUsed"
+      sale_items: "&id, saleLocalId, saleId, productLocalId, qty, unitPrice",
+      sale_payments: "&id, saleLocalId, saleId, method, currency, amount",
+      invoice_items: "&id, invoiceLocalId, invoiceId, productLocalId, qty, unitPrice",
+      invoice_payments: "&id, invoiceLocalId, invoiceId, method, currency, amount",
+      purchase_items: "&id, purchaseLocalId, purchaseId, productLocalId, qty, unitCost",
+      purchase_received_items: "&id, purchaseLocalId, purchaseId, productLocalId, qtyReceived",
+      receiving_items: "&id, receivingLocalId, receivingId, productLocalId, qty, unitCost",
+      receiving_received_items: "&id, receivingLocalId, receivingId, productLocalId, qtyReceived",
+      recipe_ingredients: "&id, recipeLocalId, recipeId, productLocalId, requiredQty",
+      production_ingredients: "&id, productionLogLocalId, productionLogId, productLocalId, qtyUsed"
+    });
+
+    // Upgrade migration: move nested arrays (items/payments/ingredients) into normalized stores
+    this.version(15).upgrade(async (tx) => {
+      const getServerId = (record: any): string | undefined => record?.id ?? record?.serverId ?? undefined;
+
+      // Migrate sales -> sale_items, sale_payments
+      try {
+        const allSales = await tx.table("sales").toArray();
+        for (const s of allSales) {
+          const saleLocalId = s.localId;
+          const saleId = getServerId(s);
+          if (Array.isArray(s.items)) {
+            const items = s.items.map((it: any) => ({
+              id: crypto.randomUUID(),
+              saleLocalId,
+              saleId,
+              productLocalId: it.productLocalId,
+              qty: it.qty,
+              unitPrice: it.unitPrice,
+              unitCost: it.unitCost ?? null,
+              taxAmount: it.taxAmount ?? 0,
+              discountAmount: it.discountAmount ?? 0
+            }));
+            // @ts-ignore - tx.table typings are loose in upgrade context
+            await tx.table("sale_items").bulkPut(items);
+          }
+
+          if (Array.isArray(s.payments)) {
+            const payments = s.payments.map((p: any) => ({
+              id: crypto.randomUUID(),
+              saleLocalId,
+              saleId,
+              method: p.method,
+              currency: p.currency,
+              amount: p.amount,
+              reference: p.reference ?? null
+            }));
+            // @ts-ignore
+            await tx.table("sale_payments").bulkPut(payments);
+          }
+        }
+      } catch (err) {
+        // Migration should not fail hard; log and continue
+        // eslint-disable-next-line no-console
+        console.error("Dexie migration (sales) failed:", err);
+      }
+
+      // Migrate invoices -> invoice_items, invoice_payments
+      try {
+        const allInvoices = await tx.table("invoices").toArray();
+        for (const inv of allInvoices) {
+          const invoiceLocalId = inv.localId;
+          const invoiceId = getServerId(inv);
+          if (Array.isArray(inv.items)) {
+            const items = inv.items.map((it: any) => ({
+              id: crypto.randomUUID(),
+              invoiceLocalId,
+              invoiceId,
+              productLocalId: it.productLocalId,
+              description: it.description ?? null,
+              qty: it.qty,
+              unitPrice: it.unitPrice,
+              taxRate: it.taxRate ?? 0,
+              taxAmount: it.taxAmount ?? 0,
+              subtotal: it.subtotal ?? 0,
+              discountPercent: it.discountPercent ?? null,
+              discountAmount: it.discountAmount ?? 0
+            }));
+            // @ts-ignore
+            await tx.table("invoice_items").bulkPut(items);
+          }
+
+          if (Array.isArray(inv.payments)) {
+            const payments = inv.payments.map((p: any) => ({
+              id: crypto.randomUUID(),
+              invoiceLocalId,
+              invoiceId,
+              method: p.method,
+              currency: p.currency,
+              amount: p.amount,
+              reference: p.reference ?? null
+            }));
+            // @ts-ignore
+            await tx.table("invoice_payments").bulkPut(payments);
+          }
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Dexie migration (invoices) failed:", err);
+      }
+
+      // Migrate purchases -> purchase_items, purchase_received_items
+      try {
+        const allPurchases = await tx.table("purchases").toArray();
+        for (const pch of allPurchases) {
+          const purchaseLocalId = pch.localId;
+          const purchaseId = getServerId(pch);
+          if (Array.isArray(pch.items)) {
+            const items = pch.items.map((it: any) => ({
+              id: crypto.randomUUID(),
+              purchaseLocalId,
+              purchaseId,
+              productLocalId: it.productLocalId,
+              qty: it.qty,
+              unitCost: it.unitCost
+            }));
+            // @ts-ignore
+            await tx.table("purchase_items").bulkPut(items);
+          }
+
+          if (Array.isArray(pch.receivedItems)) {
+            const ritems = pch.receivedItems.map((it: any) => ({
+              id: crypto.randomUUID(),
+              purchaseLocalId,
+              purchaseId,
+              productLocalId: it.productLocalId,
+              qtyReceived: it.qtyReceived ?? it.qtyReceived
+            }));
+            // @ts-ignore
+            await tx.table("purchase_received_items").bulkPut(ritems);
+          }
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Dexie migration (purchases) failed:", err);
+      }
+
+      // Migrate receivings -> receiving_items, receiving_received_items
+      try {
+        const allReceivings = await tx.table("receivings").toArray();
+        for (const r of allReceivings) {
+          const receivingLocalId = r.localId;
+          const receivingId = getServerId(r);
+          if (Array.isArray(r.items)) {
+            const items = r.items.map((it: any) => ({
+              id: crypto.randomUUID(),
+              receivingLocalId,
+              receivingId,
+              productLocalId: it.productLocalId,
+              qty: it.qty,
+              unitCost: it.unitCost
+            }));
+            // @ts-ignore
+            await tx.table("receiving_items").bulkPut(items);
+          }
+
+          if (Array.isArray(r.receivedItems)) {
+            const ritems = r.receivedItems.map((it: any) => ({
+              id: crypto.randomUUID(),
+              receivingLocalId,
+              receivingId,
+              productLocalId: it.productLocalId,
+              qtyReceived: it.qtyReceived ?? it.qtyReceived
+            }));
+            // @ts-ignore
+            await tx.table("receiving_received_items").bulkPut(ritems);
+          }
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Dexie migration (receivings) failed:", err);
+      }
+
+      // Migrate recipes -> recipe_ingredients
+      try {
+        const allRecipes = await tx.table("recipes").toArray();
+        for (const rc of allRecipes) {
+          const recipeLocalId = rc.localId;
+          const recipeId = getServerId(rc);
+          if (Array.isArray(rc.ingredients)) {
+            const ingr = rc.ingredients.map((it: any) => ({
+              id: crypto.randomUUID(),
+              recipeLocalId,
+              recipeId,
+              productLocalId: it.productLocalId,
+              requiredQty: it.requiredQty
+            }));
+            // @ts-ignore
+            await tx.table("recipe_ingredients").bulkPut(ingr);
+          }
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Dexie migration (recipes) failed:", err);
+      }
+
+      // Migrate production_logs -> production_ingredients
+      try {
+        const allLogs = await tx.table("production_logs").toArray();
+        for (const pl of allLogs) {
+          const productionLogLocalId = pl.localId;
+          const productionLogId = getServerId(pl);
+          if (Array.isArray(pl.ingredientsUsed)) {
+            const ingr = pl.ingredientsUsed.map((it: any) => ({
+              id: crypto.randomUUID(),
+              productionLogLocalId,
+              productionLogId,
+              productLocalId: it.productLocalId,
+              qtyUsed: it.requiredQty ?? it.qtyUsed ?? 0
+            }));
+            // @ts-ignore
+            await tx.table("production_ingredients").bulkPut(ingr);
+          }
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Dexie migration (production_logs) failed:", err);
+      }
     });
   }
 }

@@ -12,6 +12,7 @@ import {
   type SecurityAuditLogRecord
 } from "@/lib/db/dexie";
 import type { ProductionDb } from "./production.service";
+import { normalizedDb } from "@/lib/db/normalized";
 
 // Tipos de movimiento que incrementan el stock
 const incomingMovements = new Set<StockMovementRecord["movementType"]>([
@@ -28,22 +29,18 @@ export class DexieProductionDbAdapter implements ProductionDb {
   }
 
   async listRecipes(tenantId: string): Promise<RecipeRecord[]> {
-    return db.recipes
-      .where("tenantId")
-      .equals(tenantId)
-      .and((item) => !item.deletedAt)
-      .sortBy("createdAt");
+    return normalizedDb.listRecipesWithIngredients(tenantId) as Promise<RecipeRecord[]>;
   }
 
   async getRecipeByLocalId(
     tenantId: string,
     recipeLocalId: string
   ): Promise<RecipeRecord | undefined> {
-    const recipe = await db.recipes.get(recipeLocalId);
+    const recipe = await normalizedDb.getRecipeWithIngredients(recipeLocalId);
     if (!recipe || recipe.tenantId !== tenantId || recipe.deletedAt) {
       return undefined;
     }
-    return recipe;
+    return recipe as RecipeRecord;
   }
 
   async createProductionOrder(order: ProductionOrderRecord): Promise<void> {
@@ -82,11 +79,7 @@ export class DexieProductionDbAdapter implements ProductionDb {
   }
 
   async listProductionLogs(tenantId: string): Promise<ProductionLogRecord[]> {
-    return db.production_logs
-      .where("tenantId")
-      .equals(tenantId)
-      .and((item) => !item.deletedAt)
-      .sortBy("createdAt");
+    return normalizedDb.listProductionLogsWithIngredients(tenantId) as Promise<ProductionLogRecord[]>;
   }
 
   async completeOrderWithLogAndMovements(
