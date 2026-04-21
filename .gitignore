@@ -23,7 +23,6 @@ coverage/
 opencode.json
 
 # Scripts locales y utilidades temporales
-analyze_numeric.py
 
 # Logs
 *.log
@@ -52,6 +51,8 @@ desktop.ini
 /cypress/screenshots/
 /cypress/videos/
 .nyc_output
+tests/
+packages/core/test/
 
 # Supabase (Local dev artifacts)
 supabase/.temp/
