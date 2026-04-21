@@ -1,6 +1,6 @@
 import React from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "success";
 export type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -27,6 +27,8 @@ export const Button = ({
     primary: "btn-primary",
     secondary: "btn-secondary",
     ghost: "btn-ghost",
+    danger: "btn-danger",
+    success: "btn-success",
   };
 
   const sizeClasses = {

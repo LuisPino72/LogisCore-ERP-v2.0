@@ -5,7 +5,9 @@ const variantClasses: Record<BadgeVariant, string> = {
   success: "badge-success",
   warning: "badge-warning",
   error: "badge-error",
-  info: "badge-info"
+  info: "badge-info",
+  industrial: "badge-industrial",
+  terminal: "badge-terminal"
 };
 
 export interface BadgeProps {

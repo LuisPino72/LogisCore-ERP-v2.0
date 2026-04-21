@@ -59,9 +59,9 @@ export interface ConfirmDialogConfig {
   confirmVariant?: "primary" | "danger";
 }
 
-export type BadgeVariant = "default" | "success" | "warning" | "error" | "info";
+export type BadgeVariant = "default" | "success" | "warning" | "error" | "info" | "industrial" | "terminal";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "success";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export interface BreadcrumbItem {
