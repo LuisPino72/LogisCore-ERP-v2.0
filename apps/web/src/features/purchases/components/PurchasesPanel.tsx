@@ -21,7 +21,7 @@ import { usePurchases } from "../hooks/usePurchases";
 import { purchasesService } from "../services/purchases.service.instance";
 import { PurchasesCatalogPanel } from "./PurchasesCatalogPanel";
 import { Tabs, type TabItem } from "@/common/components/Tabs";
-import { useKeyboardShortcuts } from "@/common";
+import { useKeyboardShortcuts, Button } from "@/common";
 import type { PurchaseItem, PurchasesActorContext, PurchasesTenantContext, ReceivePurchaseInput } from "../types/purchases.types";
 
 import { PurchaseForm } from "./forms/PurchaseForm";

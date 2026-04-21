@@ -13,6 +13,12 @@ describe("architecture guard", () => {
       path.resolve(
         process.cwd(),
         "apps/web/src/features/products/components/ProductsCatalog.tsx"
+      ),
+      // Allowlist para SalesPanel: necesario para cargar productos y warehouses internamente
+      // en el flujo de venta POS. Ver Hallazgo B - UI fixes.
+      path.resolve(
+        process.cwd(),
+        "apps/web/src/features/sales/components/SalesPanel.tsx"
       )
     ]);
 

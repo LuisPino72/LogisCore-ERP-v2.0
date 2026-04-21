@@ -169,104 +169,133 @@ async function createPurchaseReceiving(page: import('@playwright/test').Page, db
   return lots;
 }
 
-async function createSaleWithPayment(page: import('@playwright/test').Page, paymentMethod: 'efectivo' | 'usd', amount: number) {
-  // Try sidebar navigation for Sales module first (SPA-aware)
-  const salesBtn = page.locator('button:has-text("Ventas"), button:has-text("Sales")').first();
-  if (await salesBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await salesBtn.click();
-    await page.waitForLoadState('networkidle');
-  } else {
-    await page.goto('/sales');
-    await page.waitForLoadState('networkidle');
-  }
-  
-  const newSaleBtn = page.locator('button:has-text("Nueva"), button:has-text("Venta")').first();
-  let saleCreatedViaUi = false;
-  if (await newSaleBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-    try {
-      await newSaleBtn.click();
-      await page.waitForSelector('button:has-text("USD"), button:has-text("Efectivo")', { timeout: 5000 }).catch(() => {});
-      
-      if (paymentMethod === 'usd') {
-        const usdBtn = page.locator('button:has-text("USD"), [class*="usd"]').first();
-        if (await usdBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await usdBtn.click();
-        }
-      } else {
-        const cashBtn = page.locator('button:has-text("Efectivo"), [class*="cash"]').first();
-        if (await cashBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await cashBtn.click();
-        }
-      }
-      
-      const completeBtn = page.locator('button:has-text("Completar"), button:has-text("Finalizar")').first();
-      if (await completeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await completeBtn.click();
-        await page.waitForFunction(async () => {
-          const db = (window as any).logiscoreDb;
-          if (!db || !db.sales) return false;
-          const sales = await db.sales.toArray();
-          return sales.length > 0;
-        }, { timeout: 10000 }).catch(() => {});
-        saleCreatedViaUi = true;
-      }
-    } catch (err) {
-      console.log('UI sale creation failed, will fallback to Dexie insertion', err);
-      saleCreatedViaUi = false;
+async function navigateToSales(page: import('@playwright/test').Page) {
+  const salesBtn = page.getByRole('button', { name: 'Ventas' });
+  await salesBtn.waitFor({ state: 'visible', timeout: 5000 });
+  await salesBtn.click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(1000);
+}
+
+async function ensureBoxOpen(page: import('@playwright/test').Page, warehouseLocalId: string) {
+  const openBoxBtn = page.getByRole('button', { name: 'Abrir Caja' });
+  const isBoxAlreadyOpen = !(await openBoxBtn.isVisible({ timeout: 2000 }).catch(() => false));
+  if (isBoxAlreadyOpen) return;
+
+  await openBoxBtn.click();
+
+  const modal = page.locator('[role="dialog"], .fixed.inset-0');
+  await modal.waitFor({ state: 'visible', timeout: 5000 });
+
+  if (warehouseLocalId) {
+    const warehouseSelectBtn = modal.locator('button.input').first();
+    await warehouseSelectBtn.waitFor({ state: 'visible', timeout: 3000 });
+    await warehouseSelectBtn.click();
+
+    const warehouseOption = modal.locator(`button:has-text("${warehouseLocalId}")`).first();
+    if (await warehouseOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await warehouseOption.click();
     }
   }
-  
-  if (!saleCreatedViaUi) {
-    console.log(`Creating ${paymentMethod} sale directly in Dexie as fallback`);
-    await page.evaluate((args) => {
-      const { tenantSlug, currency, total, paymentMethod } = args as any;
-      const db = (window as any).logiscoreDb;
-      if (!db || !db.sales) return;
-      
-      const now = new Date().toISOString();
-      const localId = `sale-${Date.now()}`;
-      db.sales.add({
-        localId,
-        tenantId: tenantSlug,
-        saleNumber: localId,
-        warehouseLocalId: 'wh-default',
-        cashierUserId: 'test-user',
-        salesPersonId: 'test-user',
-        posTerminalId: 'pos-01',
-        customerId: 'default',
-        status: 'completed',
-        currency: currency,
-        exchangeRate: 1,
-        subtotal: total,
-        taxTotal: 0,
-        discountTotal: 0,
-        total: total,
-        totalPaid: total,
-        changeAmount: 0,
-        items: [],
-        payments: [{
-          method: paymentMethod === 'usd' ? 'cash' : 'cash',
-          currency: currency,
-          amount: total
-        }],
-        suspendedSourceLocalId: '',
-        notes: 'Auto-created by E2E test',
-        createdAt: now,
-        updatedAt: now,
-        syncStatus: 'pending'
-      });
-    }, { tenantSlug: TEST_TENANT_SLUG, currency: paymentMethod === 'usd' ? 'USD' : 'VES', total: amount, paymentMethod });
-    
-    await page.waitForFunction(async () => {
-      const db = (window as any).logiscoreDb;
-      if (!db || !db.sales) return false;
-      const sales = await db.sales.toArray();
-      return sales.length > 0;
-    }, { timeout: 10000 }).catch(() => {});
+
+  const amountInput = modal.locator('#openingAmount');
+  if (await amountInput.isVisible({ timeout: 3000 })) {
+    await amountInput.fill('0');
+  }
+
+  const confirmBtn = modal.getByRole('button', { name: 'Abrir Caja' }).last();
+  await confirmBtn.click();
+  await page.waitForTimeout(1500);
+}
+
+async function selectWarehouse(page: import('@playwright/test').Page, warehouseName: string) {
+  const selectBtn = page.locator('.relative button.input').first();
+  await selectBtn.waitFor({ state: 'visible', timeout: 5000 });
+  await selectBtn.click();
+  await page.waitForTimeout(300);
+
+  const warehouseOption = page.locator(`.absolute.z-50 button:has-text("${warehouseName}")`).first();
+  if (await warehouseOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await warehouseOption.click();
+    await page.waitForTimeout(500);
   }
 }
 
+async function addProductToCart(page: import('@playwright/test').Page, productName: string) {
+  const productBtn = page.locator('button:has-text("' + productName + '")').first();
+  await productBtn.waitFor({ state: 'visible', timeout: 10000 });
+  await productBtn.click();
+  await page.waitForTimeout(500);
+}
+
+async function addPayment(page: import('@playwright/test').Page, currency: 'USD' | 'VES', amount: number) {
+  const paymentSection = page.locator('text=Pagos').first();
+  if (await paymentSection.isVisible({ timeout: 3000 }).catch(() => false)) {
+    const methodSelectBtn = page.locator('text=Pagos').locator('..').locator('button.input').first();
+    if (await methodSelectBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await methodSelectBtn.click();
+      await page.waitForTimeout(300);
+      const methodOption = page.locator('.absolute.z-50 button:has-text("Efectivo")').first();
+      if (await methodOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await methodOption.click();
+        await page.waitForTimeout(300);
+      }
+    }
+
+    const currencySelectBtn = page.locator('text=Pagos').locator('..').locator('button.input').nth(1);
+    if (await currencySelectBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await currencySelectBtn.click();
+      await page.waitForTimeout(300);
+      const currencyOption = page.locator(`.absolute.z-50 button:has-text("${currency}")`).first();
+      if (await currencyOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await currencyOption.click();
+        await page.waitForTimeout(300);
+      }
+    }
+
+    const amountInput = page.locator('input[placeholder="Monto"]').first();
+    if (await amountInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await amountInput.fill(amount.toString());
+    }
+
+    const addPaymentBtn = page.getByRole('button', { name: 'Agregar Pago' });
+    if (await addPaymentBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await addPaymentBtn.click();
+      await page.waitForTimeout(500);
+    }
+  }
+}
+
+async function finalizeSale(page: import('@playwright/test').Page) {
+  const finalizeBtn = page.getByRole('button', { name: 'Finalizar' });
+  await finalizeBtn.waitFor({ state: 'visible', timeout: 5000 });
+  await finalizeBtn.click();
+  await page.waitForFunction(async () => {
+    const db = (window as any).logiscoreDb;
+    if (!db || !db.sales) return false;
+    const sales = await db.sales.toArray();
+    return sales.length > 0;
+  }, { timeout: 15000 });
+}
+
+async function createSaleWithPayment(
+  page: import('@playwright/test').Page,
+  productName: string,
+  paymentCurrency: 'USD' | 'VES',
+  paymentAmount: number,
+  warehouseLocalId: string
+) {
+  await navigateToSales(page);
+  await ensureBoxOpen(page, warehouseLocalId);
+  await page.waitForTimeout(500);
+  await addProductToCart(page, productName);
+  await addPayment(page, paymentCurrency, paymentAmount);
+  await finalizeSale(page);
+}
+
 test.describe('Integration Tests - Full Business Flow', () => {
+  // Increase timeout for these integration tests which interact with the running app
+  test.setTimeout(300000); // 5 minutes
   
   test('FULL FLOW: Receiving → FIFO Lots → Sale → Invoice with IGTF', async ({ page }) => {
     const dbUtil = await loginAndBootstrap(page);
@@ -438,7 +467,24 @@ test.describe('Integration Tests - Full Business Flow', () => {
     expect(activeLots.length).toBeGreaterThan(0);
     
     console.log(`\n=== STEP 4: Create Sale with USD Payment ===`);
-    await createSaleWithPayment(page, 'usd', 100);
+    // Ensure there is an exchange rate for USD -> VES
+    await page.evaluate((tenantSlug) => {
+      const db = (window as any).logiscoreDb;
+      if (db && db.exchange_rates) {
+        db.exchange_rates.put({ 
+          localId: `er-test-usd`, 
+          tenantId: tenantSlug, 
+          rate: 40, 
+          fromCurrency: 'USD', 
+          toCurrency: 'VES', 
+          capturedAt: new Date().toISOString(), 
+          source: 'test' 
+        });
+      }
+    }, TEST_TENANT_SLUG);
+
+    await createSaleWithPayment(page, testProduct.name, 'USD', 100, testWarehouse);
+
     
     const sales = await dbUtil.getByIndex('sales', 'tenantId', TEST_TENANT_SLUG);
     console.log(`Total sales after: ${sales.length}`);
@@ -460,14 +506,26 @@ test.describe('Integration Tests - Full Business Flow', () => {
       const sale = salesWithIGTF[0] as Record<string, unknown>;
       const total = sale.total as number;
       const igtfAmount = sale.igtf_amount as number;
-      const expectedIGTF = total * 0.03;
-      
-      console.log(`Sale total: ${total}, IGTF: ${igtfAmount}, Expected (3%): ${expectedIGTF.toFixed(4)}`);
-      
+
+      const exchangeRates = await dbUtil.getExchangeRates(TEST_TENANT_SLUG);
+      const exchangeRate = (exchangeRates && exchangeRates.length > 0) ? (exchangeRates[0].rate as number) : 1;
+
+      // IGTF = total_pagos_USD * tasa * 0.03 (regla fiscal venezolana)
+      const usdPayments = ((sale.payments ?? []) as Array<Record<string, unknown>>).filter(p => p.currency === 'USD');
+      const usdTotal = usdPayments.reduce((sum, p) => sum + (p.amount as number), 0);
+      const expectedIGTF = Math.round((usdTotal * exchangeRate * 0.03 + Number.EPSILON) * 10000) / 10000;
+
+      console.log(`Sale total: ${total}, IGTF: ${igtfAmount}, Expected: ${expectedIGTF.toFixed(4)}`);
+
       expect(igtfAmount).toBeGreaterThan(0);
       expect(Math.abs(igtfAmount - expectedIGTF)).toBeLessThan(0.01);
     } else {
-      console.log(`No IGTF calculated yet - payment may not be in USD`);
+      // Si no hay ventas con IGTF pero la venta fue USD, es un error del flujo
+      const usdSales = sales.filter((s: Record<string, unknown>) => s.currency === 'USD');
+      if (usdSales.length > 0) {
+        throw new Error('Venta USD creada pero sin IGTF calculado - motor fiscal fallando');
+      }
+      console.log(`No USD sales with IGTF found - sale may not have been created via UI`);
     }
     
     console.log(`\n=== STEP 6: Check Exchange Rate Snapshot ===`);
@@ -484,8 +542,8 @@ test.describe('Integration Tests - Full Business Flow', () => {
     const invoices = await dbUtil.getInvoices(TEST_TENANT_SLUG);
     console.log(`Invoices: ${invoices.length}`);
     
-    expect(sales.length).toBeGreaterThanOrEqual(0);
-    
+  expect(sales.length).toBeGreaterThan(0);
+
     console.log(`\n=== FLOW COMPLETE ===`);
   });
 

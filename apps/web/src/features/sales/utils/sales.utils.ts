@@ -54,8 +54,9 @@ export const calculateIGTF = (
 ): number => {
   const foreignPayments = payments.filter(p => p.currency === "USD");
   const foreignTotal = foreignPayments.reduce((sum, p) => sum + p.amount, 0);
-  const foreignTotalVes = roundMoney(foreignTotal * exchangeRate);
-  return roundMoney(foreignTotalVes * igtfRate);
+  // Calculate IGTF using 4-decimal precision for fiscal accuracy.
+  const rawIgtf = foreignTotal * exchangeRate * igtfRate;
+  return Math.round((rawIgtf + Number.EPSILON) * 10000) / 10000;
 };
 
 export const calculateTotalPaid = (

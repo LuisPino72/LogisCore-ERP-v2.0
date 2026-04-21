@@ -684,4 +684,46 @@ payments: [{ method: "cash", currency: "VES", amount: 50 }],
     if (!result.ok) return;
     expect(result.data.payments[0].method).toBe("card");
   });
+
+  it("calcula IGTF 3% sobre pagos USD con precision 4 decimales cuando hay items pesables", async () => {
+    const service = createSalesService({
+      db: createSalesDbMock(),
+      syncEngine: createSyncEngineMock(),
+      eventBus: new InMemoryEventBus(),
+      supabase: createSupabaseMock(),
+      taxRuleService: createTaxRuleServiceMock()
+    });
+
+    const smallUsd = 0.0001; // tiny USD payment that could be zero if rounded to 2 decimals
+    const exchangeRate = 40; // 1 USD = 40 VES
+    // expected IGTF: smallUsd * exchangeRate * 0.03
+    const expectedRaw = smallUsd * exchangeRate * 0.03;
+    const expectedIgtf = Math.round((expectedRaw + Number.EPSILON) * 10000) / 10000;
+
+    const result = await service.createPosSale(
+      { tenantSlug: "tenant-demo" },
+      ownerActor,
+      {
+        warehouseLocalId: "wh-1",
+        currency: "VES",
+        exchangeRate,
+        subtotal: 0,
+        taxTotal: 0,
+        discountTotal: 0,
+        total: 0,
+        items: [
+          { productLocalId: "prod-1", qty: 0.0001, unitPrice: 0, isWeighted: true }
+        ],
+        payments: [
+          { method: "card", currency: "USD", amount: smallUsd }
+        ],
+        igtfAmount: 0
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // IGTF should be calculated with 4-decimal precision and stored on the sale
+    expect(result.data.igtfAmount).toBe(expectedIgtf);
+  });
 });

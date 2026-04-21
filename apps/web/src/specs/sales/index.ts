@@ -77,7 +77,9 @@ export function calculateIGTF(
   amountUSD: number,
   exchangeRate: number
 ): number {
-  return amountUSD * exchangeRate * IGTF_RATE;
+  // Use 4-decimal precision for fiscal calculations; presentation rounds to 2 decimals.
+  const raw = amountUSD * exchangeRate * IGTF_RATE;
+  return Math.round((raw + Number.EPSILON) * 10000) / 10000;
 }
 
 export function validateIGTF(

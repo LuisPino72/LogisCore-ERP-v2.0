@@ -57,11 +57,10 @@ export function ModuleRenderer({ activeModule, tenant, actor, onNavigate }: Modu
         )}
 
         {activeModule === "sales" && (
-          <SalesPanel
-            tenantSlug={tenantSlug}
-            actor={actor as unknown as SalesActorContext}
-            products={[]}
-          />
+      <SalesPanel
+        tenantSlug={tenantSlug}
+        actor={actor as unknown as SalesActorContext}
+      />
         )}
 
         {activeModule === "inventory" && (

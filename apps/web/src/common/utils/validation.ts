@@ -11,7 +11,7 @@ export interface ValidationResult {
 
 const VALIDATIONS = {
   EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  RIF_REGEX: /^[JGVECP]-[0-9]{9}$/,
+  RIF_REGEX: /^[VJEGP]\d{9}$/,
   CEDULA_REGEX: /^[VEGJ]-[0-9]{8}$/,
   PHONE_REGEX: /^[0-9]{11}$/,
   SLUG_REGEX: /^[a-z0-9-]+$/,
@@ -32,7 +32,7 @@ export function validateRif(rif: string): ValidationResult {
     return { isValid: true };
   }
   if (!VALIDATIONS.RIF_REGEX.test(rif.toUpperCase())) {
-    return { isValid: false, error: "Formato RIF inválido. Ej: J-123456789" };
+    return { isValid: false, error: "Formato RIF inválido. Ej: J123456789" };
   }
   return { isValid: true };
 }
@@ -114,7 +114,7 @@ export const TOAST_MESSAGES = {
   DELETE_CONFIRM: "¿Estás seguro de que deseas eliminar este tenant?",
   REQUIRED_FIELD: "Este campo es requerido",
   INVALID_EMAIL: "Email inválido",
-  INVALID_RIF: "Formato RIF inválido (ej: J-123456789)",
+  INVALID_RIF: "Formato RIF inválido (ej: J123456789)",
   INVALID_CEDULA: "Formato de cédula inválido (ej: V-12345678)",
   INVALID_PHONE: "El teléfono debe tener 11 dígitos",
   MAX_LENGTH: (max: number) => `Máximo ${max} caracteres permitidos`,

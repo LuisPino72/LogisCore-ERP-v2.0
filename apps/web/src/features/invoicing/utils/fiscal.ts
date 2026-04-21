@@ -62,7 +62,10 @@ export const computeIgtf = (
     .reduce((sum, p) => sum + p.amount, 0);
   
   const igtfAmount = foreignPaymentsTotal * exchangeRate * igtfRate;
-  return roundMoney(igtfAmount);
+  // Return IGTF with 4-decimal precision for fiscal accuracy. Callers will
+  // round further according to UI/display precision rules (2 decimals) or
+  // calculation rules (4 decimals for weighted products).
+  return roundMoney4Decimals(igtfAmount);
 };
 
 export const computeInvoiceTotal = (

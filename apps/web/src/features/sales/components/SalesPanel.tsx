@@ -1,7 +1,7 @@
 /**
  * Panel Maestro de Ventas (Terminal POS).
  * Diseño con pestañas para: Terminal, Ventas Realizadas, Suspendidas, Cierres.
- * 
+ *
  * Características:
  * - Navegación por Tabs
  * - KPI Header: Venta del Día, Estado de Caja, Tasa USD/VES, Suspendidas
@@ -15,6 +15,9 @@ import { eventBus } from "@/lib/core/runtime";
 import { Tabs, type TabItem } from "@/common/components/Tabs";
 import { Alert } from "@/common/components/Alert";
 import type { Product } from "@/features/products/types/products.types";
+import type { Warehouse } from "@/features/inventory/types/inventory.types";
+import { productsService } from "@/features/products/services/products.service.instance";
+import { inventoryService } from "@/features/inventory/services/inventory.service.instance";
 import { useSales } from "../hooks/useSales";
 import { salesService } from "../services/sales.service.instance";
 import type {
@@ -43,7 +46,6 @@ import {
 interface SalesPanelProps {
   tenantSlug: string;
   actor: SalesActorContext;
-  products: Product[];
   exchangeRate?: number;
   onRefreshExchangeRate?: () => Promise<void>;
 }
@@ -54,7 +56,6 @@ const MAX_SUSPENDED = 10;
 export function SalesPanel({
   tenantSlug,
   actor,
-  products,
   exchangeRate: exchangeRateFromApp,
   onRefreshExchangeRate
 }: SalesPanelProps) {
@@ -66,6 +67,8 @@ export function SalesPanel({
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [showOpenBoxModal, setShowOpenBoxModal] = useState(false);
   const [activeTab, setActiveTab] = useState("terminal");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
   const [prevRate, setPrevRate] = useState(exchangeRateFromApp);
   if (exchangeRateFromApp !== prevRate) {
@@ -89,23 +92,44 @@ export function SalesPanel({
     actor
   });
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const refreshProducts = useCallback(async () => {
+    const result = await productsService.listProducts({ tenantSlug });
+    if (result.ok) {
+      setProducts(result.data);
+    }
+  }, [tenantSlug]);
+
+  const refreshWarehouses = useCallback(async () => {
+    const result = await inventoryService.listWarehouses({ tenantSlug });
+    if (result.ok) {
+      setWarehouses(result.data);
+    }
+  }, [tenantSlug]);
 
   useEffect(() => {
-    const offSaleCompleted = eventBus.on("SALE.COMPLETED", () => void refresh());
+    void refresh();
+    void refreshProducts();
+    void refreshWarehouses();
+  }, [refresh, refreshProducts, refreshWarehouses]);
+
+  useEffect(() => {
+    const offSaleCompleted = eventBus.on("SALE.COMPLETED", () => { void refresh(); void refreshProducts(); });
     const offBoxClosed = eventBus.on("POS.BOX_CLOSED", () => void refresh());
     const offBoxOpened = eventBus.on("POS.BOX_OPENED", () => void refresh());
     const offSuspended = eventBus.on("SALE.SUSPENDED", () => void refresh());
+    const offSyncProducts = eventBus.on<{ table: string }>("SYNC.REFRESH_TABLE", (payload) => {
+      if (payload.table === "products") void refreshProducts();
+      if (payload.table === "warehouses") void refreshWarehouses();
+    });
 
     return () => {
       offSaleCompleted();
       offBoxClosed();
       offBoxOpened();
       offSuspended();
+      offSyncProducts();
     };
-  }, [refresh]);
+  }, [refresh, refreshProducts, refreshWarehouses]);
 
   const handleRefreshRate = useCallback(async () => {
     setIsLoadingRate(true);
@@ -198,7 +222,7 @@ export function SalesPanel({
 
   const handleFinalizeSale = useCallback(async () => {
     if (!selectedWarehouse || !boxIsOpen || cart.length === 0 || totalPaid < total) return;
-    
+
     await createPosSale({
       warehouseLocalId: selectedWarehouse,
       currency: saleCurrency,
@@ -223,12 +247,9 @@ export function SalesPanel({
     });
   }, [closeBox]);
 
-  const warehouses = useMemo(() => {
-    return state.boxClosings.map(b => ({
-      localId: b.warehouseLocalId,
-      name: b.warehouseLocalId
-    })).filter((v, i, a) => a.findIndex(w => w.localId === v.localId) === i);
-  }, [state.boxClosings]);
+  const warehouseOptions = useMemo(() => {
+    return warehouses.map(w => ({ localId: w.localId, name: w.name }));
+  }, [warehouses]);
 
   const terminalTab = (
     <TerminalView
@@ -245,7 +266,7 @@ export function SalesPanel({
       onSuspendSale={handleSuspendSale}
       onFinalizeSale={handleFinalizeSale}
       onSelectWarehouse={setSelectedWarehouse}
-      warehouses={warehouses}
+      warehouses={warehouseOptions}
       selectedWarehouse={selectedWarehouse}
       isBoxOpen={boxIsOpen}
       pendingPayments={payments}
@@ -283,7 +304,7 @@ export function SalesPanel({
   const closingsTab = (
     <BoxClosingsList
       boxClosings={state.boxClosings}
-      warehouses={warehouses}
+      warehouses={warehouseOptions}
       onCloseBox={handleCloseBox}
     />
   );
@@ -298,8 +319,8 @@ export function SalesPanel({
   return (
     <section className="p-4 sm:p-6">
       {state.lastError && (
-        <Alert 
-          variant="error" 
+        <Alert
+          variant="error"
           className="mb-4"
         >
           {state.lastError.message}
@@ -316,19 +337,19 @@ export function SalesPanel({
         isLoadingRate={isLoadingRate}
       />
 
-       <Tabs
-         items={tabs}
-         activeTab={activeTab}
-         onChange={setActiveTab}
-         variant="underline"
-       />
+      <Tabs
+        items={tabs}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        variant="underline"
+      />
 
 
       <OpenBoxModal
         isOpen={showOpenBoxModal}
         onClose={() => setShowOpenBoxModal(false)}
         onConfirm={handleOpenBox}
-        warehouses={warehouses}
+        warehouses={warehouseOptions}
         selectedWarehouse={selectedWarehouse}
         onSelectWarehouse={setSelectedWarehouse}
       />
