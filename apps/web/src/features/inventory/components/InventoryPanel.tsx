@@ -344,7 +344,7 @@ export function InventoryPanel({ tenantSlug, actor, products }: InventoryPanelPr
   ];
 
   return (
-    <section className="p-6">
+    <section className="p-4 sm:p-6">
       {state.lastError && (
         <div className="mb-4 p-3 bg-state-error/10 border border-state-error/20 rounded-lg text-state-error text-sm">
           {state.lastError.message}

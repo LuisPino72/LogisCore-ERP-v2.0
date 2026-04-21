@@ -67,10 +67,10 @@ export const DataTable = memo(function DataTable<T>({
     return (
       <div className="border border-surface-200 rounded-lg overflow-hidden">
         <div
-          className="grid gap-0"
+          className="grid gap-0 min-w-0"
           style={{
             gridTemplateColumns: columnWidths,
-            minWidth: "600px"
+            minWidth: "min(600px, 100%)"
           }}
         >
           <div className="bg-surface-50 sticky top-0 z-10 grid" style={{ gridTemplateColumns: columnWidths }}>
@@ -149,8 +149,8 @@ export const DataTable = memo(function DataTable<T>({
   return (
     <div className="overflow-x-auto border border-surface-200 rounded-lg">
       <div
-        className="grid gap-0 min-w-[600px]"
-        style={{ gridTemplateColumns: columnWidths }}
+        className="grid gap-0 min-w-0"
+        style={{ gridTemplateColumns: columnWidths, minWidth: "min(600px, 100%)" }}
       >
         <div className="bg-surface-50 sticky top-0 z-10 grid" style={{ gridTemplateColumns: columnWidths }}>
           {columns.map((col) => (

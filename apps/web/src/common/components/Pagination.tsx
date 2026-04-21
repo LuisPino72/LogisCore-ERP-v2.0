@@ -23,11 +23,11 @@ export function Pagination({
   if (total === 0) return null;
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-surface-200">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white border-t border-surface-200">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
         {showPageSize && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-content-secondary">Mostrar</span>
+            <span className="text-sm text-content-secondary hidden xs:inline">Mostrar</span>
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
@@ -37,10 +37,10 @@ export function Pagination({
                 <option key={size} value={size}>{size}</option>
               ))}
             </select>
-            <span className="text-sm text-content-secondary">registros</span>
+            <span className="text-sm text-content-secondary hidden xs:inline">registros</span>
           </div>
         )}
-        <span className="text-sm text-content-secondary">
+        <span className="text-xs sm:text-sm text-content-secondary">
           {start}-{end} de {total}
         </span>
       </div>

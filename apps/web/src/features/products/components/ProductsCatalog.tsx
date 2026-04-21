@@ -440,7 +440,7 @@ export function ProductsCatalog({ tenantSlug, actor, exchangeRate: exchangeRateF
   ];
 
   return (
-    <section className="p-6">
+    <section className="p-4 sm:p-6">
       {state.lastError ? (
         <Alert variant="error" className="mb-4">
           {state.lastError.message}

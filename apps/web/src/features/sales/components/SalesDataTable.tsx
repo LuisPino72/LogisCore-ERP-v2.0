@@ -69,7 +69,7 @@ export function SalesDataTable({
             { value: "voided", label: "Anuladas" },
             { value: "refunded", label: "Reembolsadas" }
           ]}
-          className="w-40"
+          className="w-full sm:w-40"
         />
       </div>
 

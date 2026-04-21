@@ -31,8 +31,8 @@ const iconPaths: Record<string, string> = {
 export const Sidebar = memo(function Sidebar({ items, activeItem, onItemClick, collapsed = false, onToggleCollapse, onLogout }: SidebarProps) {
   return (
     <aside
-      className={`flex flex-col bg-white border-r border-surface-200 transition-all duration-300 ${
-        collapsed ? "w-16" : "w-64"
+      className={`flex flex-col bg-white border-r border-surface-200 transition-all duration-300 fixed lg:relative inset-y-0 left-0 z-40 transform ${
+        collapsed ? "w-16 -translate-x-full lg:translate-x-0 lg:w-16" : "w-64 -translate-x-full lg:translate-x-0 lg:w-64"
       }`}
     >
       <div className="flex items-center justify-between p-4 border-b border-surface-200">

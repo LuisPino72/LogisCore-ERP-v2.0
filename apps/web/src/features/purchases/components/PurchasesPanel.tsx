@@ -301,7 +301,7 @@ export function PurchasesPanel({
   ];
 
   return (
-    <section className="p-6">
+    <section className="p-4 sm:p-6">
       <PurchasesKPIs 
         totalCompradoMes={kpiData.totalCompradoMes}
         ordenesPendientes={kpiData.ordenesPendientes}

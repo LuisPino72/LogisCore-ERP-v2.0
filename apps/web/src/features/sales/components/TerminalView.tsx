@@ -120,12 +120,12 @@ export function TerminalView({
              placeholder="Buscar producto por nombre o SKU..." 
            />
          </div>
-         <Select
-           value={selectedWarehouse}
-           onChange={(val) => onSelectWarehouse(val as string)}
-           options={warehouses.map(w => ({ label: w.name, value: w.localId }))}
-           className="w-48"
-         />
+<Select
+            value={selectedWarehouse}
+            onChange={(val) => onSelectWarehouse(val as string)}
+            options={warehouses.map(w => ({ label: w.name, value: w.localId }))}
+            className="w-full sm:w-48"
+          />
        </div>
 
 
@@ -276,26 +276,26 @@ export function TerminalView({
 
             <div className="mt-3 pt-3 border-t border-surface-200 space-y-2">
                <div className="flex gap-2">
-                 <Select
-                   value={newPaymentMethod}
-                   onChange={(val) => setNewPaymentMethod(val as SalePayment["method"])}
-                   options={[
-                     { label: "Efectivo", value: "cash" },
-                     { label: "Tarjeta", value: "card" },
-                     { label: "Transferencia", value: "transfer" },
-                     { label: "Pago Móvil", value: "mobile" },
-                   ]}
-                   className="w-24"
-                 />
-                 <Select
-                   value={newPaymentCurrency}
-                   onChange={(val) => setNewPaymentCurrency(val as SalesCurrency)}
-                   options={[
-                     { label: "VES", value: "VES" },
-                     { label: "USD", value: "USD" },
-                   ]}
-                   className="w-20"
-                 />
+<Select
+                    value={newPaymentMethod}
+                    onChange={(val) => setNewPaymentMethod(val as SalePayment["method"])}
+                    options={[
+                      { label: "Efectivo", value: "cash" },
+                      { label: "Tarjeta", value: "card" },
+                      { label: "Transferencia", value: "transfer" },
+                      { label: "Pago Móvil", value: "mobile" },
+                    ]}
+                    className="w-full sm:w-24"
+                  />
+                  <Select
+                    value={newPaymentCurrency}
+                    onChange={(val) => setNewPaymentCurrency(val as SalesCurrency)}
+                    options={[
+                      { label: "VES", value: "VES" },
+                      { label: "USD", value: "USD" },
+                    ]}
+                    className="w-full sm:w-20"
+                  />
                  <Input
                    type="number"
                    step="0.01"

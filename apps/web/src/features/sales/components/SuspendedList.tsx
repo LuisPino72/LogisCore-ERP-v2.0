@@ -50,7 +50,7 @@ export function SuspendedList({
             value={searchQuery} 
             onChange={setSearchQuery} 
             placeholder="Buscar..." 
-            className="w-64"
+            className="w-full sm:w-64"
           />
         </div>
         <Badge variant={canSuspendMore ? "success" : "warning"}>
