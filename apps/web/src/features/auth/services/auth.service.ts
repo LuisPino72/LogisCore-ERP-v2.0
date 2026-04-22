@@ -125,7 +125,7 @@ export const createAuthService = ({
         return ok(undefined);
       }
 
-      const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/audit-log-hrd-2026`, {
+       const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/audit-log`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
