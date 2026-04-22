@@ -246,7 +246,7 @@ export function LoginForm({ onLogin, isLoading, error, onForgotPassword }: Login
         type="submit"
         disabled={isLoading}
         variant="primary"
-        className="w-full"
+        className="w-full mt-4"
       >
         {isLoading ? (
           <>
