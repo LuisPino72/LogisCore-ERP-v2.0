@@ -150,9 +150,13 @@ export const DataTable = memo(function DataTable<T>({
     <div className="overflow-x-auto border border-surface-200 rounded-lg">
       <div
         className="grid gap-0 min-w-0"
-        style={{ gridTemplateColumns: columnWidths, minWidth: "min(600px, 100%)" }}
+        style={{ 
+          gridTemplateColumns: columnWidths, 
+          minWidth: "min(600px, 100%)",
+          display: "grid"
+        }}
       >
-        <div className="bg-surface-50 sticky top-0 z-10 grid" style={{ gridTemplateColumns: columnWidths }}>
+        <div className="bg-surface-50 sticky top-0 z-10 grid" style={{ gridTemplateColumns: columnWidths, display: "grid" }}>
           {columns.map((col) => (
             <div
               key={col.key}
@@ -189,8 +193,8 @@ export const DataTable = memo(function DataTable<T>({
           data.map((row, rowIndex) => (
             <div
               key={`row-${rowIndex}`}
-              className="grid hover:bg-surface-50 transition-colors cursor-pointer"
-              style={{ gridTemplateColumns: columnWidths }}
+              className="grid hover:bg-surface-50 transition-colors cursor-pointer border-b border-surface-100"
+              style={{ gridTemplateColumns: columnWidths, display: "grid" }}
               onClick={() => onRowClick?.(row)}
             >
               {renderCells(row, rowIndex)}

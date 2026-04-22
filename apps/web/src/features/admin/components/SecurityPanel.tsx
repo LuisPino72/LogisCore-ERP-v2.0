@@ -54,7 +54,7 @@ export function SecurityPanel({
     return actionMap[action] || action;
   };
 
-const getActionBadgeVariant = (action: string): "default" | "success" | "warning" | "error" | "info" => {
+  const getActionBadgeVariant = (action: string): "default" | "success" | "warning" | "error" | "info" => {
     if (action.includes("FAILED")) return "error";
     if (action.includes("DELETE")) return "warning";
     if (action.includes("CREATE")) return "success";
@@ -87,34 +87,29 @@ const getActionBadgeVariant = (action: string): "default" | "success" | "warning
 
       {activeTab === "users" && (
         <Card>
-          <div className="card-header border-b border-border bg-surface-50">
-            <h2 className="font-semibold text-content-primary">Lista de Usuarios del Sistema</h2>
-          </div>
-          <div className="card-body p-0 overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Usuario</th>
-                  <th>Email</th>
-                  <th>Tenant</th>
-                  <th>Rol</th>
-                  <th>Estado</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-50 sticky top-0">
+                <tr className="border-b border-surface-200">
+                  <th className="text-left px-4 py-3 font-medium text-content-primary">Usuario</th>
+                  <th className="text-left px-4 py-3 font-medium text-content-primary">Email</th>
+                  <th className="text-left px-4 py-3 font-medium text-content-primary">Tenant</th>
+                  <th className="text-left px-4 py-3 font-medium text-content-primary">Rol</th>
+                  <th className="text-left px-4 py-3 font-medium text-content-primary">Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map(user => (
-                  <tr key={user.id} className="hover:bg-surface-50 text-sm">
-                    <td>
-                      <span className="font-medium text-content-primary">{user.fullName || "—"}</span>
-                    </td>
-                    <td className="text-content-secondary">{user.email}</td>
-                    <td className="text-content-secondary">{user.tenantName || "—"}</td>
-                    <td>
+                  <tr key={user.id} className="border-b border-surface-100 hover:bg-surface-50">
+                    <td className="px-4 py-3 font-medium text-content-primary">{user.fullName || "—"}</td>
+                    <td className="px-4 py-3 text-content-secondary">{user.email}</td>
+                    <td className="px-4 py-3 text-content-secondary">{user.tenantName || "—"}</td>
+                    <td className="px-4 py-3">
                       <Badge variant={user.role === 'admin' ? "warning" : "info"}>
                         {user.role}
                       </Badge>
                     </td>
-                    <td>
+                    <td className="px-4 py-3">
                       <Badge variant={user.isActive ? "success" : "error"}>
                         {user.isActive ? "Activo" : "Eliminado"}
                       </Badge>
@@ -134,32 +129,25 @@ const getActionBadgeVariant = (action: string): "default" | "success" | "warning
 
       {activeTab === "audit" && (
         <Card>
-          <div className="card-header border-b border-border bg-surface-50">
-            <h2 className="font-semibold text-content-primary">Historial de Accesos</h2>
-          </div>
-          <div className="card-body p-0 overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Fecha/Hora</th>
-                  <th>Acción</th>
-                  <th>Usuario</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-50 sticky top-0">
+                <tr className="border-b border-surface-200">
+                  <th className="text-left px-4 py-3 font-medium text-content-primary">Fecha/Hora</th>
+                  <th className="text-left px-4 py-3 font-medium text-content-primary">Acción</th>
+                  <th className="text-left px-4 py-3 font-medium text-content-primary">Usuario</th>
                 </tr>
               </thead>
               <tbody>
                 {auditLogs.map(log => (
-                  <tr key={log.id} className="hover:bg-surface-50 text-sm">
-                    <td className="text-content-secondary whitespace-nowrap">
-                      {formatDate(log.timestamp)}
-                    </td>
-                    <td>
+                  <tr key={log.id} className="border-b border-surface-100 hover:bg-surface-50">
+                    <td className="px-4 py-3 text-content-secondary whitespace-nowrap">{formatDate(log.timestamp)}</td>
+                    <td className="px-4 py-3">
                       <Badge variant={getActionBadgeVariant(log.action)}>
                         {formatAction(log.action)}
                       </Badge>
                     </td>
-                    <td className="text-content-primary">
-                      {log.email || log.userId || "—"}
-                    </td>
+                    <td className="px-4 py-3 text-content-primary">{log.email || log.userId || "—"}</td>
                   </tr>
                 ))}
               </tbody>
