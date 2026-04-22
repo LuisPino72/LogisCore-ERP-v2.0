@@ -14,7 +14,7 @@ export function Select({ options, value, onChange, placeholder = "Seleccionar...
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  const selectedOption = (options || []).find((opt) => opt.value === value);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -31,7 +31,7 @@ export function Select({ options, value, onChange, placeholder = "Seleccionar...
     setIsOpen(false);
   };
 
-  const groups = options.reduce<Record<string, SelectOption[]>>((acc, opt) => {
+  const groups = (options || []).reduce<Record<string, SelectOption[]>>((acc, opt) => {
     const group = opt.group ?? "default";
     if (!acc[group]) acc[group] = [];
     acc[group]!.push(opt);
