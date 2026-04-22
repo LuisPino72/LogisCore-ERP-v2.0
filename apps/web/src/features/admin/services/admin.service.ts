@@ -324,7 +324,7 @@ export const createAdminService = ({
     }
     
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, {
+const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, {
         method: "POST",
         headers: getEdgeAuthHeaders(authToken, {
           actionContext: PERMISSIONS.ADMIN.USERS,

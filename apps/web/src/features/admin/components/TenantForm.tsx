@@ -334,6 +334,10 @@ export function TenantForm({
       if (!phoneResult.isValid) newErrors.phone = phoneResult.error || "Teléfono inválido";
     }
 
+    if (isNew && !formData.planId) {
+      newErrors.planId = "Plan requerido";
+    }
+
     if (formData.taxpayerInfo?.rif) {
       const rifResult = validateRif(formData.taxpayerInfo.rif);
       if (!rifResult.isValid) newErrors.rif = rifResult.error || "RIF inválido";
@@ -540,6 +544,7 @@ export function TenantForm({
             <SubscriptionPlanForm 
               formData={{ planId: formData.planId, trialDays: formData.trialDays }}
               plans={plans || []}
+              errors={errors}
               onChange={updateField}
             />
           )}

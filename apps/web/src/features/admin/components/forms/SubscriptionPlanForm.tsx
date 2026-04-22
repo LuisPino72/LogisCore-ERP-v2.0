@@ -9,10 +9,11 @@ import { Checkbox } from "@/common";
 interface SubscriptionPlanFormProps {
   formData: { planId: string; trialDays: number };
   plans: { id: string; name: string; price: number }[];
+  errors?: Record<string, string>;
   onChange: (field: string, value: string | number | boolean) => void;
 }
 
-export function SubscriptionPlanForm({ formData, plans, onChange }: SubscriptionPlanFormProps) {
+export function SubscriptionPlanForm({ formData, plans, errors, onChange }: SubscriptionPlanFormProps) {
   return (
     <div>
       <h3 className="text-sm font-medium text-content-primary mb-3 border-b pb-1">Plan de Suscripción</h3>
@@ -27,6 +28,7 @@ export function SubscriptionPlanForm({ formData, plans, onChange }: Subscription
               ...(plans || []).map(p => ({ value: p.id, label: `${p.name} - $${p.price}/mes` }))
             ]}
             required
+            error={errors?.planId}
           />
         </div>
         {formData.planId && (
