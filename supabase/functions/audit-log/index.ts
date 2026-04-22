@@ -139,7 +139,9 @@ Deno.serve(async (req: Request) => {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (roleError || !userRole?.tenant_id) {
+    const isAdmin = user.app_metadata?.role === "admin";
+
+    if (!isAdmin && (roleError || !userRole?.tenant_id)) {
       return new Response(
         JSON.stringify({ success: false, error: "TENANT_CONTEXT_REQUIRED" }),
         { status: 403, headers }
@@ -147,7 +149,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { error } = await supabase.from("audit_log_entries").insert({
-      tenant_id: userRole.tenant_id,
+      tenant_id: userRole?.tenant_id || null,
       user_id: user.id,
       event_type: action,
       target_table: targetTable || null,
