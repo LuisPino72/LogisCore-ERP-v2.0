@@ -16,7 +16,7 @@ export interface TabsProps {
 }
 
 export function Tabs({ items, activeTab: controlledActiveTab, defaultTab, onChange, variant = "underline" }: TabsProps) {
-  const [internalActiveTab, setInternalActiveTab] = useState(defaultTab ?? items[0]?.id);
+  const [internalActiveTab, setInternalActiveTab] = useState(defaultTab ?? items?.[0]?.id);
   
   const activeTab = controlledActiveTab ?? internalActiveTab;
 

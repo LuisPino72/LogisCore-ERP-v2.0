@@ -111,9 +111,10 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     const result = await service.listSecurityUsers(tenantId);
     if (!result.ok) {
       setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      setSecurityUsers([]);
       return;
     }
-    setSecurityUsers(result.data);
+    setSecurityUsers(result.data || []);
     setState(prev => ({ ...prev, isLoading: false }));
   }, [service]);
 
@@ -133,10 +134,12 @@ export const useAdmin = ({ service }: UseAdminOptions) => {
     const result = await service.getAuditLogs(limit, offset);
     if (!result.ok) {
       setState(prev => ({ ...prev, isLoading: false, lastError: result.error }));
+      setAuditLogs([]);
+      setAuditLogsTotal(0);
       return;
     }
-    setAuditLogs(result.data.logs);
-    setAuditLogsTotal(result.data.total);
+    setAuditLogs(result.data?.logs || []);
+    setAuditLogsTotal(result.data?.total || 0);
     setState(prev => ({ ...prev, isLoading: false }));
   }, [service]);
 

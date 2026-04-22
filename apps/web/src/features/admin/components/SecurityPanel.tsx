@@ -76,10 +76,10 @@ const getActionBadgeVariant = (action: string): "default" | "success" | "warning
         </div>
       </div>
 
-      <Tabs
-        activeTab={activeTab}
-        onChange={(tab) => setActiveTab(tab as "users" | "audit")}
-        tabs={[
+          <Tabs
+            activeTab={activeTab}
+            onChange={(tab) => setActiveTab(tab as "users" | "audit")}
+            items={[
           { id: "users", label: "Directorio Global de Usuarios" },
           { id: "audit", label: "Registros de Auditoría" }
         ]}

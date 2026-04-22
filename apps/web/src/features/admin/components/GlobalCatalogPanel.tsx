@@ -81,7 +81,9 @@ export function GlobalCatalogPanel({
     try {
       const result = await adminService.listGlobalCategories(selectedBusinessType || undefined);
       if (result.ok) {
-        setCategories(result.data);
+        setCategories(result.data || []);
+      } else {
+        setCategories([]);
       }
     } finally {
       setCategoriesLoading(false);
@@ -93,7 +95,9 @@ export function GlobalCatalogPanel({
     try {
       const result = await adminService.listGlobalProducts(selectedBusinessType || undefined);
       if (result.ok) {
-        setProducts(result.data);
+        setProducts(result.data || []);
+      } else {
+        setProducts([]);
       }
     } finally {
       setProductsLoading(false);
@@ -336,10 +340,10 @@ export function GlobalCatalogPanel({
         />
       </div>
 
-      <Tabs
-        activeTab={activeTab}
-        onChange={(tab) => setActiveTab(tab as Tab)}
-        tabs={[
+          <Tabs
+            activeTab={activeTab}
+            onChange={(tab) => setActiveTab(tab as Tab)}
+            items={[
           { id: "categories", label: `Categorías (${categories.length})` },
           { id: "products", label: `Productos (${products.length})` }
         ]}
