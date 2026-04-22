@@ -22,7 +22,7 @@ export function TaxpayerInfoForm({ taxpayerInfo, errors, onChange }: TaxpayerInf
             type="text"
             error={errors.rif || ""}
             value={taxpayerInfo.rif}
-            onChange={(value) => onChange("rif", value.toUpperCase())}
+            onChange={(e) => onChange("rif", e.target.value.toUpperCase())}
             placeholder="J-123456789"
           />
         </div>
@@ -31,7 +31,7 @@ export function TaxpayerInfoForm({ taxpayerInfo, errors, onChange }: TaxpayerInf
           <Input
             type="text"
             value={taxpayerInfo.razonSocial}
-            onChange={(value) => onChange("razonSocial", value)}
+            onChange={(e) => onChange("razonSocial", e.target.value)}
             placeholder="Nombre de la empresa"
           />
         </div>
@@ -40,7 +40,7 @@ export function TaxpayerInfoForm({ taxpayerInfo, errors, onChange }: TaxpayerInf
           <Input
             type="text"
             value={taxpayerInfo.direccionFiscal}
-            onChange={(value) => onChange("direccionFiscal", value)}
+            onChange={(e) => onChange("direccionFiscal", e.target.value)}
             placeholder="Dirección fiscal completa"
           />
         </div>

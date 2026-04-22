@@ -51,7 +51,7 @@ export function NewEmployeesSection({
                   type="email"
                   error={errors[`employee_${index}_email`] || ""}
                   value={employee.email}
-                  onChange={(value) => onUpdateEmployee(index, "email", value)}
+                  onChange={(e) => onUpdateEmployee(index, "email", e.target.value)}
                   placeholder="empleado@empresa.com"
                 />
               </div>
@@ -61,7 +61,7 @@ export function NewEmployeesSection({
                   type="text"
                   error={errors[`employee_${index}_fullName`] || ""}
                   value={employee.fullName}
-                  onChange={(value) => onUpdateEmployee(index, "fullName", value)}
+                  onChange={(e) => onUpdateEmployee(index, "fullName", e.target.value)}
                   placeholder="María García"
                   maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
                 />
@@ -72,7 +72,7 @@ export function NewEmployeesSection({
                   type="password"
                   error={errors[`employee_${index}_password`] || ""}
                   value={employee.password}
-                  onChange={(value) => onUpdateEmployee(index, "password", value)}
+                  onChange={(e) => onUpdateEmployee(index, "password", e.target.value)}
                   placeholder="Mínimo 6 caracteres"
                 />
               </div>
