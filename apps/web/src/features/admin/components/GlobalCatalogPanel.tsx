@@ -3,7 +3,7 @@
  * Gestión de categorías y productos globales por tipo de negocio.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { 
   GlobalCategory, 
   GlobalProduct, 
@@ -76,7 +76,7 @@ export function GlobalCatalogPanel({
   const [deletingProduct, setDeletingProduct] = useState<GlobalProduct | null>(null);
   const [deletingProductLoading, setDeletingProductLoading] = useState(false);
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     setCategoriesLoading(true);
     try {
       const result = await adminService.listGlobalCategories(selectedBusinessType || undefined);
@@ -88,9 +88,9 @@ export function GlobalCatalogPanel({
     } finally {
       setCategoriesLoading(false);
     }
-  };
+  }, [selectedBusinessType]);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     setProductsLoading(true);
     try {
       const result = await adminService.listGlobalProducts(selectedBusinessType || undefined);
@@ -102,7 +102,7 @@ export function GlobalCatalogPanel({
     } finally {
       setProductsLoading(false);
     }
-  };
+  }, [selectedBusinessType]);
 
   useEffect(() => {
     if (activeTab === "categories") {
