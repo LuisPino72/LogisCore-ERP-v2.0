@@ -3,7 +3,9 @@
  */
 
 import type { Subscription } from "../../types/admin.types";
-import { Button } from "@/common";
+import { DataTable } from "@/common/components/DataTable";
+import type { TableColumn } from "@/common/types/common.types";
+import { Badge } from "@/common/components/Badge";
 
 interface SubscriptionTableProps {
   subscriptions: Subscription[];
@@ -36,20 +38,68 @@ function shouldShowRenewButton(subscription: Subscription): boolean {
   return diffDays <= 3 || diffDays < 0 || (subscription.status !== 'active' && subscription.status !== 'trial');
 }
 
-function getStatusBadge(status: Subscription["status"]): { label: string; className: string } {
+function getStatusBadge(status: Subscription["status"]): { label: string; variant: BadgeVariant } {
   switch (status) {
     case "active":
-      return { label: "Activa", className: "badge-success" };
+      return { label: "Activa", variant: "success" };
     case "trial":
-      return { label: "🧪 Prueba", className: "badge-info" };
+      return { label: "🧪 Prueba", variant: "info" };
     case "past_due":
-      return { label: "Atrasada", className: "badge-warning" };
+      return { label: "Atrasada", variant: "warning" };
     default:
-      return { label: "Cancelada", className: "badge-error" };
+      return { label: "Cancelada", variant: "error" };
   }
 }
 
 export function SubscriptionTable({ subscriptions, isLoading, onRenew }: SubscriptionTableProps) {
+  const columns: TableColumn<Subscription>[] = [
+    { key: "tenantName", header: "Tenant", width: "1.5fr" },
+    { key: "planName", header: "Plan", width: "1fr" },
+    { 
+      key: "status", 
+      header: "Estado", 
+      width: "0.75fr",
+      render: (value) => {
+        const info = getStatusBadge(String(value));
+        return <Badge variant={info.variant}>{info.label}</Badge>;
+      }
+    },
+    { key: "billingCycle", header: "Ciclo", width: "0.75fr", render: (v) => <span className="uppercase">{String(v)}</span> },
+    { 
+      key: "endDate", 
+      header: "Próximo Pago", 
+      width: "1.2fr",
+      render: (value) => {
+        const date = String(value);
+        const isExpired = date && new Date(date) < new Date();
+        return (
+          <div className="flex flex-col">
+            <span className={isExpired ? "text-red-500" : ""}>
+              {date ? new Date(date).toLocaleDateString() : "Indefinido"}
+            </span>
+            {date && (
+              <span className="text-xs text-content-secondary">
+                ({getDaysRemaining(date)})
+              </span>
+            )}
+          </div>
+        );
+      }
+    },
+    { 
+      key: "actions", 
+      header: "Acciones", 
+      width: "0.75fr",
+      render: (_, row) => (
+        shouldShowRenewButton(row) ? (
+          <Button onClick={() => onRenew(row)} size="sm">Renovar</Button>
+        ) : (
+          <span className="text-content-secondary text-xs">-</span>
+        )
+      )
+    }
+  ];
+
   if (subscriptions.length === 0 && !isLoading) {
     return (
       <div className="p-8 text-center text-content-secondary">
@@ -60,56 +110,13 @@ export function SubscriptionTable({ subscriptions, isLoading, onRenew }: Subscri
 
   return (
     <div className="card overflow-hidden">
-      <div className="card-body p-0 overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-surface-100 text-left">
-            <tr>
-              <th className="px-4 py-3 text-sm font-medium text-content-secondary">Tenant</th>
-              <th className="px-4 py-3 text-sm font-medium text-content-secondary">Plan</th>
-              <th className="px-4 py-3 text-sm font-medium text-content-secondary">Estado</th>
-              <th className="px-4 py-3 text-sm font-medium text-content-secondary">Ciclo</th>
-              <th className="px-4 py-3 text-sm font-medium text-content-secondary">Próximo Pago</th>
-              <th className="px-4 py-3 text-sm font-medium text-content-secondary">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {subscriptions.map(sub => {
-              const statusInfo = getStatusBadge(sub.status);
-              return (
-                <tr key={sub.id} className="hover:bg-surface-50 text-sm">
-                  <td className="px-4 py-3 font-medium text-content-primary">{sub.tenantName}</td>
-                  <td className="px-4 py-3 text-content-secondary">{sub.planName}</td>
-                  <td className="px-4 py-3">
-                    <span className={`badge ${statusInfo.className}`}>{statusInfo.label}</span>
-                  </td>
-                  <td className="px-4 py-3 text-content-secondary uppercase">{sub.billingCycle}</td>
-                  <td className="px-4 py-3 text-content-secondary">
-                    <span className={sub.endDate && new Date(sub.endDate) < new Date() ? "text-red-500" : ""}>
-                      {sub.endDate ? new Date(sub.endDate).toLocaleDateString() : "Indefinido"}
-                    </span>
-                    {sub.endDate && (
-                      <span className="ml-2 text-xs text-content-secondary">
-                        ({getDaysRemaining(sub.endDate)})
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {shouldShowRenewButton(sub) ? (
-                      <Button
-                        onClick={() => onRenew(sub)}
-                        size="sm"
-                      >
-                        Renovar
-                      </Button>
-                    ) : (
-                      <span className="text-content-secondary text-xs">-</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="card-body p-0">
+        <DataTable
+          columns={columns}
+          data={subscriptions}
+          loading={isLoading}
+          emptyMessage="No hay suscripciones registradas"
+        />
       </div>
     </div>
   );

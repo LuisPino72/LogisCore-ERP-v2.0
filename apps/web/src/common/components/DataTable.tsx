@@ -148,60 +148,65 @@ export const DataTable = memo(function DataTable<T>({
 
   return (
     <div className="overflow-x-auto border border-surface-200 rounded-lg">
-      <div
-        className="grid gap-0 min-w-0"
-        style={{ 
-          gridTemplateColumns: columnWidths, 
-          minWidth: "min(600px, 100%)",
-          display: "grid"
-        }}
-      >
-        <div className="bg-surface-50 sticky top-0 z-10 grid" style={{ gridTemplateColumns: columnWidths, display: "grid" }}>
-          {columns.map((col) => (
-            <div
-              key={col.key}
-              className={`px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium text-content-primary ${
-                col.sortable ? "cursor-pointer hover:bg-surface-100" : ""
-              }`}
-              onClick={() => col.sortable && onSort?.(col.key)}
-            >
-              <div className="flex items-center gap-1">
-                {col.header}
-                {col.sortable && sort?.column === col.key && (
-                  <span className="text-brand-500">{sort.direction === "asc" ? "↑" : "↓"}</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+      <table className="w-full border-collapse">
+        <thead className="bg-surface-50 sticky top-0 z-10">
+          <tr>
+            {columns.map((col) => (
+              <th 
+                key={col.key} 
+                className={`px-3 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-content-primary ${
+                  col.sortable ? "cursor-pointer hover:bg-surface-100" : ""
+                }`}
+                style={{ width: col.width }}
+                onClick={() => col.sortable && onSort?.(col.key)}
+              >
+                <div className="flex items-center gap-1">
+                  {col.header}
+                  {col.sortable && sort?.column === col.key && (
+                    <span className="text-brand-500">{sort.direction === "asc" ? "↑" : "↓"}</span>
+                  )}
+                </div>
+              </th>
+            ))}
+          </tr>
+        </thead>
 
-        {loading ? (
-          <div
-            className="col-span-full px-4 py-8 text-center text-content-secondary"
-            style={{ gridColumn: `1 / -1` }}
-          >
-            Cargando...
-          </div>
-        ) : data.length === 0 ? (
-          <div
-            className="col-span-full px-4 py-8 text-center text-content-secondary"
-            style={{ gridColumn: `1 / -1` }}
-          >
-            {emptyMessage}
-          </div>
-        ) : (
-          data.map((row, rowIndex) => (
-            <div
-              key={`row-${rowIndex}`}
-              className="grid hover:bg-surface-50 transition-colors cursor-pointer border-b border-surface-100"
-              style={{ gridTemplateColumns: columnWidths, display: "grid" }}
-              onClick={() => onRowClick?.(row)}
-            >
-              {renderCells(row, rowIndex)}
-            </div>
-          ))
-        )}
-      </div>
+        <tbody>
+          {loading ? (
+            <tr>
+              <td colSpan={columns.length} className="px-4 py-8 text-center text-content-secondary">
+                Cargando...
+              </td>
+            </tr>
+          ) : data.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length} className="px-4 py-8 text-center text-content-secondary">
+                {emptyMessage}
+              </td>
+            </tr>
+          ) : (
+            data.map((row, rowIndex) => (
+              <tr 
+                key={`row-${rowIndex}`} 
+                className="hover:bg-surface-50 transition-colors cursor-pointer border-b border-surface-100 last:border-none"
+                onClick={() => onRowClick?.(row)}
+              >
+                {columns.map((col) => {
+                  const value = getValue(row, col.key);
+                  return (
+                    <td 
+                      key={col.key} 
+                      className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-content-primary whitespace-nowrap overflow-hidden text-ellipsis"
+                    >
+                      {col.render ? col.render(value, row) : String(value ?? "")}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   );
 });
