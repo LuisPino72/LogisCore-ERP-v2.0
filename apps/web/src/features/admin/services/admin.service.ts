@@ -212,9 +212,9 @@ export const createAdminService = ({
     ] = await Promise.all([
       supabase
         .from("audit_log_entries")
-        .select("id, action")
-        .gte("timestamp", startOfToday)
-        .in("action", ["USER_LOGIN", "USER_LOGIN_SUCCESS"]),
+        .select("id, event_type")
+        .gte("created_at", startOfToday)
+        .in("event_type", ["USER_LOGIN", "USER_LOGIN_SUCCESS"]),
       supabase
         .from("sales")
         .select("id, created_at")
@@ -233,7 +233,7 @@ export const createAdminService = ({
     }
 
     const uniqueSessions = new Set(
-      (sessionsResult.data || []).map(s => s.action).filter(Boolean)
+      (sessionsResult.data || []).map(s => s.event_type).filter(Boolean)
     ).size;
 
     const tenants = tenantsResult.data || [];
@@ -1584,12 +1584,12 @@ export const createAdminService = ({
 
       const logs: AuditLogEntry[] = result.logs.map((log: Record<string, unknown>) => ({
         id: log.id as string,
-        timestamp: log.timestamp as string,
-        action: log.action as string,
-        userId: log.userId as string | null,
-        email: log.email as string | null,
-        ipAddress: log.ipAddress as string | null,
-        metadata: log.metadata as Record<string, unknown> | null
+        timestamp: log.created_at as string,
+        action: log.event_type as string,
+        userId: log.user_id as string | null,
+        email: log.actor_email as string | null,
+        ipAddress: log.ip_address as string | null,
+        metadata: log.details as Record<string, unknown> | null
       }));
 
       return ok({
