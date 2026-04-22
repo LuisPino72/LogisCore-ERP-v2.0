@@ -9,7 +9,7 @@ const cors = async (c: any, next: any) => {
     return c.text("ok", 200, {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "https://logiscore-erp.vercel.app",
-      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+       "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-action-context",
       "Access-Control-Allow-Methods": "POST, OPTIONS"
     });
   }
