@@ -375,9 +375,10 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
       }));
     }
     
-    try {
+     try {
+      console.log("SAS_DEBUG: updateTenant - URL:", supabaseUrl?.replace(/\/$/, ''), "Token start:", authToken?.substring(0, 10));
       const { employees, ...tenantData } = input as UpdateTenantInput & { employees?: EmployeeManagement[] };
-      
+       
       if (tenantData && Object.keys(tenantData).length > 0) {
         const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/admin-manage-tenant`, {
           method: "POST",
@@ -528,6 +529,7 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
     }
     
     try {
+      console.log("SAS_DEBUG: deactivateTenant - URL:", supabaseUrl?.replace(/\/$/, ''), "Token start:", authToken?.substring(0, 10));
       const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/admin-manage-tenant`, {
         method: "POST",
         headers: getEdgeAuthHeaders(authToken, {
