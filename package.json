@@ -11,8 +11,7 @@
     "dev": "npm run dev -w @logiscore/web",
     "lint": "eslint .",
     "test": "vitest run",
-    "build": "npm run build -w @logiscore/web",
-    "prepare": "husky"
+    "build": "npm run build -w @logiscore/web"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
