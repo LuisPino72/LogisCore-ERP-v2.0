@@ -77,22 +77,20 @@ export interface WarehouseInput {
  */
 export interface UpdateTenantInput {
   name?: string | undefined;
-  businessTypeId?: string | undefined;
+  businessTypeId?: string;
   isActive?: boolean;
-  logoUrl?: string | undefined;
-  contactEmail?: string | undefined;
-  phone?: string | undefined;
-  address?: string | undefined;
-  timezone?: string | undefined;
-  currency?: string | undefined;
+  logoUrl?: string;
+  contactEmail?: string;
+  phone?: string;
+  address?: string;
+  timezone?: string;
+  currency?: string;
   taxpayerInfo?: {
-    rif?: string | undefined;
-    razonSocial?: string | undefined;
-    direccionFiscal?: string | undefined;
-    regimen?: string | undefined;
+    rif?: string;
+    razonSocial?: string;
+    direccionFiscal?: string;
   };
-  ownerUserId?: string | undefined;
-  employees?: EmployeeManagement[];
+  ownerUserId?: string;
 }
 
 /**

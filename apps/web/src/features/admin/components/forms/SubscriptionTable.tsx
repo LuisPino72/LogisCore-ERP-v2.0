@@ -6,6 +6,8 @@ import type { Subscription } from "../../types/admin.types";
 import { DataTable } from "@/common/components/DataTable";
 import type { TableColumn } from "@/common/types/common.types";
 import { Badge } from "@/common/components/Badge";
+import { Button } from "@/common/components/Button";
+import type { BadgeVariant } from "@/common/components/Badge";
 
 interface SubscriptionTableProps {
   subscriptions: Subscription[];

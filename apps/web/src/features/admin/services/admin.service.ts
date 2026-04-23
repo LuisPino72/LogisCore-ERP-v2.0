@@ -375,8 +375,7 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
       }));
     }
     
-     try {
-      console.log("SAS_DEBUG: updateTenant - URL:", supabaseUrl?.replace(/\/$/, ''), "Token start:", authToken?.substring(0, 10));
+    try {
       const { employees, ...tenantData } = input as UpdateTenantInput & { employees?: EmployeeManagement[] };
        
       if (tenantData && Object.keys(tenantData).length > 0) {
@@ -528,8 +527,7 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
       }));
     }
     
-    try {
-      console.log("SAS_DEBUG: deactivateTenant - URL:", supabaseUrl?.replace(/\/$/, ''), "Token start:", authToken?.substring(0, 10));
+try {
       const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/admin-manage-tenant`, {
         method: "POST",
         headers: getEdgeAuthHeaders(authToken, {
@@ -1056,7 +1054,6 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const resetUserPassword: AdminService["resetUserPassword"] = async (userId, newPassword) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const authToken = await getAuthToken(supabase);
