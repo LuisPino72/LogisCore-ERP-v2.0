@@ -1385,6 +1385,7 @@ try {
 
       // Preparar presentaciones para inserción masiva
       const presentationsToInsert = input.presentations.map(pres => ({
+        product_id: data.id,
         product_local_id: localId,
         name: pres.name,
         factor: pres.factor,
@@ -1572,11 +1573,17 @@ try {
 
       if (productError) throw productError;
 
-      // Eliminar presentaciones
+      // Eliminar presentaciones asociadas
       await client
         .from("product_presentations")
         .update({ deleted_at: now })
         .eq("product_local_id", product.local_id);
+
+      // Eliminar proveedores preferidos asociados
+      await client
+        .from("product_preferred_suppliers")
+        .update({ deleted_at: now })
+        .eq("product_id", id);
 
       // Eliminar producto
       const { error } = await client
