@@ -624,7 +624,7 @@ try {
 
   const deleteBusinessType: AdminService["deleteBusinessType"] = async (id) => {
     const now = new Date().toISOString();
-    const result = await supabase.from("business_types").update({ deleted_at: now }).eq("id", id).eq("deleted_at", null);
+    const result = await supabase.from("business_types").update({ deleted_at: now }).eq("id", id).is("deleted_at", null);
     if (result.error) {
       return err(createAppError({
         code: "ADMIN_DELETE_BUSINESS_TYPE_FAILED",
@@ -1260,7 +1260,8 @@ try {
         .from("categories")
         .update({ deleted_at: now })
         .eq("id", id)
-        .eq("is_global", true);
+        .eq("is_global", true)
+        .is("deleted_at", null);
 
       if (error) throw error;
 
@@ -1582,7 +1583,8 @@ try {
         .from("products")
         .update({ deleted_at: now })
         .eq("id", id)
-        .eq("is_global", true);
+        .eq("is_global", true)
+        .is("deleted_at", null);
 
       if (error) throw error;
 

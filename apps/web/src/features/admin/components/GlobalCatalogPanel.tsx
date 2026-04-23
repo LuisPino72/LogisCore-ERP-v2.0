@@ -16,6 +16,8 @@ import { ConfirmDialog } from "@/common/components/ConfirmDialog";
 import { Button } from "@/common/components/Button";
 import { Select } from "@/common/components/Select";
 import { Tabs } from "@/common/components/Tabs";
+import { Modal } from "@/common/components/Modal";
+import { SearchInput } from "@/common/components/SearchInput";
 import { adminService } from "../services/admin.service.instance";
 import { useToast } from "@/common/stores/toastStore";
 
@@ -55,6 +57,7 @@ export function GlobalCatalogPanel({
   });
   const [deletingCategory, setDeletingCategory] = useState<GlobalCategory | null>(null);
   const [deletingCategoryLoading, setDeletingCategoryLoading] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
 
   const [products, setProducts] = useState<GlobalProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -75,6 +78,7 @@ export function GlobalCatalogPanel({
   });
   const [deletingProduct, setDeletingProduct] = useState<GlobalProduct | null>(null);
   const [deletingProductLoading, setDeletingProductLoading] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
 
   const loadCategories = useCallback(async () => {
     setCategoriesLoading(true);
@@ -318,6 +322,19 @@ export function GlobalCatalogPanel({
     }));
   };
 
+  const filteredCategories = categories.filter(cat => 
+    !categorySearch || 
+    cat.name.toLowerCase().includes(categorySearch.toLowerCase()) ||
+    (cat.businessTypeName || "").toLowerCase().includes(categorySearch.toLowerCase())
+  );
+
+  const filteredProducts = products.filter(prod => 
+    !productSearch ||
+    prod.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    prod.sku.toLowerCase().includes(productSearch.toLowerCase()) ||
+    (prod.businessTypeName || "").toLowerCase().includes(productSearch.toLowerCase())
+  );
+
   return (
     <div className="stack-md">
       <div className="flex items-center justify-between">
@@ -357,29 +374,45 @@ export function GlobalCatalogPanel({
             </Button>
           </div>
 
+          <SearchInput
+            value={categorySearch}
+            onChange={setCategorySearch}
+            placeholder="Buscar categorías..."
+          />
+
           {showCategoryForm && (
-            <CategoryForm
-              name={categoryForm.name}
-              businessTypeId={categoryForm.businessTypeId}
-              businessTypes={businessTypes}
-              isEditing={!!editingCategory}
-              onNameChange={(name) => setCategoryForm({ ...categoryForm, name })}
-              onBusinessTypeChange={(businessTypeId) => setCategoryForm({ ...categoryForm, businessTypeId })}
-              onSubmit={editingCategory ? handleUpdateCategory : handleCreateCategory}
-              onCancel={() => {
+            <Modal
+              isOpen={showCategoryForm}
+              onClose={() => {
                 setShowCategoryForm(false);
                 setEditingCategory(null);
               }}
-            />
+              title={editingCategory ? "Editar Categoría" : "Nueva Categoría Global"}
+              size="sm"
+            >
+              <CategoryForm
+                name={categoryForm.name}
+                businessTypeId={categoryForm.businessTypeId}
+                businessTypes={businessTypes}
+                isEditing={!!editingCategory}
+                onNameChange={(name) => setCategoryForm({ ...categoryForm, name })}
+                onBusinessTypeChange={(businessTypeId) => setCategoryForm({ ...categoryForm, businessTypeId })}
+                onSubmit={editingCategory ? handleUpdateCategory : handleCreateCategory}
+                onCancel={() => {
+                  setShowCategoryForm(false);
+                  setEditingCategory(null);
+                }}
+              />
+            </Modal>
           )}
 
           <CategoryList
-            categories={categories}
-            isLoading={categoriesLoading}
-            selectedBusinessType={selectedBusinessType}
-            onEdit={openEditCategory}
-            onDelete={setDeletingCategory}
-          />
+              categories={filteredCategories}
+              isLoading={categoriesLoading}
+              selectedBusinessType={selectedBusinessType}
+              onEdit={openEditCategory}
+              onDelete={setDeletingCategory}
+            />
         </div>
       )}
 
@@ -391,26 +424,42 @@ export function GlobalCatalogPanel({
             </Button>
           </div>
 
+          <SearchInput
+            value={productSearch}
+            onChange={setProductSearch}
+            placeholder="Buscar productos..."
+          />
+
           {showProductForm && (
-            <ProductForm
-              form={productForm}
-              businessTypes={businessTypes}
-              categories={categories}
-              isEditing={!!editingProduct}
-              onChange={(field, value) => setProductForm({ ...productForm, [field]: value })}
-              onAddPresentation={addPresentation}
-              onRemovePresentation={removePresentation}
-              onUpdatePresentation={updatePresentation}
-              onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
-              onCancel={() => {
+            <Modal
+              isOpen={showProductForm}
+              onClose={() => {
                 setShowProductForm(false);
                 setEditingProduct(null);
               }}
-            />
+              title={editingProduct ? "Editar Producto" : "Nuevo Producto Global"}
+              size="lg"
+            >
+              <ProductForm
+                form={productForm}
+                businessTypes={businessTypes}
+                categories={categories}
+                isEditing={!!editingProduct}
+                onChange={(field, value) => setProductForm({ ...productForm, [field]: value })}
+                onAddPresentation={addPresentation}
+                onRemovePresentation={removePresentation}
+                onUpdatePresentation={updatePresentation}
+                onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
+                onCancel={() => {
+                  setShowProductForm(false);
+                  setEditingProduct(null);
+                }}
+              />
+            </Modal>
           )}
 
           <ProductList
-            products={products}
+            products={filteredProducts}
             isLoading={productsLoading}
             selectedBusinessType={selectedBusinessType}
             onEdit={openEditProduct}
