@@ -68,6 +68,7 @@ export interface AdminService {
   createUser(input: CreateUserInput): Promise<Result<SecurityUser, AppError>>;
   updateUser(userId: string, input: UpdateUserInput): Promise<Result<SecurityUser, AppError>>;
   deleteEmployee(tenantId: string, userId: string): Promise<Result<void, AppError>>;
+  resetUserPassword(userId: string, newPassword: string): Promise<Result<void, AppError>>;
   renewSubscription(subscriptionId: string): Promise<Result<void, AppError>>;
   renewSubscriptionWithPlan(subscriptionId: string, newPlanId?: string): Promise<Result<{ newPlanName: string; newEndDate: string; status: string }, AppError>>;
   getGlobalConfig(): Promise<Result<GlobalConfig, AppError>>;
@@ -1053,6 +1054,50 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const resetUserPassword: AdminService["resetUserPassword"] = async (userId, newPassword) => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const authToken = await getAuthToken(supabase);
+    if (!supabaseUrl || !authToken) {
+      return err(createAppError({
+        code: "ADMIN_AUTH_TOKEN_MISSING",
+        message: "Sesión admin inválida o expirada. Vuelve a iniciar sesión.",
+        retryable: false
+      }));
+    }
+
+    try {
+      const fetchUrl = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/admin-update-password`;
+      const response = await fetch(fetchUrl, {
+        method: "POST",
+        headers: getEdgeAuthHeaders(authToken, {
+          actionContext: PERMISSIONS.ADMIN.USERS,
+          userPermissions: []
+        }),
+        body: JSON.stringify({ userId, newPassword })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        return err(createAppError({
+          code: "ADMIN_RESET_PASSWORD_FAILED",
+          message: result.error ?? "Error al cambiar la contraseña",
+          retryable: false
+        }));
+      }
+
+      eventBus.emit("ADMIN.PASSWORD_RESET", { userId });
+      return ok(undefined);
+    } catch (error) {
+      return err(createAppError({
+        code: "ADMIN_RESET_PASSWORD_FAILED",
+        message: String(error),
+        retryable: false
+      }));
+    }
+  };
+
   const getGlobalConfig: AdminService["getGlobalConfig"] = async () => {
     const result = await supabase.from("global_config").select("*").order("updated_at", { ascending: false }).limit(1).single();
     if (result.error) {
@@ -1627,6 +1672,7 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
     listSecurityUsers,
     createUser,
     updateUser,
+    resetUserPassword,
     deleteEmployee,
     getGlobalConfig,
     updateGlobalConfig,

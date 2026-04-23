@@ -50,10 +50,10 @@ export const useAuth = ({ service }: UseAuthOptions) => {
     });
   }, [service]);
 
-  /**
-   * Inicia sesión con email y password
-   * Llama a signIn del servicio
-   */
+/**
+ * Inicia sesión con email y password
+ * Llama a signIn del servicio
+ */
   const signIn = useCallback(async (email: string, password: string) => {
     setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
     const result = await service.signIn(email, password);
@@ -74,20 +74,6 @@ export const useAuth = ({ service }: UseAuthOptions) => {
   }, [service]);
 
   /**
-   * Recupera la contraseña del usuario
-   * Llama a resetPassword del servicio
-   */
-  const resetPassword = useCallback(async (email: string) => {
-    setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
-    const result = await service.resetPassword(email);
-    setState((previous) => ({ ...previous, isLoading: false }));
-    if (!result.ok) {
-      setState((previous) => ({ ...previous, lastError: result.error }));
-    }
-    return result;
-  }, [service]);
-
-  /**
    * Cierra la sesión del usuario
    * Llama a signOut del servicio y limpia el estado
    */
@@ -104,19 +90,5 @@ export const useAuth = ({ service }: UseAuthOptions) => {
     return ok<void>(undefined);
   }, [service]);
 
-  /**
-   * Actualiza la contraseña del usuario
-   * Llama a updatePassword del servicio
-   */
-  const updatePassword = useCallback(async (password: string) => {
-    setState((previous) => ({ ...previous, isLoading: true, lastError: null }));
-    const result = await service.updatePassword(password);
-    setState((previous) => ({ ...previous, isLoading: false }));
-    if (!result.ok) {
-      setState((previous) => ({ ...previous, lastError: result.error }));
-    }
-    return result;
-  }, [service]);
-
-  return { state, loadSession, signIn, resetPassword, signOut, updatePassword };
+  return { state, loadSession, signIn, signOut };
 };

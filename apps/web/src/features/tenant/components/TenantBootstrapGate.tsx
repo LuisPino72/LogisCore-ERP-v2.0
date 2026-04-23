@@ -35,7 +35,7 @@ export function TenantBootstrapGate({
   coreService,
   renderApp
 }: TenantBootstrapGateProps) {
-  const { state: authState, loadSession, signIn, resetPassword, signOut } = useAuth({ service: authService });
+  const { state: authState, loadSession, signIn, signOut } = useAuth({ service: authService });
   const { state, bootstrapTenantData } = useTenantData({
     auth: authService,
     tenant: tenantService
@@ -74,10 +74,6 @@ export function TenantBootstrapGate({
     await signIn(email, password);
   };
 
-  const handleResetPassword = async (email: string) => {
-    return await resetPassword(email);
-  };
-
   const handleLogout = async () => {
     setImpersonatedTenantSlug(null);
     await signOut();
@@ -99,7 +95,6 @@ export function TenantBootstrapGate({
     return (
       <LoginPage
         onLogin={handleLogin}
-        onResetPassword={handleResetPassword}
         isLoading={authState.isLoading}
         error={loginError}
       />
@@ -171,6 +166,7 @@ export function TenantBootstrapGate({
             auditLogs={admin.auditLogs}
             auditLogsTotal={admin.auditLogsTotal}
             onLoadAuditLogs={admin.loadAuditLogs}
+            onResetPassword={admin.resetUserPassword}
           />
         )}
         {activeAdminModule === "businessTypes" && (

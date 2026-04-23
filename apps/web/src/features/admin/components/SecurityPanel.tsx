@@ -4,6 +4,9 @@ import { Badge } from "@/common/components/Badge";
 import { Button } from "@/common/components/Button";
 import { Card } from "@/common/components/Card";
 import { Tabs } from "@/common/components/Tabs";
+import { Alert } from "@/common/components/Alert";
+import { Modal } from "@/common/components/Modal";
+import { Input } from "@/common";
 
 interface SecurityPanelProps {
   users: SecurityUser[];
@@ -12,6 +15,7 @@ interface SecurityPanelProps {
   auditLogs?: AuditLogEntry[];
   auditLogsTotal?: number;
   onLoadAuditLogs?: (limit?: number, offset?: number) => void;
+  onResetPassword?: (userId: string, newPassword: string) => Promise<unknown>;
 }
 
 export function SecurityPanel({ 
@@ -20,10 +24,15 @@ export function SecurityPanel({
   onRefresh, 
   auditLogs = [],
   auditLogsTotal = 0,
-  onLoadAuditLogs
+  onLoadAuditLogs,
+  onResetPassword
 }: SecurityPanelProps) {
   const [activeTab, setActiveTab] = useState<"users" | "audit">("users");
   const [auditPage, setAuditPage] = useState(0);
+  const [resetModalUser, setResetModalUser] = useState<SecurityUser | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     if (activeTab === "audit" && onLoadAuditLogs) {
@@ -54,12 +63,38 @@ export function SecurityPanel({
     return actionMap[action] || action;
   };
 
-  const getActionBadgeVariant = (action: string): "default" | "success" | "warning" | "error" | "info" => {
+const getActionBadgeVariant = (action: string): "default" | "success" | "warning" | "error" | "info" => {
     if (action.includes("FAILED")) return "error";
     if (action.includes("DELETE")) return "warning";
     if (action.includes("CREATE")) return "success";
     if (action.includes("LOGIN") || action.includes("LOGOUT")) return "info";
     return "default";
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      setResetError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    if (!resetModalUser || !onResetPassword) return;
+    
+    setResetLoading(true);
+    setResetError(null);
+    
+    try {
+      const result = await onResetPassword(resetModalUser.userId, newPassword) as { ok: boolean; error?: { message: string } };
+      if (result && !result.ok) {
+        setResetError(result.error?.message || "Error al cambiar contraseña");
+        setResetLoading(false);
+        return;
+      }
+      setResetModalUser(null);
+      setNewPassword("");
+      setResetLoading(false);
+    } catch {
+      setResetError("Error al cambiar contraseña");
+      setResetLoading(false);
+    }
   };
 
   return (
@@ -76,10 +111,10 @@ export function SecurityPanel({
         </div>
       </div>
 
-          <Tabs
-            activeTab={activeTab}
-            onChange={(tab) => setActiveTab(tab as "users" | "audit")}
-            items={[
+      <Tabs
+        activeTab={activeTab}
+        onChange={(tab) => setActiveTab(tab as "users" | "audit")}
+        items={[
           { id: "users", label: "Directorio Global de Usuarios" },
           { id: "audit", label: "Registros de Auditoría" }
         ]}
@@ -96,6 +131,7 @@ export function SecurityPanel({
                   <th className="text-left px-4 py-3 font-medium text-content-primary">Tenant</th>
                   <th className="text-left px-4 py-3 font-medium text-content-primary">Rol</th>
                   <th className="text-left px-4 py-3 font-medium text-content-primary">Estado</th>
+                  <th className="text-left px-4 py-3 font-medium text-content-primary">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -113,6 +149,15 @@ export function SecurityPanel({
                       <Badge variant={user.isActive ? "success" : "error"}>
                         {user.isActive ? "Activo" : "Eliminado"}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setResetModalUser(user)}
+                      >
+                        Cambiar Contraseña
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -184,6 +229,50 @@ export function SecurityPanel({
             </div>
           )}
         </Card>
+      )}
+
+      {resetModalUser && (
+        <Modal 
+          isOpen={!!resetModalUser} 
+          onClose={() => setResetModalUser(null)}
+          title="Cambiar Contraseña"
+        >
+          <div className="p-6">
+            <p className="text-content-secondary mb-4">
+              Nueva contraseña para: <strong>{resetModalUser.email}</strong>
+            </p>
+            
+            {resetError && (
+              <Alert variant="error" className="mb-4">{resetError}</Alert>
+            )}
+            
+            <div className="mb-4">
+              <Input
+                label="Nueva Contraseña"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                onClick={handleResetPassword}
+                disabled={resetLoading || !newPassword}
+                variant="primary"
+              >
+                {resetLoading ? <span className="spinner" /> : "Guardar"}
+              </Button>
+              <Button
+                onClick={() => setResetModalUser(null)}
+                variant="secondary"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

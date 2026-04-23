@@ -20,8 +20,6 @@ export interface AuthService {
   getActiveSession(): Promise<Result<AuthSession, AppError>>; // Obtener sesión activa
   signIn(email: string, password: string): Promise<Result<AuthSession, AppError>>; // Iniciar sesión
   signOut(): Promise<Result<void, AppError>>; // Cerrar sesión
-  resetPassword(email: string): Promise<Result<void, AppError>>; // Recuperar contraseña
-  updatePassword(password: string): Promise<Result<void, AppError>>; // Actualizar contraseña
   logAuditEvent(action: string, userId: string | null, email: string | null, accessToken?: string): Promise<Result<void, AppError>>; // Registrar evento de auditoría
 }
 
@@ -168,44 +166,5 @@ export const createAuthService = ({
     // Emitir evento de logout exitoso
     eventBus.emit("AUTH.SIGNED_OUT", {});
     return ok<void>(undefined);
-  },
-
-  // Recupera la contraseña del usuario
-  async resetPassword(email: string) {
-    const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-    const response = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${baseUrl}?resetPassword=true`
-    });
-
-    if (response.error) {
-      return err(
-        createAppError({
-          code: "AUTH_RESET_PASSWORD_FAILED",
-          message: response.error.message,
-          retryable: true
-        })
-      );
-    }
-
-    eventBus.emit("AUTH.RESET_PASSWORD_SENT", { email });
-    return ok<void>(undefined);
-  },
-
-  // Actualiza la contraseña del usuario
-  async updatePassword(password: string): Promise<Result<void, AppError>> {
-    const response = await supabase.auth.updateUser({ password });
-
-    if (response.error) {
-      const authError = createAppError({
-        code: "AUTH_UPDATE_PASSWORD_FAILED",
-        message: response.error.message,
-        retryable: false
-      });
-      eventBus.emit("AUTH.PASSWORD_UPDATE_FAILED", { error: authError });
-      return err(authError);
-    }
-
-    eventBus.emit("AUTH.PASSWORD_UPDATED", {});
-    return ok(undefined);
   }
 });
