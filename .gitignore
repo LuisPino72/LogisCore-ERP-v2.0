@@ -54,9 +54,10 @@ desktop.ini
 tests/
 packages/core/test/
 
-# Supabase (Local dev artifacts)
-supabase/.temp/
-supabase/config.toml
+# Supabase (Seguridad: Ignorar todo el backend local y funciones)
+supabase/
+# Si quieres versionar el config.toml, descomenta la siguiente línea:
+# !supabase/config.toml
 
 # Agentic / AI directories
 .agents/

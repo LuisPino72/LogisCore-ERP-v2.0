@@ -1,10 +1,9 @@
 import { createClient } from "jsr:@supabase/supabase-js@2.49.1";
-import { createRbacMiddleware } from "../_shared/rbac-middleware";
 
 const jsonHeaders = {
   "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "https://logiscore-erp.vercel.app",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-action-context, x-user-permissions",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
@@ -22,6 +21,7 @@ interface UpdateTenantInput {
     rif?: string;
     razonSocial?: string;
     direccionFiscal?: string;
+    regimen?: string;
   };
   ownerUserId?: string;
 }
@@ -32,8 +32,9 @@ interface EmployeeManagement {
   password?: string;
   action: "create" | "update" | "delete";
   userId?: string;
-  permissions?: string[];
 }
+
+const UNIQUE_ADMIN_EMAIL = "luispinos72@hotmail.com";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -41,22 +42,42 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   
   try {
-    const rbacMiddleware = await createRbacMiddleware("ADMIN:TENANT");
-    const rbacResult = await rbacMiddleware(req);
-    
-    if (!rbacResult.ok) {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
-        JSON.stringify({ success: false, error: rbacResult.error.code }),
+        JSON.stringify({ success: false, error: "MISSING_BEARER_TOKEN" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "").trim();
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+
+    const authResult = await authClient.auth.getUser(token);
+    if (authResult.error || !authResult.data.user) {
+      return new Response(
+        JSON.stringify({ success: false, error: "INVALID_JWT" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
+
+    // SEC-001: Validación de Admin Único
+    const userEmail = authResult.data.user.email;
+    if (userEmail !== UNIQUE_ADMIN_EMAIL) {
+      console.warn(`SEC-001: Intento de acceso admin denegado para: ${userEmail}`);
+      return new Response(
+        JSON.stringify({ success: false, error: "FORBIDDEN_ADMIN_ONLY" }),
         { status: 403, headers: jsonHeaders }
       );
     }
 
-    const { userId, tenantId } = rbacResult.data;
-    
-    const { action, data, permanent } = await req.json();
+    const { action, tenantId, data, permanent } = await req.json();
     
     if (!tenantId) {
       return new Response(
@@ -66,6 +87,22 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Validación en DB reforzada
+    const { data: roleRow, error: roleError } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", authResult.data.user.id)
+      .eq("role", "admin")
+      .eq("is_active", true)
+      .single();
+
+    if (roleError || !roleRow) {
+      return new Response(
+        JSON.stringify({ success: false, error: "FORBIDDEN_ADMIN_ONLY" }),
+        { status: 403, headers: jsonHeaders }
+      );
+    }
 
     // Get tenant info first
     const { data: tenantInfo, error: tenantInfoError } = await supabase
@@ -269,8 +306,7 @@ Deno.serve(async (req: Request) => {
               role: "employee",
               email: emp.email,
               full_name: emp.fullName,
-              is_active: true,
-              permissions: emp.permissions || []
+              is_active: true
             });
 
             results.push({ email: emp.email, success: true, userId: authData.user.id });
@@ -284,7 +320,6 @@ Deno.serve(async (req: Request) => {
             const updateData: Record<string, unknown> = {};
             if (emp.fullName) updateData.full_name = emp.fullName;
             if (emp.email) updateData.email = emp.email;
-            if (emp.permissions) updateData.permissions = emp.permissions;
 
             await supabase.from("user_roles").update(updateData).eq("user_id", emp.userId);
             results.push({ email: emp.email, success: true, userId: emp.userId });
