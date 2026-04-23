@@ -379,7 +379,7 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
       const { employees, ...tenantData } = input as UpdateTenantInput & { employees?: EmployeeManagement[] };
       
       if (tenantData && Object.keys(tenantData).length > 0) {
-        const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
+        const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/admin-manage-tenant`, {
           method: "POST",
           headers: getEdgeAuthHeaders(authToken, {
             actionContext: PERMISSIONS.ADMIN.TENANT,
@@ -400,7 +400,7 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
       }
 
       if (employees && employees.length > 0) {
-        const empResponse = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
+        const empResponse = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/admin-manage-tenant`, {
           method: "POST",
           headers: getEdgeAuthHeaders(authToken, {
             actionContext: PERMISSIONS.ADMIN.USERS,
@@ -486,7 +486,7 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
     }
     
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
+      const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/admin-manage-tenant`, {
         method: "POST",
         headers: getEdgeAuthHeaders(authToken, {
           actionContext: PERMISSIONS.ADMIN.TENANT,
@@ -528,7 +528,7 @@ const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, 
     }
     
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-manage-tenant`, {
+      const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/admin-manage-tenant`, {
         method: "POST",
         headers: getEdgeAuthHeaders(authToken, {
           actionContext: PERMISSIONS.ADMIN.TENANT,
