@@ -445,7 +445,7 @@ export function GlobalCatalogPanel({
                 businessTypes={businessTypes}
                 categories={categories}
                 isEditing={!!editingProduct}
-                onChange={(field, value) => setProductForm({ ...productForm, [field]: value })}
+                onChange={(field, value) => setProductForm(prev => ({ ...prev, [field]: value }))}
                 onAddPresentation={addPresentation}
                 onRemovePresentation={removePresentation}
                 onUpdatePresentation={updatePresentation}

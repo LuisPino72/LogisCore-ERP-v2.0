@@ -152,8 +152,8 @@ export function ProductForm({
             </div>
             <div className="space-y-3">
               {form.presentations.map((pres, index) => (
-                <div key={index} className="flex gap-3 items-end bg-surface-50 p-3 rounded">
-                  <div className="flex-1">
+                <div key={index} className="bg-surface-50 p-3 rounded space-y-3">
+                  <div className="w-full">
                     <label className="label text-xs">Nombre</label>
                     <Input
                       type="text"
@@ -161,45 +161,48 @@ export function ProductForm({
                       onChange={(e) => onUpdatePresentation(index, "name", e.target.value)}
                       placeholder="Ej. 500ml, 1kg"
                       required
+                      className="w-full"
                     />
                   </div>
-                  <div className="w-24">
-                    <label className="label text-xs">Factor</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={isNaN(pres.factor) ? "" : pres.factor}
-                      onChange={(e) => onUpdatePresentation(index, "factor", e.target.value === "" ? 0 : parseFloat(e.target.value))}
-                      required
-                    />
+                  <div className="flex gap-3 items-end">
+                    <div className="w-24">
+                      <label className="label text-xs">Factor</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={isNaN(pres.factor) ? "" : pres.factor}
+                        onChange={(e) => onUpdatePresentation(index, "factor", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                        required
+                      />
+                    </div>
+                    <div className="w-32">
+                      <label className="label text-xs">Precio</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={isNaN(pres.price) ? "" : pres.price}
+                        onChange={(e) => onUpdatePresentation(index, "price", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                        required
+                      />
+                    </div>
+                    <div className="flex items-center pb-1">
+                      <Checkbox
+                        label="Default"
+                        checked={pres.isDefault}
+                        onChange={(checked) => onUpdatePresentation(index, "isDefault", checked)}
+                      />
+                    </div>
+                    {form.presentations.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onRemovePresentation(index)}
+                        className="text-state-error hover:bg-state-error/10 pb-1"
+                      >
+                        ✕
+                      </Button>
+                    )}
                   </div>
-                  <div className="w-32">
-                    <label className="label text-xs">Precio</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={isNaN(pres.price) ? "" : pres.price}
-                      onChange={(e) => onUpdatePresentation(index, "price", e.target.value === "" ? 0 : parseFloat(e.target.value))}
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      label="Default"
-                      checked={pres.isDefault}
-                      onChange={(checked) => onUpdatePresentation(index, "isDefault", checked)}
-                    />
-                  </div>
-                  {form.presentations.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onRemovePresentation(index)}
-                      className="text-state-error hover:bg-state-error/10"
-                    >
-                      ✕
-                    </Button>
-                  )}
                 </div>
               ))}
             </div>
