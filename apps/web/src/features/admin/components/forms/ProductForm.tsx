@@ -7,15 +7,6 @@ import type { GlobalProductPresentation, BusinessType, CreateGlobalProductInput 
 import { DynamicAttributeBuilder } from "@/features/admin/components/forms/DynamicAttributeBuilder";
 import { generateAttributeCombinations, formatVariantName } from "@/features/admin/utils/product-pro.utils";
 
-const UNIT_OPTIONS = [
-  { value: "unidad", label: "Unidad" },
-  { value: "kilogramo", label: "Kilogramo (kg)" },
-  { value: "gramo", label: "Gramo (g)" },
-  { value: "litro", label: "Litro (L)" },
-  { value: "mililitro", label: "Mililitro (ml)" },
-  { value: "metro", label: "Metro (m)" },
-  { value: "centimetro", label: "Centímetro (cm)" },
-];
 
 interface ProductFormProps {
   form: CreateGlobalProductInput;
@@ -46,11 +37,11 @@ export function ProductForm({
 }: ProductFormProps) {
   const filteredCategories = categories.filter(c => c.businessTypeId === form.businessTypeId);
 
-  const handleAttributeChange = (field: any, value: any) => {
+  const handleAttributeChange = (field: keyof CreateGlobalProductInput, value: unknown) => {
     onChange(field, value);
 
     if (field === "attributes") {
-      const attrs = value as any[];
+      const attrs = value as GlobalProductAttribute[];
       if (attrs.length > 0) {
         const combinations = generateAttributeCombinations(attrs);
         const newPresentations: GlobalProductPresentation[] = combinations.map((combo, index) => ({

@@ -114,8 +114,25 @@ export interface ProductionLog {
   deletedAt?: string;
 }
 
+export interface RecipeVersion {
+  id: string;
+  tenant_id: string;
+  recipe_id: string;
+  version_number: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecipeVersionIngredient {
+  recipe_version_id: string;
+  variant_id: string;
+  quantity: number;
+  unit: string;
+}
+
 /**
  * Datos de entrada para crear una nueva receta.
+
  */
 export interface CreateRecipeInput {
   productLocalId: string;

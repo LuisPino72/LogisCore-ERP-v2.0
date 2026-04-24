@@ -28,16 +28,18 @@ import type {
   ProductionTenantContext,
   Recipe,
   RecipeIngredient,
+  RecipeVersion,
+  RecipeVersionIngredient,
   StartProductionOrderInput
 } from "../types/production.types";
 
 export interface ProductionDb {
   createRecipe(recipe: Recipe): Promise<void>;
-  createRecipeVersion(version: any): Promise<void>;
-  createRecipeIngredientsVersion(ingredients: any[]): Promise<void>;
+  createRecipeVersion(version: RecipeVersion): Promise<void>;
+  createRecipeIngredientsVersion(ingredients: RecipeVersionIngredient[]): Promise<void>;
   listRecipes(tenantId: string): Promise<Recipe[]>;
-  getRecipeByLocalId(tenantId: string, recipeLocalId: string): Promise<Recipe | undefined);
-  getRecipeVersion(versionId: string, tenantId: string): Promise<any | null>;
+  getRecipeByLocalId(tenantId: string, recipeLocalId: string): Promise<Recipe | undefined>;
+  getRecipeVersion(versionId: string, tenantId: string): Promise<RecipeVersion | null>;
   createProductionOrder(order: ProductionOrder): Promise<void>;
   listProductionOrders(tenantId: string): Promise<ProductionOrder[]>;
   getProductionOrderByLocalId(
@@ -256,37 +258,6 @@ export const createProductionService = ({
       return ok(recipe);
     };
 
-    const queue = await syncEngine.enqueue({
-      id: uuid(),
-      table: "recipes",
-      operation: "create",
-      payload: {
-        local_id: recipe.localId,
-        tenant_slug: tenant.tenantSlug,
-        product_local_id: recipe.productLocalId,
-        name: recipe.name,
-        yield_qty: recipe.yieldQty,
-        bom_version: recipe.bomVersion,
-        ingredients: recipe.ingredients,
-        created_at: recipe.createdAt,
-        updated_at: recipe.updatedAt
-      },
-      localId: recipe.localId,
-      tenantId: tenant.tenantSlug,
-      createdAt: now,
-      attempts: 0
-    });
-    if (!queue.ok) {
-      return err(queue.error);
-    }
-
-    await db.createRecipe(recipe);
-    eventBus.emit("PRODUCTION.RECIPE_CREATED", {
-      tenantId: tenant.tenantSlug,
-      localId: recipe.localId
-    });
-    return ok(recipe);
-  };
 
   const createProductionOrder: ProductionService["createProductionOrder"] = async (
     tenant,
