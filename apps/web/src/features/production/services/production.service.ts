@@ -33,8 +33,11 @@ import type {
 
 export interface ProductionDb {
   createRecipe(recipe: Recipe): Promise<void>;
+  createRecipeVersion(version: any): Promise<void>;
+  createRecipeIngredientsVersion(ingredients: any[]): Promise<void>;
   listRecipes(tenantId: string): Promise<Recipe[]>;
-  getRecipeByLocalId(tenantId: string, recipeLocalId: string): Promise<Recipe | undefined>;
+  getRecipeByLocalId(tenantId: string, recipeLocalId: string): Promise<Recipe | undefined);
+  getRecipeVersion(versionId: string, tenantId: string): Promise<any | null>;
   createProductionOrder(order: ProductionOrder): Promise<void>;
   listProductionOrders(tenantId: string): Promise<ProductionOrder[]>;
   getProductionOrderByLocalId(
@@ -145,63 +148,112 @@ export const createProductionService = ({
     }));
   };
 
-  const createRecipe: ProductionService["createRecipe"] = async (
-    tenant,
-    _actor,
-    input
-  ) => {
-    if (!hasProductionAccess(tenant.features)) {
-      return err(
-        createAppError({
-          code: "ADMIN_PRODUCTION_ACCESS_DENIED",
-          message: "El módulo de Producción requiere el plan Pro.",
-          retryable: false,
-          context: { features: tenant.features }
-        })
+    const createRecipe: ProductionService["createRecipe"] = async (
+      tenant,
+      _actor,
+      input
+    ) => {
+      if (!hasProductionAccess(tenant.features)) {
+        return err(
+          createAppError({
+            code: "ADMIN_PRODUCTION_ACCESS_DENIED",
+            message: "El módulo de Producción requiere el plan Pro.",
+            retryable: false,
+            context: { features: tenant.features }
+          })
+        );
+      }
+      if (!input.productLocalId.trim() || !input.name.trim()) {
+        return err(
+          createAppError({
+            code: "RECIPE_REQUIRED_FIELDS",
+            message: "La receta requiere producto y nombre.",
+            retryable: false
+          })
+        );
+      }
+      if (input.yieldQty <= 0 || !input.ingredients.length) {
+        return err(
+          createAppError({
+            code: "RECIPE_INVALID",
+            message: "La receta requiere rendimiento > 0 e ingredientes.",
+            retryable: false
+          })
+        );
+      }
+      const invalidIngredient = input.ingredients.some(
+        (item) => !item.productLocalId.trim() || item.requiredQty <= 0
       );
-    }
-    if (!input.productLocalId.trim() || !input.name.trim()) {
-      return err(
-        createAppError({
-          code: "RECIPE_REQUIRED_FIELDS",
-          message: "La receta requiere producto y nombre.",
-          retryable: false
-        })
-      );
-    }
-    if (input.yieldQty <= 0 || !input.ingredients.length) {
-      return err(
-        createAppError({
-          code: "RECIPE_INVALID",
-          message: "La receta requiere rendimiento > 0 e ingredientes.",
-          retryable: false
-        })
-      );
-    }
-    const invalidIngredient = input.ingredients.some(
-      (item) => !item.productLocalId.trim() || item.requiredQty <= 0
-    );
-    if (invalidIngredient) {
-      return err(
-        createAppError({
-          code: "RECIPE_INGREDIENT_INVALID",
-          message: "Todos los ingredientes deben tener producto y cantidad > 0.",
-          retryable: false
-        })
-      );
-    }
+      if (invalidIngredient) {
+        return err(
+          createAppError({
+            code: "RECIPE_INGREDIENT_INVALID",
+            message: "Todos los ingredientes deben tener producto y cantidad > 0.",
+            retryable: false
+          })
+        );
+      }
+      const now = clock().toISOString();
+      const recipe: Recipe = {
+        localId: uuid(),
+        tenantId: tenant.tenantSlug,
+        productLocalId: input.productLocalId,
+        name: input.name.trim(),
+        yieldQty: input.yieldQty,
+        bomVersion: input.bomVersion || "1.0",
+        ingredients: input.ingredients,
+        createdAt: now,
+        updatedAt: now
+      };
+      const queue = await syncEngine.enqueue({
+        id: uuid(),
+        table: "recipes",
+        operation: "create",
+        payload: {
+          local_id: recipe.localId,
+          tenant_slug: tenant.tenantSlug,
+          product_local_id: recipe.productLocalId,
+          name: recipe.name,
+          yield_qty: recipe.yieldQty,
+          bom_version: recipe.bomVersion,
+          ingredients: recipe.ingredients,
+          created_at: recipe.createdAt,
+          updated_at: recipe.updatedAt
+        },
+        localId: recipe.localId,
+        tenantId: tenant.tenantSlug,
+        createdAt: now,
+        attempts: 0
+      });
+      if (!queue.ok) {
+        return err(queue.error);
+      }
+      await db.createRecipe(recipe);
 
-    const now = clock().toISOString();
-    const recipe: Recipe = {
-      localId: uuid(),
-      tenantId: tenant.tenantSlug,
-      productLocalId: input.productLocalId,
-      name: input.name.trim(),
-      yieldQty: input.yieldQty,
-      bomVersion: input.bomVersion || "1.0",
-      ingredients: input.ingredients,
-      createdAt: now,
-      updatedAt: now
+      // Create initial version
+      const versionId = uuid();
+      await db.createRecipeVersion({
+        id: versionId,
+        tenant_id: tenant.tenantSlug,
+        recipe_id: recipe.localId,
+        version_number: 1,
+        created_at: now,
+        updated_at: now
+      });
+      await db.createRecipeIngredientsVersion(
+        input.ingredients.map(ing => ({
+          recipe_version_id: versionId,
+          variant_id: ing.productLocalId, // Assuming initially it's the variant_id
+          quantity: ing.requiredQty,
+          unit: 'unit' // Default or from product
+        }))
+      );
+
+      eventBus.emit("PRODUCTION.RECIPE_CREATED", {
+        tenantId: tenant.tenantSlug,
+        localId: recipe.localId
+      });
+      return ok(recipe);
     };
 
     const queue = await syncEngine.enqueue({

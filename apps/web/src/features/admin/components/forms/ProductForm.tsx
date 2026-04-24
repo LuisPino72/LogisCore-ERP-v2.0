@@ -2,8 +2,10 @@
  * Formulario de producto global.
  */
 
-import { Button, Input, Select, Checkbox, Card, Textarea } from "@/common";
+import { Button, Input, Select, Checkbox, Card, Textarea, FormField } from "@/common";
 import type { GlobalProductPresentation, BusinessType, CreateGlobalProductInput } from "../../types/admin.types";
+import { DynamicAttributeBuilder } from "@/features/admin/components/forms/DynamicAttributeBuilder";
+import { generateAttributeCombinations, formatVariantName } from "@/features/admin/utils/product-pro.utils";
 
 const UNIT_OPTIONS = [
   { value: "unidad", label: "Unidad" },
@@ -24,23 +26,44 @@ interface ProductFormProps {
   onAddPresentation: () => void;
   onRemovePresentation: (index: number) => void;
   onUpdatePresentation: (index: number, field: keyof GlobalProductPresentation, value: unknown) => void;
+  onUpdatePresentations: (presentations: GlobalProductPresentation[]) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
 }
 
-export function ProductForm({ 
-  form, 
-  businessTypes, 
+export function ProductForm({
+  form,
+  businessTypes,
   categories,
   isEditing,
-  onChange, 
+  onChange,
   onAddPresentation,
   onRemovePresentation,
   onUpdatePresentation,
+  onUpdatePresentations,
   onSubmit,
   onCancel
 }: ProductFormProps) {
   const filteredCategories = categories.filter(c => c.businessTypeId === form.businessTypeId);
+
+  const handleAttributeChange = (field: any, value: any) => {
+    onChange(field, value);
+
+    if (field === "attributes") {
+      const attrs = value as any[];
+      if (attrs.length > 0) {
+        const combinations = generateAttributeCombinations(attrs);
+        const newPresentations: GlobalProductPresentation[] = combinations.map((combo, index) => ({
+          name: formatVariantName(combo),
+          factor: 1,
+          price: 0,
+          isDefault: index === 0,
+          barcode: "",
+        }));
+        onUpdatePresentations(newPresentations);
+      }
+    }
+  };
 
   return (
     <Card>
@@ -53,95 +76,72 @@ export function ProductForm({
         <form onSubmit={onSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Nombre del Producto</label>
-              <Input
-                type="text"
-                value={form.name}
-                onChange={(e) => onChange("name", e.target.value)}
-                placeholder="Ej. Arroz Premium"
-                required
-              />
+              <FormField label="Nombre del Producto" required>
+                <Input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => onChange("name", e.target.value)}
+                  placeholder="Ej. Arroz Premium"
+                  required
+                />
+              </FormField>
             </div>
             <div>
-              <label className="label">SKU</label>
-              <Input
-                type="text"
-                value={form.sku}
-                onChange={(e) => onChange("sku", e.target.value)}
-                placeholder="Ej. ARR-001"
-                required
-              />
+              <FormField label="SKU" required>
+                <Input
+                  type="text"
+                  value={form.sku}
+                  onChange={(e) => onChange("sku", e.target.value)}
+                  placeholder="Ej. ARR-001"
+                  required
+                />
+              </FormField>
             </div>
           </div>
 
           <div>
-            <label className="label">Descripción</label>
-            <Textarea
-              className="min-h-[60px]"
-              value={form.description || ""}
-              onChange={(e) => onChange("description", e.target.value)}
-              placeholder="Descripción opcional..."
-            />
+            <FormField label="Descripción">
+              <Textarea
+                className="min-h-[60px]"
+                value={form.description || ""}
+                onChange={(e) => onChange("description", e.target.value)}
+                placeholder="Descripción opcional..."
+              />
+            </FormField>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Tipo de Negocio</label>
-              <Select
-                value={form.businessTypeId}
-                onChange={(val) => {
-                  onChange("businessTypeId", val);
-                  onChange("categoryId", "");
-                }}
-                options={businessTypes.map(bt => ({ label: bt.name, value: bt.id }))}
-                placeholder="Seleccionar..."
-                required
-              />
+              <FormField label="Tipo de Negocio" required>
+                <Select
+                  value={form.businessTypeId}
+                  onChange={(val) => {
+                    onChange("businessTypeId", val);
+                    onChange("categoryId", "");
+                  }}
+                  options={businessTypes.map(bt => ({ label: bt.name, value: bt.id }))}
+                  placeholder="Seleccionar..."
+                  required
+                />
+              </FormField>
             </div>
             <div>
-              <label className="label">Categoría</label>
-              <Select
-                value={form.categoryId || ""}
-                onChange={(val) => onChange("categoryId", val)}
-                options={filteredCategories.map(cat => ({ label: cat.name, value: cat.id }))}
-                placeholder="Seleccionar..."
-              />
+              <FormField label="Categoría">
+                <Select
+                  value={form.categoryId || ""}
+                  onChange={(val) => onChange("categoryId", val)}
+                  options={filteredCategories.map(cat => ({ label: cat.name, value: cat.id }))}
+                  placeholder="Seleccionar..."
+                />
+              </FormField>
             </div>
           </div>
 
-          <div className="border-t border-border pt-4">
-            <h3 className="font-medium mb-4">Características</h3>
-            <div className="grid grid-cols-4 gap-4">
-              <Checkbox
-                label="¿Es pesable?"
-                checked={form.isWeighted}
-                onChange={(checked) => onChange("isWeighted", checked)}
-              />
-              <Checkbox
-                label="¿Es grabable?"
-                checked={form.isTaxable}
-                onChange={(checked) => onChange("isTaxable", checked)}
-              />
-              <Checkbox
-                label="¿Tiene serie?"
-                checked={form.isSerialized}
-                onChange={(checked) => onChange("isSerialized", checked)}
-              />
-              <Checkbox
-                label="Visible"
-                checked={form.visible}
-                onChange={(checked) => onChange("visible", checked)}
-              />
-            </div>
-            <div className="mt-4">
-              <label className="label">Unidad de Medida</label>
-              <Select
-                value={form.unitOfMeasure}
-                onChange={(val) => onChange("unitOfMeasure", val)}
-                options={UNIT_OPTIONS}
-              />
-            </div>
-          </div>
+            <DynamicAttributeBuilder
+              form={form}
+              onChange={handleAttributeChange}
+              isWeighted={form.isWeighted}
+            />
 
           <div className="border-t border-border pt-4">
             <div className="flex justify-between items-center mb-4">
@@ -153,38 +153,41 @@ export function ProductForm({
             <div className="space-y-3">
               {form.presentations.map((pres, index) => (
                 <div key={index} className="bg-surface-50 p-3 rounded space-y-3">
-                  <div className="w-full">
-                    <label className="label text-xs">Nombre</label>
-                    <Input
-                      type="text"
-                      value={pres.name}
-                      onChange={(e) => onUpdatePresentation(index, "name", e.target.value)}
-                      placeholder="Ej. 500ml, 1kg"
-                      required
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="flex gap-3 items-end">
-                    <div className="w-24">
-                      <label className="label text-xs">Factor</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={isNaN(pres.factor) ? "" : pres.factor}
-                        onChange={(e) => onUpdatePresentation(index, "factor", e.target.value === "" ? 0 : parseFloat(e.target.value))}
-                        required
-                      />
+                    <div className="w-full">
+                      <FormField label="Nombre" required>
+                        <Input
+                          type="text"
+                          value={pres.name}
+                          onChange={(e) => onUpdatePresentation(index, "name", e.target.value)}
+                          placeholder="Ej. 500ml, 1kg"
+                          required
+                          className="w-full"
+                        />
+                      </FormField>
                     </div>
-                    <div className="w-32">
-                      <label className="label text-xs">Precio</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={isNaN(pres.price) ? "" : pres.price}
-                        onChange={(e) => onUpdatePresentation(index, "price", e.target.value === "" ? 0 : parseFloat(e.target.value))}
-                        required
-                      />
-                    </div>
+                    <div className="flex gap-3 items-end">
+                      <div className="w-24">
+                        <FormField label="Factor" required>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={isNaN(pres.factor) ? "" : pres.factor}
+                            onChange={(e) => onUpdatePresentation(index, "factor", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                            required
+                          />
+                        </FormField>
+                      </div>
+                      <div className="w-32">
+                        <FormField label="Precio" required>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={isNaN(pres.price) ? "" : pres.price}
+                            onChange={(e) => onUpdatePresentation(index, "price", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                            required
+                          />
+                        </FormField>
+                      </div>
                     <div className="flex items-center pb-1">
                       <Checkbox
                         label="Default"

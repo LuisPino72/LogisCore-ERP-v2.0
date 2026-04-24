@@ -1396,31 +1396,44 @@ try {
       if (!data) throw new Error("No se pudo recuperar el producto creado");
 
       // Preparar presentaciones para inserción masiva
-      const presentationsToInsert = input.presentations.map(pres => ({
-        product_id: data.id,
-        product_local_id: localId,
-        name: pres.name,
-        factor: pres.factor,
-        price: pres.price,
-        is_default: pres.isDefault,
-        barcode: pres.barcode || null,
-        tenant_id: null,
-        tenant_slug: "__global__",
-        created_at: now,
-        updated_at: now
-      }));
+      // Si no hay presentaciones, crear una por defecto para evitar productos "huérfanos" sin variante
+      const presentationsToInsert = input.presentations.length > 0
+        ? input.presentations.map(pres => ({
+            product_id: data.id,
+            product_local_id: localId,
+            name: pres.name,
+            factor: pres.factor,
+            price: pres.price,
+            is_default: pres.isDefault,
+            barcode: pres.barcode || null,
+            tenant_id: null,
+            tenant_slug: "__global__",
+            created_at: now,
+            updated_at: now
+          }))
+        : [{
+            product_id: data.id,
+            product_local_id: localId,
+            name: "Unitario",
+            factor: 1,
+            price: 0,
+            is_default: true,
+            barcode: null,
+            tenant_id: null,
+            tenant_slug: "__global__",
+            created_at: now,
+            updated_at: now
+          }];
 
       let finalPresentations: GlobalProductPresentation[] = [];
 
-      if (presentationsToInsert.length > 0) {
-        const { data: insertedPres, error: presError } = await client
-          .from("product_presentations")
-          .insert(presentationsToInsert)
-          .select();
+      const { data: insertedPres, error: presError } = await client
+        .from("product_presentations")
+        .insert(presentationsToInsert)
+        .select();
 
-        if (presError) throw presError;
-        finalPresentations = insertedPres || [];
-      }
+      if (presError) throw presError;
+      finalPresentations = insertedPres || [];
 
       return ok({
         id: data.id,

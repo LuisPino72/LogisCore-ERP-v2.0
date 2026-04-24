@@ -93,6 +93,55 @@ export interface ProductSizeColorRecord {
   deletedAt?: string;
 }
 
+export interface ProductAttributeRecord {
+  localId: string;
+  tenantId: string;
+  productLocalId: string;
+  name: string;
+  value: string;
+  type: "text" | "number" | "boolean" | "date";
+  displayOrder?: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface ProductVariantRecord {
+  localId: string;
+  tenantId: string;
+  productLocalId: string;
+  skuVariant?: string;
+  nameSuffix?: string;
+  priceAdjustment?: number;
+  cost?: number;
+  stockLevel?: number;
+  stockMin?: number;
+  stockMax?: number;
+  attributeCombination?: string;
+  isDefault?: boolean;
+  isActive?: boolean;
+  weight?: number;
+  barcode?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface ProductSerialRecord {
+  localId: string;
+  tenantId: string;
+  variantLocalId: string;
+  productLocalId: string;
+  serialNumber: string;
+  status: "available" | "sold" | "defective" | "returned" | "in_transit";
+  entryDate?: string;
+  exitDate?: string;
+  lotId?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
 export type StockMovementType =
   | "purchase_in"
   | "sale_out"
@@ -913,7 +962,10 @@ export class LogisCoreDexie extends Dexie {
       invoice_ranges:
         "&localId, tenantId, isActive, createdAt",
       security_audit_log:
-        "&localId, tenantId, userId, eventType, createdAt"
+        "&localId, tenantId, userId, eventType, createdAt",
+      product_attributes: "&localId, tenantId, productLocalId, name, deletedAt",
+      product_variants: "&localId, tenantId, productLocalId, skuVariant, isDefault, deletedAt",
+      product_serials: "&localId, tenantId, variantLocalId, productLocalId, serialNumber, status, deletedAt"
     });
 
     // Nueva versión para introducir stores normalizadas
@@ -1145,7 +1197,7 @@ export class DexieCatalogsDbAdapter {
   constructor(private readonly db: LogisCoreDexie) {}
 
   async bulkPut(
-    table: "categories" | "products" | "product_presentations" | "product_size_colors" | "warehouses",
+    table: "categories" | "products" | "product_presentations" | "product_size_colors" | "warehouses" | "product_attributes" | "product_variants" | "product_serials",
     records: CatalogRecord[]
   ): Promise<void> {
     switch (table) {
@@ -1163,6 +1215,15 @@ export class DexieCatalogsDbAdapter {
         break;
       case "warehouses":
         await this.db.warehouses.bulkPut(records as WarehouseRecord[]);
+        break;
+      case "product_attributes":
+        await this.db.product_attributes.bulkPut(records as ProductAttributeRecord[]);
+        break;
+      case "product_variants":
+        await this.db.product_variants.bulkPut(records as ProductVariantRecord[]);
+        break;
+      case "product_serials":
+        await this.db.product_serials.bulkPut(records as ProductSerialRecord[]);
         break;
     }
   }

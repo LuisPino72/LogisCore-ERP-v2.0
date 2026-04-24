@@ -381,6 +381,16 @@ export interface GlobalProduct {
 }
 
 /**
+ * Atributo de producto global.
+ */
+export interface GlobalProductAttribute {
+  id: string;
+  name: string;
+  type: string;
+  values: string[];
+}
+
+/**
  * Datos para crear un producto global.
  */
 export interface CreateGlobalProductInput {
@@ -398,6 +408,6 @@ export interface CreateGlobalProductInput {
   width?: number | undefined;
   height?: number | undefined;
   visible?: boolean | undefined;
+  attributes: GlobalProductAttribute[];
   presentations: GlobalProductPresentation[];
-  sizeColors?: GlobalProductSizeColor[] | undefined;
 }

@@ -373,6 +373,157 @@ describe("AdminService", () => {
     });
   });
 
+  describe("createGlobalProduct - Variant Auto-Creation (PRO-001)", () => {
+    it("debe crear variante por defecto automáticamente al crear producto global", async () => {
+      const mockProductId = "product-global-123";
+      
+      let capturedPresentationsInsert: unknown[] = [];
+      
+      const supabase: any = {
+        from: vi.fn((table: string) => {
+          if (table === "products") {
+            return {
+              insert: vi.fn(() => ({
+                select: vi.fn(() => ({
+                  single: vi.fn().mockResolvedValue({
+                    data: {
+                      id: mockProductId,
+                      local_id: "local-123",
+                      name: "Camisa Modal",
+                      sku: "CAM-001",
+                      business_type_id: "bt-1",
+                      is_weighted: false,
+                      unit_of_measure: "unidad",
+                      is_taxable: true,
+                      is_serialized: false,
+                      visible: true,
+                      is_global: true,
+                      created_at: "2026-04-24T00:00:00Z",
+                      updated_at: "2026-04-24T00:00:00Z",
+                      business_types: { name: "Tienda" },
+                      categories: null
+                    },
+                    error: null
+                  })
+                }))
+              }))
+            };
+          }
+          if (table === "product_presentations") {
+            return {
+              insert: vi.fn((data) => {
+                capturedPresentationsInsert = data;
+                return {
+                  select: vi.fn().mockResolvedValue({
+                    data: [{ id: "pres-1", ...data[0] }],
+                    error: null
+                  })
+                };
+              })
+            };
+          }
+          return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ is: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue(Promise.resolve({ data: [], error: null })) }) }) }) };
+        })
+      };
+      
+      const eventBus = createEventBusMock();
+      const service = createAdminService({ supabase, eventBus: eventBus as any });
+
+      const result = await service.createGlobalProduct({
+        name: "Camisa Modal",
+        sku: "CAM-001",
+        businessTypeId: "bt-1",
+        presentations: [
+          { name: "Unitario", factor: 1, price: 10.00, isDefault: true }
+        ]
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(capturedPresentationsInsert).toHaveLength(1);
+        expect(capturedPresentationsInsert[0]).toMatchObject({
+          product_id: mockProductId,
+          name: "Unitario",
+          factor: 1,
+          price: 10.00,
+          is_default: true
+        });
+      }
+    });
+
+    it("debe crear variante por defecto cuando NO se proveen presentaciones", async () => {
+      const mockProductId = "product-no-pres-456";
+      let capturedPresentationsInsert: unknown[] = [];
+      
+      const supabase: any = {
+        from: vi.fn((table: string) => {
+          if (table === "products") {
+            return {
+              insert: vi.fn(() => ({
+                select: vi.fn(() => ({
+                  single: vi.fn().mockResolvedValue({
+                    data: {
+                      id: mockProductId,
+                      local_id: "local-456",
+                      name: "Producto Simple",
+                      sku: "PROD-SIMPLE",
+                      business_type_id: "bt-1",
+                      is_weighted: false,
+                      unit_of_measure: "unidad",
+                      is_taxable: true,
+                      is_serialized: false,
+                      visible: true,
+                      is_global: true,
+                      created_at: "2026-04-24T00:00:00Z",
+                      updated_at: "2026-04-24T00:00:00Z"
+                    },
+                    error: null
+                  })
+                }))
+              }))
+            };
+          }
+          if (table === "product_presentations") {
+            return {
+              insert: vi.fn((data) => {
+                capturedPresentationsInsert = data;
+                return {
+                  select: vi.fn().mockResolvedValue({
+                    data: [{ id: "pres-default-1", ...data[0] }],
+                    error: null
+                  })
+                };
+              })
+            };
+          }
+          return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ is: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue(Promise.resolve({ data: [], error: null })) }) }) }) };
+        })
+      };
+      
+      const eventBus = createEventBusMock();
+      const service = createAdminService({ supabase, eventBus: eventBus as any });
+
+      const result = await service.createGlobalProduct({
+        name: "Producto Simple",
+        sku: "PROD-SIMPLE",
+        businessTypeId: "bt-1",
+        presentations: []
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(capturedPresentationsInsert).toHaveLength(1);
+        expect(capturedPresentationsInsert[0]).toMatchObject({
+          product_id: mockProductId,
+          name: "Unitario",
+          factor: 1,
+          price: 0,
+          is_default: true
+        });
+      }
+    });
+  });
+
   describe("listTenants", () => {
     it("lista tenants correctamente con business types", async () => {
       const supabase: any = {

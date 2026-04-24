@@ -323,6 +323,13 @@ export function GlobalCatalogPanel({
     }));
   };
 
+  const updatePresentations = (presentations: GlobalProductPresentation[]) => {
+    setProductForm(prev => ({
+      ...prev,
+      presentations
+    }));
+  };
+
   const filteredCategories = categories.filter(cat => 
     !categorySearch || 
     cat.name.toLowerCase().includes(categorySearch.toLowerCase()) ||
@@ -441,21 +448,22 @@ export function GlobalCatalogPanel({
               title={editingProduct ? "Editar Producto" : "Nuevo Producto Global"}
               size="lg"
             >
-              <ProductForm
-                form={productForm}
-                businessTypes={businessTypes}
-                categories={categories}
-                isEditing={!!editingProduct}
-                onChange={(field, value) => setProductForm(prev => ({ ...prev, [field]: value }))}
-                onAddPresentation={addPresentation}
-                onRemovePresentation={removePresentation}
-                onUpdatePresentation={updatePresentation}
-                onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
-                onCancel={() => {
-                  setShowProductForm(false);
-                  setEditingProduct(null);
-                }}
-              />
+               <ProductForm
+                 form={productForm}
+                 businessTypes={businessTypes}
+                 categories={categories}
+                 isEditing={!!editingProduct}
+                 onChange={(field, value) => setProductForm(prev => ({ ...prev, [field]: value }))}
+                 onAddPresentation={addPresentation}
+                 onRemovePresentation={removePresentation}
+                 onUpdatePresentation={updatePresentation}
+                 onUpdatePresentations={updatePresentations}
+                 onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
+                 onCancel={() => {
+                   setShowProductForm(false);
+                   setEditingProduct(null);
+                 }}
+               />
             </Modal>
           )}
 
