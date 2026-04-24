@@ -324,29 +324,31 @@ export function TenantForm({
       };
     }
     
-    const existingEmployeesWithChanges = formData.existingEmployees
-      .filter(e => e.action !== "update" || e.fullName !== undefined)
-      .map(e => {
-        const emp: EmployeeManagement = {
-          email: e.email || "",
-          fullName: e.fullName || "",
-          action: e.action,
-          userId: e.userId || "",
-          isActive: e.isActive
-        };
-        return emp;
-      });
+const existingEmployeesWithChanges = formData.existingEmployees
+  .filter(e => e.action !== "update" || e.fullName !== undefined)
+  .map(e => {
+    const emp: EmployeeManagement = {
+      email: e.email || "",
+      fullName: e.fullName || "",
+      action: e.action,
+      userId: e.userId || "",
+      isActive: e.isActive,
+      permissions: e.permissions || []
+    };
+    return emp;
+  });
     
-    const newEmployeesToCreate = formData.employees
-      .filter(e => e.email && e.password && e.fullName)
-      .map(e => ({
-        email: e.email || "",
-        password: e.password || "",
-        fullName: e.fullName || "",
-        action: "create" as const,
-        userId: "",
-        isActive: true
-      }));
+const newEmployeesToCreate = formData.employees
+  .filter(e => e.email && e.password && e.fullName)
+  .map(e => ({
+    email: e.email || "",
+    password: e.password || "",
+    fullName: e.fullName || "",
+    action: "create" as const,
+    userId: "",
+    isActive: true,
+    permissions: e.permissions || []
+  }));
     
     const deletedEmployees = deletedEmployeeIds.map(userId => ({
       email: "",

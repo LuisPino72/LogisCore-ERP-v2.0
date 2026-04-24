@@ -223,6 +223,7 @@ export interface UpdateUserInput {
   fullName?: string | undefined;
   role?: "owner" | "employee";
   isActive?: boolean;
+  permissions?: string[];
 }
 
 /**

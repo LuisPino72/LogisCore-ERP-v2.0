@@ -962,13 +962,14 @@ try {
     });
   };
 
-  const updateUser: AdminService["updateUser"] = async (userId, input) => {
-    const updateData: Record<string, unknown> = {};
-    if (input.fullName !== undefined) updateData.full_name = input.fullName;
-    if (input.role !== undefined) updateData.role = input.role;
-    if (input.isActive !== undefined) updateData.is_active = input.isActive;
+const updateUser: AdminService["updateUser"] = async (userId, input) => {
+  const updateData: Record<string, unknown> = {};
+  if (input.fullName !== undefined) updateData.full_name = input.fullName;
+  if (input.role !== undefined) updateData.role = input.role;
+  if (input.isActive !== undefined) updateData.is_active = input.isActive;
+  if (input.permissions !== undefined) updateData.permissions = input.permissions;
 
-    const result = await supabase.from("user_roles").update(updateData).eq("user_id", userId).select("*, tenants(name)").single();
+  const result = await supabase.from("user_roles").update(updateData).eq("user_id", userId).select("*, tenants(name)").single();
     if (result.error) {
       return err(createAppError({
         code: "ADMIN_UPDATE_USER_FAILED",
