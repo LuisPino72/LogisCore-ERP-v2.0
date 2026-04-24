@@ -1173,11 +1173,14 @@ export class LogisCoreDexie extends Dexie {
             await (tx.table("production_ingredients") as unknown as { bulkPut(rows: unknown[]): Promise<void> }).bulkPut(ingr);
           }
         }
-       } catch (err) {
-         console.error("Dexie migration (production_logs) failed:", err);
-       }
-    });
-  }
+    } catch (err) {
+      console.error("Dexie migration (production_logs) failed:", err);
+    }
+  });
+
+    // Versión 16: Incremento de versión para resolver warning de schema extendido
+    this.version(16).stores({});
+}
 }
 
 export class DexieCoreDbAdapter implements CoreDb {
