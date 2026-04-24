@@ -1278,60 +1278,72 @@ try {
   // ========== PRODUCTOS GLOBALES ==========
   const listGlobalProducts: AdminService["listGlobalProducts"] = async (businessTypeId) => {
     try {
-      let query = supabase
+      let productsQuery = supabase
         .from("products")
-        .select("*, business_types(name), categories(name), product_presentations(*)")
+        .select("*, business_types(name), categories(name)")
         .eq("is_global", true)
         .is("deleted_at", null)
         .order("name", { ascending: true });
 
       if (businessTypeId) {
-        query = query.eq("business_type_id", businessTypeId);
+        productsQuery = productsQuery.eq("business_type_id", businessTypeId);
       }
 
-      const { data: productsData, error } = await query;
+      const { data: productsData, error } = await productsQuery;
 
       if (error) throw error;
+      if (!productsData || productsData.length === 0) {
+        return ok([]);
+      }
 
-      const products: GlobalProduct[] = (productsData || []).map((product: Record<string, unknown>) => {
-        const presentationsRaw = (product.product_presentations as Record<string, unknown>[] | null) || [];
-        const presentations = presentationsRaw
-          .filter((p) => !p.deleted_at)
-          .map((p: Record<string, unknown>) => ({
-            id: p.id as string,
-            name: p.name as string,
-            factor: Number(p.factor),
-            price: Number(p.price),
-            isDefault: p.is_default as boolean,
-            barcode: p.barcode as string | undefined
-          }));
+      const productIds = productsData.map(p => p.id);
 
-        return {
-          id: product.id as string,
-          localId: product.local_id as string,
-          name: product.name as string,
-          sku: product.sku as string,
-          description: product.description as string | undefined,
-          businessTypeId: product.business_type_id as string,
-          businessTypeName: (product.business_types as { name: string } | null)?.name || "",
-          categoryId: product.category_id as string | undefined,
-          categoryName: (product.categories as { name: string } | null)?.name || undefined,
-          isWeighted: product.is_weighted as boolean,
-          unitOfMeasure: (product.unit_of_measure as string) || "unidad",
-          isTaxable: product.is_taxable as boolean,
-          isSerialized: product.is_serialized as boolean,
-          weight: product.weight as number | undefined,
-          length: product.length as number | undefined,
-          width: product.width as number | undefined,
-          height: product.height as number | undefined,
-          visible: product.visible as boolean,
-          defaultPresentationId: product.default_presentation_id as string | undefined,
-          presentations,
-          sizeColors: [],
-          createdAt: product.created_at as string,
-          updatedAt: product.updated_at as string
-        };
-      });
+      const { data: presentationsData } = await supabase
+        .from("product_presentations")
+        .select("*")
+        .in("product_id", productIds)
+        .is("deleted_at", null);
+
+      const presentationsMap = (presentationsData || []).reduce((acc, pres) => {
+        if (!acc[pres.product_id]) {
+          acc[pres.product_id] = [];
+        }
+        acc[pres.product_id].push({
+          id: pres.id,
+          name: pres.name,
+          factor: Number(pres.factor),
+          price: Number(pres.price),
+          isDefault: pres.is_default,
+          barcode: pres.barcode || undefined
+        });
+        return acc;
+      }, {} as Record<string, { id: string; name: string; factor: number; price: number; isDefault: boolean; barcode?: string }[]>);
+
+      const products: GlobalProduct[] = productsData.map((product) => ({
+        id: product.id as string,
+        localId: product.local_id as string,
+        name: product.name as string,
+        sku: product.sku as string,
+        description: product.description as string | undefined,
+        businessTypeId: product.business_type_id as string,
+        businessTypeName: (product.business_types as { name: string } | null)?.name || "",
+        categoryId: product.category_id as string | undefined,
+        categoryName: (product.categories as { name: string } | null)?.name || undefined,
+        isWeighted: product.is_weighted as boolean,
+        unitOfMeasure: (product.unit_of_measure as string) || "unidad",
+        isTaxable: product.is_taxable as boolean,
+        isSerialized: product.is_serialized as boolean,
+        weight: product.weight as number | undefined,
+        length: product.length as number | undefined,
+        width: product.width as number | undefined,
+        height: product.height as number | undefined,
+        visible: product.visible as boolean,
+        defaultPresentationId: product.default_presentation_id as string | undefined,
+        presentations: presentationsMap[product.id] || [],
+        sizeColors: [],
+        createdAt: product.created_at as string,
+        updatedAt: product.updated_at as string
+      }));
 
       return ok(products);
     } catch (error) {
@@ -1456,7 +1468,7 @@ try {
     try {
       const now = new Date().toISOString();
 
-      // Actualizar producto y obtener datos relacionados en una sola operación
+      // Actualizar producto
       const { data, error: productError } = await client
         .from("products")
         .update({
@@ -1483,40 +1495,105 @@ try {
       if (productError) throw productError;
       if (!data) throw new Error("No se pudo recuperar el producto actualizado");
 
-      // Soft delete presentaciones existentes
-      const { error: deleteError } = await client
+      // Obtener presentaciones actuales en la DB
+      const { data: currentPres } = await client
         .from("product_presentations")
-        .update({ deleted_at: now })
-        .eq("product_local_id", data.local_id);
-      
-      if (deleteError) throw deleteError;
+        .select("*")
+        .eq("product_id", id)
+        .is("deleted_at", null);
 
-      // Preparar nuevas presentaciones para inserción masiva
-      // Usamos nuevos IDs para evitar conflictos con los registros soft-deleted
-      const presentationsToInsert = input.presentations.map(pres => ({
-        product_local_id: data.local_id,
-        name: pres.name,
-        factor: pres.factor,
-        price: pres.price,
-        is_default: pres.isDefault,
-        barcode: pres.barcode || null,
-        tenant_id: null,
-        tenant_slug: "__global__",
-        created_at: now,
-        updated_at: now
-      }));
+      const dbPresentations = currentPres || [];
+      const formPresentations = input.presentations;
 
-      let finalPresentations: GlobalProductPresentation[] = [];
+      const formPresById = new Map(
+        formPresentations.filter(p => p.id).map(p => [p.id!, p])
+      );
 
-      if (presentationsToInsert.length > 0) {
-        const { data: insertedPres, error: presError } = await client
-          .from("product_presentations")
-          .insert(presentationsToInsert)
-          .select();
+      const toUpdate: string[] = [];
+      const toInsert: typeof formPresentations = [];
+      const toDelete: string[] = [];
 
-        if (presError) throw presError;
-        finalPresentations = insertedPres || [];
+      for (const dbPres of dbPresentations) {
+        const formPres = formPresById.get(dbPres.id);
+        if (!formPres) {
+          toDelete.push(dbPres.id);
+        } else {
+          const hasChanged =
+            formPres.name !== dbPres.name ||
+            Number(formPres.factor) !== Number(dbPres.factor) ||
+            Number(formPres.price) !== Number(dbPres.price) ||
+            formPres.isDefault !== dbPres.is_default ||
+            (formPres.barcode || null) !== dbPres.barcode;
+
+          if (hasChanged) toUpdate.push(dbPres.id);
+        }
       }
+
+      for (const formPres of formPresentations) {
+        if (!formPres.id) {
+          toInsert.push(formPres);
+        }
+      }
+
+      const ops: Promise<unknown>[] = [];
+
+      if (toDelete.length > 0) {
+        ops.push(
+          client
+            .from("product_presentations")
+            .update({ deleted_at: now })
+            .in("id", toDelete)
+        );
+      }
+
+      for (const dbPres of dbPresentations) {
+        if (toUpdate.includes(dbPres.id)) {
+          const formPres = formPresById.get(dbPres.id)!;
+          ops.push(
+            client
+              .from("product_presentations")
+              .update({
+                name: formPres.name,
+                factor: formPres.factor,
+                price: formPres.price,
+                is_default: formPres.isDefault,
+                barcode: formPres.barcode || null,
+                updated_at: now
+              })
+              .eq("id", dbPres.id)
+          );
+        }
+      }
+
+      if (toInsert.length > 0) {
+        ops.push(
+          client
+            .from("product_presentations")
+            .insert(
+              toInsert.map(pres => ({
+                product_id: data.id,
+                product_local_id: data.local_id,
+                name: pres.name,
+                factor: pres.factor,
+                price: pres.price,
+                is_default: pres.isDefault,
+                barcode: pres.barcode || null,
+                tenant_id: null,
+                tenant_slug: "__global__",
+                created_at: now,
+                updated_at: now
+              }))
+            )
+        );
+      }
+
+      await Promise.all(ops);
+
+      const { data: finalPres } = await client
+        .from("product_presentations")
+        .select("*")
+        .eq("product_id", id)
+        .is("deleted_at", null);
 
       return ok({
         id: data.id,
@@ -1538,12 +1615,12 @@ try {
         height: data.height || undefined,
         visible: data.visible,
         defaultPresentationId: data.default_presentation_id || undefined,
-        presentations: finalPresentations.map((p): GlobalProductPresentation => ({
+        presentations: (finalPres || []).map((p): GlobalProductPresentation => ({
           id: p.id as string,
           name: p.name as string,
-          factor: p.factor as number,
-          price: p.price as number,
-          isDefault: p.isDefault as boolean,
+          factor: Number(p.factor),
+          price: Number(p.price),
+          isDefault: p.is_default as boolean,
           barcode: (p.barcode as string) || undefined
         })),
         sizeColors: [],

@@ -262,8 +262,9 @@ export function GlobalCatalogPanel({
       isTaxable: product.isTaxable,
       isSerialized: product.isSerialized,
       visible: product.visible,
-      presentations: product.presentations.length > 0 
+      presentations: product.presentations.length > 0
         ? product.presentations.map(p => ({
+            id: p.id,
             name: p.name,
             factor: p.factor,
             price: p.price,
