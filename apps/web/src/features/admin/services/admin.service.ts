@@ -1044,6 +1044,23 @@ const updateUser: AdminService["updateUser"] = async (userId, input) => {
         }));
       }
 
+      const edgeUrl = import.meta.env.VITE_SUPABASE_URL;
+      const edgeToken = await getAuthToken(supabase);
+      if (edgeUrl && edgeToken) {
+        await fetch(`${edgeUrl}/functions/v1/admin-manage-tenant`, {
+          method: "POST",
+          headers: getEdgeAuthHeaders(edgeToken, {
+            actionContext: PERMISSIONS.ADMIN.USERS,
+            userPermissions: []
+          }),
+          body: JSON.stringify({
+            action: "delete_auth_user",
+            tenantId,
+            userId
+          })
+        });
+      }
+
       eventBus.emit("ADMIN.USER_DELETED", { tenantId, userId });
       return ok(undefined);
     } catch (error) {
