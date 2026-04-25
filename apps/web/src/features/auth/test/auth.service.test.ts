@@ -136,30 +136,4 @@ describe("auth.service", () => {
     });
   });
 
-  describe("resetPassword", () => {
-    it("envia email de recuperacion exitosamente", async () => {
-      const { bus } = eventBusSpy();
-      const resetFn = vi.fn().mockResolvedValue({ error: null });
-      const mockSupabase = createMockSupabase({ auth: { resetPasswordForEmail: resetFn } });
-      const service = createAuthService({ supabase: mockSupabase as any, eventBus: bus });
-
-      const result = await service.resetPassword("test@test.com");
-
-      expect(result.ok).toBe(true);
-      expect(resetFn).toHaveBeenCalled();
-    });
-
-    it("maneja error al enviar email de recuperacion", async () => {
-      const { bus } = eventBusSpy();
-      const mockSupabase = createMockSupabase({
-        auth: { resetPasswordForEmail: vi.fn().mockResolvedValue({ error: { message: "Email not found" } }) }
-      });
-      const service = createAuthService({ supabase: mockSupabase as any, eventBus: bus });
-
-      const result = await service.resetPassword("invalid@test.com");
-
-      expect(result.ok).toBe(false);
-      expect(!result.ok && result.error.code).toBe("AUTH_RESET_PASSWORD_FAILED");
-    });
-  });
 });

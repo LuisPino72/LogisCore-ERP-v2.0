@@ -25,6 +25,12 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
   const [deletingRule, setDeletingRule] = useState<{ name: string; index: number } | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
 
+  const taxTypeOptions = [
+    { label: "IVA", value: "iva" },
+    { label: "ISLR", value: "islr" },
+    { label: "IGTF", value: "igtf" },
+  ];
+
   if (config && !configLoaded) {
     setFormData({ globalTaxRules: config.globalTaxRules || [] });
     setConfigLoaded(true);
@@ -110,13 +116,10 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
                   <label className="label text-xs">Tipo</label>
                   <Select
                     className="input-sm"
+                    options={taxTypeOptions}
                     value={newTax.type}
                     onChange={value => setNewTax({ ...newTax, type: value as "iva" | "islr" | "igtf" })}
-                  >
-                    <option value="iva">IVA</option>
-                    <option value="islr">ISLR</option>
-                    <option value="igtf">IGTF</option>
-                  </Select>
+                  />
                 </div>
                 <Button type="button" onClick={addTaxRule} variant="secondary" size="sm" className="h-[40px]">
                   Añadir Regla

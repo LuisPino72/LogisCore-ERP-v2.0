@@ -81,6 +81,11 @@ export function TenantBootstrapGate({
 
   const handleAccessTenant = (tenant: Tenant) => {
     setImpersonatedTenantSlug(tenant.slug);
+    
+    // IMPORTANT: Populate tenantTranslator cache so sync works immediately for impersonated tenant
+    import("@/lib/sync/tenant-translator").then(({ tenantTranslator }) => {
+      void tenantTranslator.fetchTenantUuid(tenant.slug);
+    });
   };
 
   // Mostrar estado de verificación mientras carga la sesión

@@ -32,9 +32,9 @@ const TRANSLATIONAL_TABLES = new Set([
   "products",
   "product_presentations",
   "suppliers",
-  "warehouses",
-  "users",
-  "user_roles"
+  "warehouses"
+
+
 ]);
 
 const isTranslationRequired = (table: string): boolean => {

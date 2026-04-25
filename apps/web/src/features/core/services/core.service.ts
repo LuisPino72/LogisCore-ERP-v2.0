@@ -158,8 +158,28 @@ export const createCoreService = ({
       .select("id, slug, name, business_type_id")
       .eq("owner_user_id", userId)
       .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
+    
+    // Bypass for admins who don't own a tenant but need to bootstrap
+    if (!tenantQuery.data) {
+      const roleResult = await supabaseClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle<{ role: string }>();
+
+      if (roleResult.data?.role === "admin") {
+        return ok({
+          tenantUuid: "__global__",
+          tenantSlug: "__global__",
+          tenantName: "Global Admin",
+          userId,
+          businessTypeId: undefined
+        });
+      }
+    }
 
     if (tenantQuery.error || !tenantQuery.data) {
+
       return err(
         createAppError({
           code: "TENANT_RESOLVE_FAILED",

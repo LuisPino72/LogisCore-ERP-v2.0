@@ -25,6 +25,12 @@ const createDbMock = (initialStockMovements: StockMovementRecord[] = []): Produc
     async createRecipe(recipe) {
       recipes.set(recipe.localId, recipe);
     },
+    async createRecipeVersion(version) {
+      // Mock versioning
+    },
+    async createRecipeIngredientsVersion(ingredients) {
+      // Mock ingredients versioning
+    },
     async listRecipes(tenantId) {
       return [...recipes.values()].filter((item) => item.tenantId === tenantId);
     },
