@@ -22,6 +22,11 @@ coverage/
 .env.example
 opencode.json
 
+# Certificates and Keys (SENSITIVE)
+*.pem
+*.crt
+*.key
+
 # Scripts locales y utilidades temporales
 
 # Logs
