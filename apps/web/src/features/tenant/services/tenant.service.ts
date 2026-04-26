@@ -5,6 +5,7 @@
  */
 
 import { createAppError, err, ok, type AppError, type EventBus, type Result, globalAsyncLock } from "@logiscore/core";
+import { decodeJwtPayload } from "@/lib/auth/jwt-helper";
 import type {
   RolePermissions,
   TenantBootstrapResult,
@@ -168,6 +169,9 @@ export const createTenantService = ({
   };
 
     const resolveUserRole: TenantService["resolveUserRole"] = async (userId) => {
+    await supabase.auth.getSession();
+    // v10 Optimization: JWT Claims check skipped here as we need full permissions from DB anyway
+
     const roleQuery = await supabase
       .from("user_roles")
       .select("role, permissions, email, full_name, last_login_at, is_active, tenant_id")
@@ -358,6 +362,10 @@ export const createTenantService = ({
       let tenantName: string | null = null;
       let businessTypeId: string | undefined = undefined;
 
+      const sessionResponse = await supabase.auth.getSession();
+      const token = sessionResponse.data.session?.access_token;
+      const claims = token ? decodeJwtPayload(token) : null;
+
       const ownerQuery = await supabase
         .from("tenants")
         .select("id, slug, name, business_type_id")
@@ -369,26 +377,19 @@ export const createTenantService = ({
         tenantId = ownerQuery.data.id;
         tenantName = ownerQuery.data.name;
         businessTypeId = ownerQuery.data.business_type_id ?? undefined;
-      } else {
-        const roleQuery = await supabase
-          .from("user_roles")
-          .select("tenant_id")
-          .eq("user_id", userId)
-          .maybeSingle<{ tenant_id: string }>();
+      } else if (claims?.tenant_id) {
+        // Optimización v10: Usar tenant_id del JWT si no es el owner
+        tenantId = claims.tenant_id;
+        const tenantByIdQuery = await supabase
+          .from("tenants")
+          .select("id, slug, name, business_type_id")
+          .eq("id", tenantId)
+          .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
 
-        if (roleQuery.data?.tenant_id) {
-          const tenantByIdQuery = await supabase
-            .from("tenants")
-            .select("id, slug, name, business_type_id")
-            .eq("id", roleQuery.data.tenant_id)
-            .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
-
-          if (tenantByIdQuery.data) {
-            tenantSlug = tenantByIdQuery.data.slug;
-            tenantId = tenantByIdQuery.data.id;
-            tenantName = tenantByIdQuery.data.name;
-            businessTypeId = tenantByIdQuery.data.business_type_id ?? undefined;
-          }
+        if (tenantByIdQuery.data) {
+          tenantSlug = tenantByIdQuery.data.slug;
+          tenantName = tenantByIdQuery.data.name;
+          businessTypeId = tenantByIdQuery.data.business_type_id ?? undefined;
         }
       }
 

@@ -78,6 +78,12 @@ const createSupabaseMock = ({
         error: { message: "RPC_NOT_MOCKED" }
       });
     }),
+    auth: {
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { access_token: "mock-token" } },
+        error: null
+      })
+    },
     functions: {
       invoke: vi.fn((_fn: string, _options?: { body?: unknown }) => {
         return Promise.resolve({
