@@ -325,7 +325,7 @@ export const createAdminService = ({
     }
     
     try {
-const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-tenant`, {
+const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/admin-create-tenant`, {
         method: "POST",
         headers: getEdgeAuthHeaders(authToken, {
           actionContext: PERMISSIONS.ADMIN.USERS,
@@ -766,7 +766,7 @@ try {
     }
 
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/manage-subscription`, {
+      const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/manage-subscription`, {
         method: "POST",
         headers: getEdgeAuthHeaders(authToken, {
           actionContext: PERMISSIONS.ADMIN.SUBSCRIPTION,
@@ -808,7 +808,7 @@ try {
     }
 
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/manage-subscription`, {
+      const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/manage-subscription`, {
         method: "POST",
         headers: getEdgeAuthHeaders(authToken, {
           actionContext: PERMISSIONS.ADMIN.SUBSCRIPTION,
@@ -1047,7 +1047,7 @@ const updateUser: AdminService["updateUser"] = async (userId, input) => {
       const edgeUrl = import.meta.env.VITE_SUPABASE_URL;
       const edgeToken = await getAuthToken(supabase);
       if (edgeUrl && edgeToken) {
-        await fetch(`${edgeUrl}/functions/v1/admin-manage-tenant`, {
+        await fetch(`${edgeUrl.replace(/\/$/, '')}/functions/v1/admin-manage-tenant`, {
           method: "POST",
           headers: getEdgeAuthHeaders(edgeToken, {
             actionContext: PERMISSIONS.ADMIN.USERS,
@@ -1740,7 +1740,7 @@ const updateUser: AdminService["updateUser"] = async (userId, input) => {
 
     try {
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/admin-audit-logs?limit=${limit}&offset=${offset}`,
+        `${supabaseUrl.replace(/\/$/, '')}/functions/v1/admin-audit-logs?limit=${limit}&offset=${offset}`,
         {
           method: "GET",
           headers: getEdgeAuthHeaders(authToken)
