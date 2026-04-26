@@ -74,6 +74,8 @@ memoria/
 .opencode-instructions.md
 pre-commit
 .husky
+performance-bodeguero-workspace/
+sync-guardian-workspace/
 
 # Código Generado
 **/generated/
