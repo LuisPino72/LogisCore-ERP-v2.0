@@ -6,6 +6,7 @@
 
 import { createAppError, err, ok, type AppError, type CoreDb, type EventBus, type Result, type SyncEngine, type SyncStatus } from "@logiscore/core";
 import type { TenantContext } from "../types/core.types";
+import type { TaxRuleRecord } from "@/lib/db/dexie";
 
 interface SupabaseSessionResponse {
   data: { session: { user: { id: string } } | null };
@@ -65,6 +66,7 @@ interface CatalogRecord {
 
 interface CatalogsDb {
   bulkPut(table: "categories" | "products" | "product_presentations" | "product_size_colors" | "warehouses", records: CatalogRecord[]): Promise<void>;
+  bulkPut(table: "tax_rules", records: TaxRuleRecord[]): Promise<void>;
 }
 
 export interface CoreService {
@@ -389,7 +391,8 @@ export const createCoreService = ({
 
       return {
         presentations: presentationsResponse.data || [],
-        sizeColors: sizeColorsResponse.data || []
+        sizeColors: sizeColorsResponse.data || [],
+        warehouses: []
       };
     };
 
@@ -406,12 +409,24 @@ export const createCoreService = ({
       return { data: [], error: null };
     };
 
+    const fetchTaxRules = async () => {
+      if (!tenantId) {
+        return { data: [], error: null };
+      }
+
+      const tenantResponse = await supabaseAny.from("tax_rules").select("*").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: true });
+
+      return { data: tenantResponse.data || [], error: tenantResponse.error };
+    };
+
     const tables = [
       { name: "categories", fetch: fetchCategories },
       { name: "products", fetch: fetchProducts },
       { name: "product_presentations", fetch: async () => ({ data: (await fetchRelatedData()).presentations, error: null }) },
       { name: "product_size_colors", fetch: async () => ({ data: (await fetchRelatedData()).sizeColors, error: null }) },
-      { name: "warehouses", fetch: fetchWarehouses }
+      { name: "warehouses", fetch: fetchWarehouses },
+      // NUEVO: Para cumplimiento fiscal (FISCAL-002)
+      { name: "tax_rules", fetch: fetchTaxRules }
     ];
 
     const results = await Promise.all(tables.map(t => t.fetch()));
@@ -466,6 +481,17 @@ export const createCoreService = ({
             record.tenantId = tenantSlug;
             record.isGlobal = false;
           }
+        } else if (tableName === "tax_rules") {
+          record.localId = row.local_id as string;
+          record.name = row.name as string;
+          record.tenantId = tenantSlug;
+          if (row.rate !== undefined) (record as Record<string, unknown>).rate = Number(row.rate);
+          if (row.type) (record as Record<string, unknown>).type = row.type as string;
+          if (row.is_withholding !== undefined) (record as Record<string, unknown>).isWithholding = row.is_withholding as boolean;
+          if (row.is_active !== undefined) (record as Record<string, unknown>).isActive = row.is_active as boolean;
+          if (row.jurisdiction) (record as Record<string, unknown>).jurisdiction = row.jurisdiction as string;
+          if (row.efectivo_desde) (record as Record<string, unknown>).efectivoDesde = row.efectivo_desde as string;
+          if (row.efectivo_hasta) (record as Record<string, unknown>).efectivoHasta = row.efectivo_hasta as string;
         } else {
           record.localId = row.local_id as string;
           record.name = row.name as string;
@@ -476,7 +502,11 @@ export const createCoreService = ({
       });
 
       if (records.length > 0) {
-        await catalogsDb.bulkPut(tableName as "categories" | "products" | "product_presentations" | "product_size_colors" | "warehouses", records);
+        if (tableName === "tax_rules") {
+          await catalogsDb.bulkPut(tableName, records as unknown as TaxRuleRecord[]);
+        } else {
+          await catalogsDb.bulkPut(tableName as "categories" | "products" | "product_presentations" | "product_size_colors" | "warehouses", records);
+        }
       }
     }
 

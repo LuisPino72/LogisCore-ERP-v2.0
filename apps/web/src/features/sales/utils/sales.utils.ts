@@ -43,14 +43,14 @@ export const calculateSubtotal = (items: SaleItem[]): number => {
   return roundMoney(items.reduce((acc, item) => acc + item.unitPrice * item.qty, 0));
 };
 
-export const calculateIVA = (subtotal: number, ivaRate: number = 0.16): number => {
+export const calculateIVA = (subtotal: number, ivaRate: number): number => {
   return roundMoney(subtotal * ivaRate);
 };
 
 export const calculateIGTF = (
   payments: SalePayment[],
   exchangeRate: number,
-  igtfRate: number = 0.03
+  igtfRate: number
 ): number => {
   const foreignPayments = payments.filter(p => p.currency === "USD");
   const foreignTotal = foreignPayments.reduce((sum, p) => sum + p.amount, 0);

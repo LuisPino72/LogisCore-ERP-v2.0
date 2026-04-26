@@ -6,6 +6,7 @@ import type {
   SyncQueueItem,
   SyncStorage
 } from "@logiscore/core";
+import type { TaxRuleDb, TaxRule } from "@/features/core/services/tax-rule.service";
 
 interface SyncQueueEntity extends SyncQueueItem {
   status: "pending";
@@ -75,6 +76,19 @@ export interface WarehouseRecord {
   tenantId: string;
   name: string;
   code?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface TaxRuleRecord {
+  localId: string;
+  tenantId: string;
+  name: string;
+  rate: number;
+  type: "iva" | "islr" | "igtf";
+  isWithholding: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1178,12 +1192,17 @@ export class LogisCoreDexie extends Dexie {
     }
   });
 
-    // Versión 16: Incremento de versión para resolver warning de schema extendido
+// Versión 16: Incremento de versión para resolver warning de schema extendido
     this.version(16).stores({});
-}
+
+    // Versión 17: Añadir tax_rules para cumplimiento fiscal (FISCAL-002)
+    this.version(17).stores({
+      tax_rules: "&localId, tenantId, type, isActive, createdAt"
+    });
+  }
 }
 
-export class DexieCoreDbAdapter implements CoreDb {
+export class DexieCoreDbAdapter implements CoreDb, TaxRuleDb {
   constructor(private readonly db: LogisCoreDexie) {}
 
   async saveBootstrapState(state: CoreBootstrapState): Promise<void> {
@@ -1193,6 +1212,28 @@ export class DexieCoreDbAdapter implements CoreDb {
   async getBootstrapState(id: string): Promise<CoreBootstrapState | null> {
     const state = await this.db.bootstrap_state.get(id);
     return state ?? null;
+  }
+
+  async getActiveTaxRules(tenantId: string): Promise<TaxRule[]> {
+    const rules = await this.db.tax_rules
+      .where({ tenantId, isActive: true })
+      .toArray();
+    
+    return rules.map(rule => ({
+      localId: rule.localId,
+      tenantId: rule.tenantId,
+      name: rule.name,
+      rate: rule.rate,
+      type: rule.type as "iva" | "islr" | "igtf",
+      isWithholding: rule.isWithholding,
+      isActive: rule.isActive,
+      jurisdiction: rule.jurisdiction,
+      efectivoDesde: rule.efectiveDesde,
+      efectivoHasta: rule.efectiveHasta,
+      createdAt: rule.createdAt,
+      updatedAt: rule.updatedAt,
+      deletedAt: rule.deletedAt
+    }));
   }
 }
 
@@ -1225,9 +1266,12 @@ export class DexieCatalogsDbAdapter {
       case "product_variants":
         await this.db.product_variants.bulkPut(records as ProductVariantRecord[]);
         break;
-      case "product_serials":
-        await this.db.product_serials.bulkPut(records as ProductSerialRecord[]);
-        break;
+case "product_serials":
+          await this.db.product_serials.bulkPut(records as ProductSerialRecord[]);
+          break;
+      case "tax_rules":
+          await this.db.tax_rules.bulkPut(records as TaxRuleRecord[]);
+          break;
     }
   }
 }

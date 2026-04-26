@@ -4,6 +4,7 @@ import { supabase as supabaseClient } from "@/lib/supabase/client";
 import type { ProductsSupabaseLike } from "./products.service";
 import { DexieProductsDbAdapter } from "./products.db.adapter";
 import { createProductsService } from "./products.service";
+import { taxRuleService } from "@/features/core/services/core.service.instance";
 
 const supabase: ProductsSupabaseLike | null = supabaseClient
   ? {
@@ -19,5 +20,6 @@ export const productsService = createProductsService({
   db: new DexieProductsDbAdapter(),
   syncEngine,
   eventBus,
-  supabase
+  supabase,
+  taxRuleService
 });

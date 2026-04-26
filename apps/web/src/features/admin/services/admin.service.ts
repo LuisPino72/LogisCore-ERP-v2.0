@@ -1116,13 +1116,21 @@ const updateUser: AdminService["updateUser"] = async (userId, input) => {
   };
 
   const getGlobalConfig: AdminService["getGlobalConfig"] = async () => {
-    const result = await supabase.from("global_config").select("*").order("updated_at", { ascending: false }).limit(1).single();
+    const result = await supabase.from("global_config").select("*").order("updated_at", { ascending: false }).limit(1).maybeSingle();
     if (result.error) {
       return err(createAppError({
         code: "ADMIN_GET_CONFIG_FAILED",
         message: result.error.message,
         retryable: true
       }));
+    }
+
+    if (!result.data) {
+      return ok({
+        id: "",
+        globalTaxRules: [],
+        updatedAt: new Date().toISOString()
+      });
     }
 
     return ok({
@@ -1140,13 +1148,19 @@ const updateUser: AdminService["updateUser"] = async (userId, input) => {
     const configResult = await getGlobalConfig();
     if (!configResult.ok) return err(configResult.error);
 
-    const result = await supabase.from("global_config").update(updateData).eq("id", configResult.data.id).select().single();
+    const result = await supabase.from("global_config").update(updateData).eq("id", configResult.data.id).select().maybeSingle();
     if (result.error) {
       return err(createAppError({
         code: "ADMIN_UPDATE_CONFIG_FAILED",
         message: result.error.message,
         retryable: false
       }));
+    }
+
+    // Propagate global tax rules to all tenants
+    const propagationResult = await propagateGlobalTaxRulesToTenants(input.globalTaxRules);
+    if (!propagationResult.ok) {
+      return propagationResult;
     }
 
     return ok({
@@ -1803,4 +1817,62 @@ const updateUser: AdminService["updateUser"] = async (userId, input) => {
     updateGlobalProduct,
     deleteGlobalProduct
   };
+
+  const propagateGlobalTaxRulesToTenants = async (
+    rules: GlobalConfig["globalTaxRules"]
+  ): Promise<Result<void, AppError>> => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const authToken = await getAuthToken(supabase);
+
+    if (!supabaseUrl || !authToken) {
+      return err(createAppError({
+        code: "TAX_RULE_PROPAGATION_FAILED",
+        message: "Sesión admin inválida o expirada. Vuelve a iniciar sesión.",
+        retryable: false
+      }));
+    }
+
+    try {
+      // 1. Obtener todos los tenants activos
+      const { data: tenants } = await supabase
+        .from("tenants")
+        .select("id")
+        .eq("is_active", true)
+        .is("deleted_at", null);
+
+      if (!tenants || tenants.length === 0) {
+        return ok(void 0); // No hay tenants, nada que propagar
+      }
+
+      // 2. Para cada tenant, hacer UPSERT de las reglas
+      for (const tenant of tenants) {
+        const rows = rules.map(rule => ({
+          tenant_id: tenant.id,           // UUID del tenant
+          name: rule.name,                // "IVA 16%"
+          rate: rule.rate,                // 16
+          type: rule.type,                // "iva" | "islr" | "igtf"
+          is_withholding: rule.type === "islr",  // ISLR es retención
+          is_active: true,
+          efectivo_desde: new Date().toISOString(), // vigente desde ahora
+        }));
+
+        // UPSERT: si ya existe una regla del mismo tipo para este tenant, actualizar la tasa
+        await supabase
+          .from("tax_rules")
+          .upsert(rows, {
+            onConflict: "tenant_id,type,name",  // clave de conflicto
+          });
+      }
+
+      return ok(void 0);
+    } catch (error) {
+      return err(createAppError({
+        code: "TAX_RULE_PROPAGATION_FAILED",
+        message: "Error al propagar reglas fiscales a tenants",
+        retryable: true,
+        cause: error
+      }));
+    }
+  };
 };
+

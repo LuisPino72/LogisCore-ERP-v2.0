@@ -3,11 +3,18 @@
  * Solo contiene reglas de impuestos globales.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { GlobalConfig, UpdateGlobalConfigInput } from "../types/admin.types";
+import { supabase } from "@/lib/supabase/client";
 import { ConfirmDialog } from "@/common/components/ConfirmDialog";
 import { Button, Input, Select } from "@/common";
 import { Card } from "@/common/components/Card";
+
+const TAX_TYPE_OPTIONS = [
+  { value: "iva", label: "IVA" },
+  { value: "islr", label: "ISLR" },
+  { value: "igtf", label: "IGTF" },
+];
 
 interface SettingsPanelProps {
   config: GlobalConfig | null;
@@ -23,18 +30,24 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
 
   const [newTax, setNewTax] = useState({ name: "", rate: 0, type: "iva" as "iva" | "islr" | "igtf" });
   const [deletingRule, setDeletingRule] = useState<{ name: string; index: number } | null>(null);
-  const [configLoaded, setConfigLoaded] = useState(false);
+  const [_configLoaded, setConfigLoaded] = useState(false);
+  const [_isAuthenticated, setIsAuthenticated] = useState(false);
+  const [_authChecked, setAuthChecked] = useState(false);
 
-  const taxTypeOptions = [
-    { label: "IVA", value: "iva" },
-    { label: "ISLR", value: "islr" },
-    { label: "IGTF", value: "igtf" },
-  ];
+  useEffect(() => {
+    // Actualizar formData cuando la prop config cambie
+    if (config) {
+      setFormData({ globalTaxRules: config.globalTaxRules || [] });
+      setConfigLoaded(true);
+    }
+  }, [config]);
 
-  if (config && !configLoaded) {
-    setFormData({ globalTaxRules: config.globalTaxRules || [] });
-    setConfigLoaded(true);
-  }
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+      setAuthChecked(true);
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +129,7 @@ export function SettingsPanel({ config, isLoading, onRefresh, onUpdate }: Settin
                   <label className="label text-xs">Tipo</label>
                   <Select
                     className="input-sm"
-                    options={taxTypeOptions}
+                    options={TAX_TYPE_OPTIONS}
                     value={newTax.type}
                     onChange={value => setNewTax({ ...newTax, type: value as "iva" | "islr" | "igtf" })}
                   />

@@ -18,7 +18,7 @@ import type { Product } from "@/features/products/types/products.types";
 import type { Warehouse } from "@/features/inventory/types/inventory.types";
 import { productsService } from "@/features/products/services/products.service.instance";
 import { inventoryService } from "@/features/inventory/services/inventory.service.instance";
-import { useSales } from "../hooks/useSales";
+import { useTaxRates } from "../hooks/useTaxRates";
 import { salesService } from "../services/sales.service.instance";
 import type {
   SaleItem,
@@ -50,8 +50,7 @@ interface SalesPanelProps {
   onRefreshExchangeRate?: () => Promise<void>;
 }
 
-const IVA_RATE = 0.16;
-const MAX_SUSPENDED = 10;
+
 
 export function SalesPanel({
   tenantSlug,
@@ -105,6 +104,8 @@ export function SalesPanel({
       setWarehouses(result.data);
     }
   }, [tenantSlug]);
+
+  const taxRates = useTaxRates(tenantSlug);
 
   useEffect(() => {
     void refresh();
@@ -215,8 +216,8 @@ export function SalesPanel({
   }, [selectedWarehouse, cart, openSuspendedCount, createSuspendedSale]);
 
   const subtotal = useMemo(() => calculateSubtotal(cart), [cart]);
-  const iva = useMemo(() => calculateIVA(subtotal, IVA_RATE), [subtotal]);
-  const igtf = useMemo(() => calculateIGTF(payments, exchangeRate), [payments, exchangeRate]);
+  const iva = useMemo(() => calculateIVA(subtotal, taxRates.iva), [subtotal, taxRates.iva]);
+  const igtf = useMemo(() => calculateIGTF(payments, exchangeRate, taxRates.igtf), [payments, exchangeRate, taxRates.igtf]);
   const total = useMemo(() => roundMoney(subtotal + iva + igtf), [subtotal, iva, igtf]);
   const totalPaid = useMemo(() => calculateTotalPaid(payments, saleCurrency, exchangeRate), [payments, saleCurrency, exchangeRate]);
 
@@ -252,13 +253,14 @@ export function SalesPanel({
   }, [warehouses]);
 
   const terminalTab = (
-    <TerminalView
-      products={products}
-      cart={cart}
-      exchangeRate={exchangeRate}
-      saleCurrency={saleCurrency}
-      ivaRate={IVA_RATE}
-      onAddToCart={addToCart}
+<TerminalView
+        products={products}
+        cart={cart}
+        exchangeRate={exchangeRate}
+        saleCurrency={saleCurrency}
+        ivaRate={taxRates.iva}
+        igtfRate={taxRates.igtf}
+        onAddToCart={addToCart}
       onUpdateCartItem={updateCartItem}
       onRemoveCartItem={removeCartItem}
       onClearCart={clearCart}

@@ -54,6 +54,12 @@ export function TenantBootstrapGate({
   }, [admin]);
 
   useEffect(() => {
+    if (activeAdminModule === "settings" && !admin.globalConfig) {
+      void admin.loadGlobalConfig();
+    }
+  }, [activeAdminModule, admin.globalConfig, admin.loadGlobalConfig]);
+
+  useEffect(() => {
     void (async () => {
       await loadSession();
     })();

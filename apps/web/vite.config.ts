@@ -8,7 +8,8 @@ export default defineConfig({
   base: "./",
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src")
+      "@": path.resolve(__dirname, "src"),
+      "@/lib/supabase": path.resolve(__dirname, "apps/web/src/lib/supabaseClient")
     }
   },
   build: {

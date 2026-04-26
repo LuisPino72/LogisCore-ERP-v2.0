@@ -22,6 +22,7 @@ interface TerminalViewProps {
   exchangeRate: number;
   saleCurrency: SalesCurrency;
   ivaRate: number;
+  igtfRate: number;
   onAddToCart: (product: Product, qty: number) => void;
   onUpdateCartItem: (index: number, qty: number) => void;
   onRemoveCartItem: (index: number) => void;
@@ -44,6 +45,7 @@ export function TerminalView({
   exchangeRate,
   saleCurrency,
   ivaRate,
+  igtfRate,
   onAddToCart,
   onUpdateCartItem,
   onRemoveCartItem,
@@ -77,7 +79,7 @@ export function TerminalView({
 
   const subtotal = useMemo(() => calculateSubtotal(cart), [cart]);
   const iva = useMemo(() => calculateIVA(subtotal, ivaRate), [subtotal, ivaRate]);
-  const igtf = useMemo(() => calculateIGTF(pendingPayments, exchangeRate), [pendingPayments, exchangeRate]);
+  const igtf = useMemo(() => calculateIGTF(pendingPayments, exchangeRate, igtfRate), [pendingPayments, exchangeRate, igtfRate]);
   const total = useMemo(() => roundMoney(subtotal + iva + igtf), [subtotal, iva, igtf]);
   const totalPaid = useMemo(() => calculateTotalPaid(pendingPayments, saleCurrency, exchangeRate), [pendingPayments, saleCurrency, exchangeRate]);
   const change = useMemo(() => calculateChange(totalPaid, total), [totalPaid, total]);
