@@ -188,8 +188,8 @@ const getActionBadgeVariant = (action: string): "default" | "success" | "warning
                   <tr key={log.id} className="border-b border-surface-100 hover:bg-surface-50">
                     <td className="px-4 py-3 text-content-secondary whitespace-nowrap">{formatDate(log.timestamp)}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={getActionBadgeVariant(log.action)}>
-                        {formatAction(log.action)}
+                      <Badge variant={getActionBadgeVariant(log.action ?? "UNKNOWN")}>
+                        {formatAction(log.action ?? "UNKNOWN")}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-content-primary">{log.email || log.userId || "—"}</td>
