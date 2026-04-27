@@ -1759,12 +1759,11 @@ const updateUser: AdminService["updateUser"] = async (userId, input) => {
 
       const logs: AuditLogEntry[] = result.logs.map((log: Record<string, unknown>) => ({
         id: log.id as string,
-        timestamp: log.created_at as string,
-        action: log.event_type as string,
-        userId: log.user_id as string | null,
-        email: log.actor_email as string | null,
-        ipAddress: log.ip_address as string | null,
-        metadata: log.details as Record<string, unknown> | null
+        timestamp: log.timestamp as string,
+        action: log.action as string,
+        userId: log.userId as string | null,
+        email: log.email as string | null,
+        metadata: log.metadata as Record<string, unknown> | null
       }));
 
       return ok({
