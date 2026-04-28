@@ -7,6 +7,7 @@ import { authService } from "@/features/auth/services/auth.service.instance";
 import { tenantService } from "@/features/tenant/services/tenant.service.instance";
 import { coreService } from "@/features/core/services/core.service.instance";
 import { syncEngine } from "@/lib/core/runtime";
+import { setGlobalUserRole, setGlobalTenantContext } from "@/lib/permissions/usePermissions";
 import { type TenantContext } from "@/features/tenant/types/tenant.types";
 
 /**
@@ -35,12 +36,18 @@ export function App() {
             userId: actor.role 
           };
 
+          // Sincronizar estado global de permisos
+          setGlobalUserRole(actor);
+          setGlobalTenantContext(context);
+
           return (
             <AppLayout 
               activeModule={activeModule} 
               onModuleChange={setActiveModule}
               onLogout={onLogout}
               features={context.features || {}}
+              actor={actor}
+              tenant={context}
             >
               <ModuleRenderer 
                 activeModule={activeModule} 

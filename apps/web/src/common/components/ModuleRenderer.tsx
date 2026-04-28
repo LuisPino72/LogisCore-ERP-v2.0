@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { LoadingSpinner } from "./EmptyState";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { PermissionGuard } from "./PermissionGuard";
 import type { ModuleId } from "./AppLayout";
 import type { ActorContext } from "@/lib/permissions/permissions.types";
 import type { TenantContext } from "@/features/tenant/types/tenant.types";
@@ -49,58 +50,72 @@ export function ModuleRenderer({ activeModule, tenant, actor, onNavigate }: Modu
         )}
 
         {activeModule === "products" && (
-          <ProductsCatalog
-            tenantSlug={tenantSlug}
-            actor={actor as unknown as ProductsActorContext}
-            businessTypeId={businessTypeId}
-          />
+          <PermissionGuard moduleAccess="canProducts">
+            <ProductsCatalog
+              tenantSlug={tenantSlug}
+              actor={actor as unknown as ProductsActorContext}
+              businessTypeId={businessTypeId}
+            />
+          </PermissionGuard>
         )}
 
         {activeModule === "sales" && (
-      <SalesPanel
-        tenantSlug={tenantSlug}
-        actor={actor as unknown as SalesActorContext}
-      />
+          <PermissionGuard moduleAccess="canPos">
+            <SalesPanel
+              tenantSlug={tenantSlug}
+              actor={actor as unknown as SalesActorContext}
+            />
+          </PermissionGuard>
         )}
 
         {activeModule === "inventory" && (
-          <InventoryPanel
-            tenantSlug={tenantSlug}
-            actor={actor as unknown as InventoryActorContext}
-            products={[]}
-          />
+          <PermissionGuard moduleAccess="canInventory">
+            <InventoryPanel
+              tenantSlug={tenantSlug}
+              actor={actor as unknown as InventoryActorContext}
+              products={[]}
+            />
+          </PermissionGuard>
         )}
 
         {activeModule === "purchases" && (
-          <PurchasesPanel
-            tenantSlug={tenantSlug}
-            actor={actor as unknown as ProductsActorContext}
-            products={[]}
-          />
+          <PermissionGuard moduleAccess="canPurchases">
+            <PurchasesPanel
+              tenantSlug={tenantSlug}
+              actor={actor as unknown as ProductsActorContext}
+              products={[]}
+            />
+          </PermissionGuard>
         )}
 
         {activeModule === "invoicing" && (
-          <InvoicingPanel
-            tenantSlug={tenantSlug}
-            actor={actor as unknown as InvoicingActorContext}
-            features={tenant.features}
-          />
+          <PermissionGuard moduleAccess="canInvoicing">
+            <InvoicingPanel
+              tenantSlug={tenantSlug}
+              actor={actor as unknown as InvoicingActorContext}
+              features={tenant.features}
+            />
+          </PermissionGuard>
         )}
 
         {activeModule === "reports" && (
-          <ReportsPanel
-            tenantSlug={tenantSlug}
-            actor={actor as unknown as ReportsActorContext}
-          />
+          <PermissionGuard moduleAccess="canReports">
+            <ReportsPanel
+              tenantSlug={tenantSlug}
+              actor={actor as unknown as ReportsActorContext}
+            />
+          </PermissionGuard>
         )}
 
         {activeModule === "production" && (
-          <ProductionPanel
-            tenantSlug={tenantSlug}
-            actor={actor as unknown as ProductionActorContext}
-            products={[]}
-            features={tenant.features}
-          />
+          <PermissionGuard moduleAccess="canProduction">
+            <ProductionPanel
+              tenantSlug={tenantSlug}
+              actor={actor as unknown as ProductionActorContext}
+              products={[]}
+              features={tenant.features}
+            />
+          </PermissionGuard>
         )}
         
         {/* Fallback para módulos no implementados o roles sin acceso */}

@@ -1,5 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
+import { usePermissions, setGlobalUserRole, setGlobalTenantContext } from "@/lib/permissions/usePermissions";
+import type { ActorContext } from "@/lib/permissions/permissions.types";
+import type { TenantContext } from "@/features/tenant/types/tenant.types";
 
 export type ModuleId = "dashboard" | "inventory" | "products" | "purchases" | "sales" | "production" | "invoicing" | "reports";
 
@@ -9,6 +12,8 @@ interface AppLayoutProps {
   onModuleChange: (module: ModuleId) => void;
   onLogout?: () => void;
   features?: Record<string, boolean>;
+  actor?: ActorContext;
+  tenant?: TenantContext;
 }
 
 const baseModules = [
@@ -25,14 +30,35 @@ const proModules = [
   { id: "production" as const, label: "Producción", icon: null }
 ];
 
-export function AppLayout({ children, activeModule, onModuleChange, onLogout, features = {} }: AppLayoutProps) {
+export function AppLayout({ children, activeModule, onModuleChange, onLogout, features = {}, actor, tenant }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const perms = usePermissions();
+
+  useEffect(() => {
+    if (actor) setGlobalUserRole(actor);
+    if (tenant) setGlobalTenantContext(tenant);
+  }, [actor, tenant]);
 
   const hasProductionAccess = features.production === true;
-  const modules = hasProductionAccess 
+
+  const rawModules = hasProductionAccess 
     ? [...baseModules.slice(0, 5), ...proModules, ...baseModules.slice(5)]
     : baseModules;
+
+  const modules = rawModules.filter(m => {
+    switch (m.id) {
+      case "dashboard": return true;
+      case "inventory": return perms.canInventory;
+      case "products": return perms.canProducts;
+      case "purchases": return perms.canPurchases;
+      case "sales": return perms.canPos;
+      case "invoicing": return perms.canInvoicing;
+      case "reports": return perms.canReports;
+      case "production": return perms.canProduction;
+      default: return true;
+    }
+  });
 
   const handleModuleChange = (id: ModuleId) => {
     onModuleChange(id);

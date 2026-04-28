@@ -1,20 +1,18 @@
 import { useCallback, useMemo } from "react";
 import { DEFAULT_EMPLOYEE_PERMISSIONS } from "./rbac-constants";
+import { usePermissionsStore } from "./permissionsStore";
 import type { UserRole, TenantContext } from "@/features/tenant/types/tenant.types";
 
-let globalUserRole: UserRole | null = null;
-let globalTenantContext: TenantContext | null = null;
-
-export const setGlobalTenantContext = (tenant: TenantContext | null) => {
-  globalTenantContext = tenant;
+export const setGlobalUserRole = (role: UserRole | null) => {
+  usePermissionsStore.getState().setUserRole(role);
 };
 
-export const setGlobalUserRole = (role: UserRole | null) => {
-  globalUserRole = role;
+export const setGlobalTenantContext = (tenant: TenantContext | null) => {
+  usePermissionsStore.getState().setTenantContext(tenant);
 };
 
 export const usePermissions = () => {
-  const userRole = globalUserRole;
+  const userRole = usePermissionsStore((state) => state.userRole);
 
   const hasPermission = useCallback(
     (permission: string): boolean => {
@@ -63,6 +61,7 @@ export const usePermissions = () => {
     return {
       canPos: perms.some(p => p.startsWith("SALES:")),
       canInventory: perms.some(p => p.startsWith("INVENTORY:")),
+      canProducts: perms.some(p => p.startsWith("PRODUCTS:")),
       canPurchases: perms.some(p => p.startsWith("PURCHASES:")),
       canInvoicing: perms.some(p => p.startsWith("INVOICE:")),
       canProduction: perms.some(p => p.startsWith("PRODUCTION:")),
@@ -86,7 +85,7 @@ export const usePermissions = () => {
 export type UsePermissions = ReturnType<typeof usePermissions>;
 
 export const useModuleAccess = (_moduleName: string): { hasAccess: boolean; isLoading: boolean } => {
-  const tenant = globalTenantContext;
+  const tenant = usePermissionsStore((state) => state.tenantContext);
 
   const hasAccess = useMemo(() => {
     if (!tenant?.features) return true;
