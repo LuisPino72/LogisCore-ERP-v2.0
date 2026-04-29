@@ -10,9 +10,11 @@ import { AdminLayout, Dashboard, TenantsList, SecurityPanel, BusinessTypesPanel,
 import { LoadingSpinner, Button } from "@/common";
 import { type AdminModule, type Tenant } from "@/features/admin/types/admin.types";
 import type { TenantContext } from "../types/tenant.types";
-import { type ActorContext, type ActorPermissions } from "@/lib/permissions/permissions.types";
+import { type ActorContext } from "@/lib/permissions/permissions.types";
 import { eventBus } from "@/lib/core/runtime";
 import { useTenantDataSync } from "../hooks/useTenantData";
+import { UserRole } from "@/features/tenant/types/tenant.types";
+import { usePermissionsStore } from "@/lib/permissions/permissionsStore";
 
 export function SubscriptionExpirationBanner() {
   return (
@@ -26,6 +28,8 @@ export interface TenantBootstrapGateProps {
   authService: Parameters<typeof useAuth>[0]["service"];
   tenantService: Parameters<typeof useTenantData>[0]["tenant"];
   coreService: { startSync: () => unknown; bootstrapSession: () => Promise<unknown> };
+  setGlobalUserRole: (role: UserRole | null) => void;
+  setGlobalTenantContext: (context: TenantContext | null) => void;
   renderApp?: (tenantSlug: string, actor: ActorContext, signOut: () => void, tenantContext: TenantContext | null) => ReactNode;
 }
 
@@ -33,6 +37,8 @@ export function TenantBootstrapGate({
   authService,
   tenantService,
   coreService,
+  setGlobalUserRole,
+  setGlobalTenantContext,
   renderApp
 }: TenantBootstrapGateProps) {
   const { state: authState, loadSession, signIn, signOut } = useAuth({ service: authService });
@@ -46,8 +52,8 @@ export function TenantBootstrapGate({
   const admin = useAdmin({ service: adminService });
   const [activeAdminModule, setActiveAdminModule] = useState<AdminModule>("dashboard");
   const [impersonatedTenantSlug, setImpersonatedTenantSlug] = useState<string | null>(null);
+  const [permissionsReady, setPermissionsReady] = useState(false);
 
-  // Funciones de refresco estables para evitar bucles infinitos
   const refreshSecurity = useCallback(() => {
     admin.loadSecurityUsers();
     admin.loadTenants();
@@ -67,14 +73,48 @@ export function TenantBootstrapGate({
 
   useEffect(() => {
     if (!authState.session) {
+      setPermissionsReady(false);
       return;
     }
+    const session = authState.session;
+    
     void (async () => {
-      await bootstrapTenantData();
-      coreService.startSync();
+      const freshState = await bootstrapTenantData();
+      const tenantData = freshState || state;
+      
+      // No iniciar sync en desarrollo (evita errores CORS con Edge Functions)
+      if (!import.meta.env.DEV) {
+        coreService.startSync();
+      }
+      
       await coreService.bootstrapSession();
+      
+      const freshRole = tenantData.userRole;
+      const freshTenant = tenantData.tenant;
+      
+      if (freshRole) {
+        setGlobalUserRole(freshRole);
+      }
+      if (freshTenant) {
+        setGlobalTenantContext(freshTenant);
+      } else if (session.userRole) {
+        const context: TenantContext = {
+           tenantSlug: "",
+           tenantUuid: "",
+           userId: session.userRole.userId,
+         };
+         setGlobalTenantContext(context);
+      }
+      
+      // Pequeña pausa para que React propague el store al layout
+      await new Promise(r => setTimeout(r, 50));
+      setPermissionsReady(true);
     })();
-  }, [authState.session, bootstrapTenantData, coreService]);
+    
+    // Timeout de seguridad: si en 5s los permisos no se propagaron, mostrar layout igual
+    const timeout = setTimeout(() => setPermissionsReady(true), 5000);
+    return () => clearTimeout(timeout);
+  }, [authState.session, bootstrapTenantData, coreService, setGlobalUserRole, setGlobalTenantContext]);
 
   const handleLogin = async (email: string, password: string) => {
     await signIn(email, password);
@@ -82,19 +122,20 @@ export function TenantBootstrapGate({
 
   const handleLogout = async () => {
     setImpersonatedTenantSlug(null);
+    setPermissionsReady(false);
+    usePermissionsStore.getState().setUserRole(null);
+    usePermissionsStore.getState().setTenantContext(null);
     await signOut();
   };
 
   const handleAccessTenant = (tenant: Tenant) => {
     setImpersonatedTenantSlug(tenant.slug);
     
-    // IMPORTANT: Populate tenantTranslator cache so sync works immediately for impersonated tenant
     import("@/lib/sync/tenant-translator").then(({ tenantTranslator }) => {
       void tenantTranslator.fetchTenantUuid(tenant.slug);
     });
   };
 
-  // Mostrar estado de verificación mientras carga la sesión
   const isVerifyingSession = authState.isLoading && !authState.session;
 
   if (isVerifyingSession) {
@@ -133,6 +174,37 @@ export function TenantBootstrapGate({
 
   if (state.isBlocked) {
     return <BlockedAccessScreen tenantName={state.tenant?.name ?? "N/A"} eventBus={eventBus} onLogout={signOut} />;
+  }
+
+  if (!permissionsReady && authState.session) {
+    return <LoadingSpinner variant="fullscreen" message="Sincronizando permisos..." />;
+  }
+
+  const actor = state.userRole
+    ? { role: state.userRole.role, permissions: state.userRole.permissions }
+    : { role: "employee", permissions: { permissions: [], maxDiscountPercent: 0, allowedWarehouseLocalIds: [] } };
+
+  if (renderApp && (state.tenant?.tenantSlug || impersonatedTenantSlug)) {
+    const slug = impersonatedTenantSlug || state.tenant?.tenantSlug;
+
+    return (
+      <div className="relative">
+        {impersonatedTenantSlug && state.userRole?.role === "admin" && (
+          <div className="bg-brand-600 text-white p-2 text-center text-sm font-medium flex items-center justify-center gap-4">
+            Viewing as admin: <span className="font-bold">{impersonatedTenantSlug}</span>
+            <Button 
+              onClick={() => setImpersonatedTenantSlug(null)}
+              variant="secondary"
+              size="sm"
+            >
+              Back to Admin Panel
+            </Button>
+          </div>
+        )}
+        {state.isLastDay && <SubscriptionExpirationBanner />}
+        {renderApp(slug!, actor, signOut, state.tenant)}
+      </div>
+    );
   }
 
   if (state.userRole?.role === "admin" && !impersonatedTenantSlug) {
@@ -183,7 +255,6 @@ export function TenantBootstrapGate({
         {activeAdminModule === "businessTypes" && (
           <BusinessTypesPanel
             businessTypes={admin.businessTypes}
-            isLoading={admin.state.isLoading}
             onRefresh={admin.loadBusinessTypes}
             onCreate={admin.createBusinessType}
             onUpdate={admin.updateBusinessType}
@@ -194,7 +265,6 @@ export function TenantBootstrapGate({
           <SubscriptionsPanel
             subscriptions={admin.subscriptions}
             plans={admin.plans}
-            isLoading={admin.state.isLoading}
             onRefreshSubscriptions={admin.loadSubscriptions}
             onRefreshPlans={admin.loadPlans}
             onRefreshTenants={admin.loadTenants}
@@ -216,37 +286,6 @@ export function TenantBootstrapGate({
           />
         )}
       </AdminLayout>
-    );
-  }
-
-  if (renderApp && (state.tenant?.tenantSlug || impersonatedTenantSlug)) {
-    const slug = impersonatedTenantSlug || state.tenant?.tenantSlug;
-    const defaultPermissions: ActorPermissions = {
-      permissions: [],
-      maxDiscountPercent: 0,
-      allowedWarehouseLocalIds: []
-    };
-
-    return (
-      <div className="relative">
-        {impersonatedTenantSlug && state.userRole?.role === "admin" && (
-          <div className="bg-brand-600 text-white p-2 text-center text-sm font-medium flex items-center justify-center gap-4">
-            Viewing as admin: <span className="font-bold">{impersonatedTenantSlug}</span>
-            <Button 
-              onClick={() => setImpersonatedTenantSlug(null)}
-              variant="secondary"
-              size="sm"
-            >
-              Back to Admin Panel
-            </Button>
-          </div>
-        )}
-        {state.isLastDay && <SubscriptionExpirationBanner />}
-        {renderApp(slug!, {
-          role: state.userRole?.role ?? "employee",
-          permissions: state.userRole?.permissions ?? defaultPermissions
-        }, signOut, state.tenant)}
-      </div>
     );
   }
 

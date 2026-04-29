@@ -17,6 +17,7 @@ import type { SalesTenantContext } from "@/features/sales/types/sales.types";
 import type { InventoryTenantContext, InventoryActorContext } from "@/features/inventory/types/inventory.types";
 import type { ProductsTenantContext } from "@/features/products/types/products.types";
 import type { ModuleId } from "@/common/components/AppLayout";
+import { usePermissions } from "@/lib/permissions/usePermissions";
 
 interface DashboardPanelProps {
   tenant: SalesTenantContext & InventoryTenantContext & ProductsTenantContext;
@@ -34,8 +35,9 @@ export function DashboardPanel({
   onNavigate, 
   onUpdateExchangeRate, 
   onFetchExchangeRates 
-}: DashboardPanelProps) {
+  }: DashboardPanelProps) {
   const { state, loadData, invalidateCache } = useDashboard(tenant, actor);
+  const perms = usePermissions();
 
   const handleRefresh = useCallback(() => {
     invalidateCache();
@@ -203,18 +205,22 @@ export function DashboardPanel({
           <h3 className="text-lg font-bold mb-2">LogisCore Pro</h3>
           <p className="text-brand-100 text-sm mb-6">Optimiza tu operación con vistas avanzadas y reportes en tiempo real.</p>
           <div className="grid grid-cols-2 gap-3">
-            <Button 
-              variant="secondary"
-              onClick={() => onNavigate?.("sales")}
-            >
-              Abrir Punto de Venta
-            </Button>
-            <Button 
-              variant="secondary"
-              onClick={() => onNavigate?.("inventory")}
-            >
-              Ver Inventario
-            </Button>
+            {perms.canPos && (
+              <Button 
+                variant="secondary"
+                onClick={() => onNavigate?.("sales")}
+              >
+                Abrir Punto de Venta
+              </Button>
+            )}
+            {perms.canInventory && (
+              <Button 
+                variant="secondary"
+                onClick={() => onNavigate?.("inventory")}
+              >
+                Ver Inventario
+              </Button>
+            )}
           </div>
         </div>
         <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />

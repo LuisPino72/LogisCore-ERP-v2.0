@@ -346,6 +346,53 @@ export const createTenantService = ({
       }
 
       const normalizedRole = roleResult.data.role?.trim().toLowerCase();
+      
+      if (normalizedRole === "owner") {
+        // El owner SI tiene tenant, buscarlo
+        const ownerQuery = await supabase
+          .from("tenants")
+          .select("id, slug, name, business_type_id")
+          .eq("owner_user_id", userId)
+          .maybeSingle<{ id: string; slug: string; name: string; business_type_id: string | null }>();
+        
+        const tenantSlug = ownerQuery.data?.slug ?? null;
+        const tenantId = ownerQuery.data?.id ?? null;
+        const tenantName = ownerQuery.data?.name ?? null;
+        const businessTypeId = ownerQuery.data?.business_type_id ?? undefined;
+        
+        if (!tenantSlug || !tenantId) {
+          throw new Error("No se pudo resolver tenant para el owner.");
+        }
+        
+        const tenant: TenantContext = {
+          tenantUuid: tenantId,
+          tenantSlug,
+          name: tenantName ?? "N/A",
+          userId,
+          ...(businessTypeId ? { businessTypeId } : {})
+        };
+        
+        const subscriptionResult = await checkSubscription(tenantSlug);
+        if (!subscriptionResult.ok) {
+          throw new Error(subscriptionResult.error.message);
+        }
+        
+        const enrichedTenant: TenantContext = {
+          ...tenant,
+          maxUsers: subscriptionResult.data.maxUsers,
+          features: subscriptionResult.data.features
+        };
+        
+        return {
+          tenant: enrichedTenant,
+          userRole: roleResult.data,
+          subscriptionActive: subscriptionResult.data.isActive,
+          subscriptionEndDate: subscriptionResult.data.endDate || null,
+          isLastDay: !!subscriptionResult.data.isLastDay,
+          maxUsers: subscriptionResult.data.maxUsers,
+          features: subscriptionResult.data.features
+        };
+      }
 
       if (normalizedRole === "admin") {
         return {

@@ -19,6 +19,7 @@ import type { Warehouse } from "@/features/inventory/types/inventory.types";
 import { productsService } from "@/features/products/services/products.service.instance";
 import { inventoryService } from "@/features/inventory/services/inventory.service.instance";
 import { useTaxRates } from "../hooks/useTaxRates";
+import { useSales } from "../hooks/useSales";
 import { salesService } from "../services/sales.service.instance";
 import type {
   SaleItem,
@@ -42,6 +43,7 @@ import {
   canSuspendMore,
   getOpenSuspendedCount
 } from "../utils/sales.utils";
+import { MAX_SUSPENDED_SALES } from "@/specs/sales/errors";
 
 interface SalesPanelProps {
   tenantSlug: string;
@@ -205,7 +207,7 @@ export function SalesPanel({
   }, [selectedWarehouse, openBox]);
 
   const handleSuspendSale = useCallback(async (notes: string) => {
-    if (!selectedWarehouse || !canSuspendMore(openSuspendedCount, MAX_SUSPENDED)) return;
+    if (!selectedWarehouse || !canSuspendMore(openSuspendedCount, MAX_SUSPENDED_SALES)) return;
     await createSuspendedSale({
       warehouseLocalId: selectedWarehouse,
       cart,
@@ -290,7 +292,7 @@ export function SalesPanel({
   const suspendedTab = (
     <SuspendedList
       suspendedSales={state.suspendedSales}
-      maxSuspended={MAX_SUSPENDED}
+      maxSuspended={MAX_SUSPENDED_SALES}
       onRestore={async (localId) => {
         const result = await restoreSuspendedSale(localId);
         if (result) {

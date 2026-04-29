@@ -32,10 +32,14 @@ function PermissionsChecklist({
     }
   };
 
+  const EMPLOYEE_VISIBLE_MODULES = PERMISSION_MODULES.filter(
+    m => m !== "CONFIG" && m !== "ADMIN"
+  );
+
   return (
     <div className="mt-3 space-y-3">
       <h4 className="text-xs font-medium text-content-secondary">Permisos del Empleado</h4>
-      {PERMISSION_MODULES.map(module => {
+      {EMPLOYEE_VISIBLE_MODULES.map(module => {
         const modulePerms = PERMISSIONS[module as keyof typeof PERMISSIONS];
         const permsList = Object.values(modulePerms);
         
@@ -99,7 +103,7 @@ export function ExistingEmployeesSection({
                   type="text"
                   error={errors[`existing_${index}_fullName`] || ""}
                   value={employee.fullName}
-                  onChange={(value) => onUpdateEmployee(index, "fullName", value)}
+                  onChange={(e) => onUpdateEmployee(index, "fullName", (e.target as HTMLInputElement).value)}
                   placeholder="María García"
                   maxLength={VALIDATION_RULES.MAX_TEXT_LENGTH}
                 />

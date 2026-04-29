@@ -112,7 +112,7 @@ function getInitialFormData(initialData: Tenant | null | undefined, tenantEmploy
   
   const existingEmployees: EmployeeManagement[] = (tenantEmployees || []).map(emp => ({
     email: emp.email,
-    fullName: emp.fullName || "",
+    fullName: typeof emp.fullName === "string" ? emp.fullName : "",
     action: "update" as const,
     userId: emp.userId,
     isActive: emp.isActive,
@@ -325,7 +325,7 @@ export function TenantForm({
     }
     
 const existingEmployeesWithChanges = formData.existingEmployees
-  .filter(e => e.action !== "update" || e.fullName !== undefined)
+  .filter(e => e.action !== "update" || e.fullName !== undefined || (e.permissions && e.permissions.length > 0))
   .map(e => {
     const emp: EmployeeManagement = {
       email: e.email || "",

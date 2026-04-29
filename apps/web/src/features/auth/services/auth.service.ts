@@ -82,8 +82,8 @@ export const createAuthService = ({
       // Emitir evento de fallo
       eventBus.emit("AUTH.SIGNIN_FAILED", { error: authError });
 
-      // Registrar intento fallido en auditoría
-      await this.logAuditEvent("LOGIN_FAILED", null, email);
+    // Registrar intento fallido en auditoría (fire-and-forget)
+        void this.logAuditEvent("LOGIN_FAILED", null, email);
 
       return err(authError);
     }
@@ -97,8 +97,8 @@ export const createAuthService = ({
     // Emitir evento de éxito
     eventBus.emit("AUTH.SIGNIN_SUCCESS", session);
 
-    // Registrar login exitoso en auditoría
-    await this.logAuditEvent("LOGIN", signInResponse.data.session.user.id, email, signInResponse.data.session.access_token);
+    // Registrar login exitoso en auditoría (fire-and-forget)
+        void this.logAuditEvent("LOGIN", signInResponse.data.session.user.id, email, signInResponse.data.session.access_token);
 
     return ok(session);
   },
@@ -106,6 +106,10 @@ export const createAuthService = ({
   // Registra evento de auditoría
   async logAuditEvent(action: string, userId: string | null, email: string | null, accessToken?: string): Promise<Result<void, AppError>> {
     try {
+      if (import.meta.env.DEV) {
+        return ok(undefined);
+      }
+
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       
       if (!supabaseUrl) {

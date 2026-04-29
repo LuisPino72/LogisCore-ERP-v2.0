@@ -1,8 +1,6 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
-import { usePermissions, setGlobalUserRole, setGlobalTenantContext } from "@/lib/permissions/usePermissions";
-import type { ActorContext } from "@/lib/permissions/permissions.types";
-import type { TenantContext } from "@/features/tenant/types/tenant.types";
+import { usePermissions } from "@/lib/permissions/usePermissions";
 
 export type ModuleId = "dashboard" | "inventory" | "products" | "purchases" | "sales" | "production" | "invoicing" | "reports";
 
@@ -12,8 +10,6 @@ interface AppLayoutProps {
   onModuleChange: (module: ModuleId) => void;
   onLogout?: () => void;
   features?: Record<string, boolean>;
-  actor?: ActorContext;
-  tenant?: TenantContext;
 }
 
 const baseModules = [
@@ -30,15 +26,10 @@ const proModules = [
   { id: "production" as const, label: "Producción", icon: null }
 ];
 
-export function AppLayout({ children, activeModule, onModuleChange, onLogout, features = {}, actor, tenant }: AppLayoutProps) {
+export function AppLayout({ children, activeModule, onModuleChange, onLogout, features = {} }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const perms = usePermissions();
-
-  useEffect(() => {
-    if (actor) setGlobalUserRole(actor);
-    if (tenant) setGlobalTenantContext(tenant);
-  }, [actor, tenant]);
 
   const hasProductionAccess = features.production === true;
 

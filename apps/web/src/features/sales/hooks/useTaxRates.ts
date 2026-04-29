@@ -15,6 +15,12 @@ export function useTaxRates(tenantId: string): TaxRates {
 
   useEffect(() => {
     if (!tenantId) return;
+    
+    // Skip Dexie in development (avoid compound index warnings)
+    if (import.meta.env.DEV) {
+      setRates({ iva: 0.16, igtf: 0.03 });
+      return;
+    }
 
     // Fetch IVA
     taxRuleService

@@ -56,7 +56,7 @@ export const useTenantData = ({
       return;
     }
 
-    setState({
+    const newState: TenantUiState = {
       isLoading: false,
       isBlocked: !tenantResult.data.subscriptionActive,
       isLastDay: !!tenantResult.data.isLastDay,
@@ -64,7 +64,10 @@ export const useTenantData = ({
       tenant: tenantResult.data.tenant,
       userRole: tenantResult.data.userRole,
       lastError: null
-    });
+    };
+
+    setState(newState);
+    return newState;
   }, [auth, tenant]);
 
   return { state, bootstrapTenantData };
@@ -77,7 +80,7 @@ export const useTenantData = ({
 export const useTenantDataSync = (
   auth: { getActiveSession: () => Promise<Result<{ userId: string }, AppError>> },
   tenant: TenantService,
-  bootstrapTenantData: () => Promise<void>
+  bootstrapTenantData: () => Promise<TenantUiState | undefined>
 ) => {
   useEffect(() => {
     const offTenantUpdated = eventBus.on("ADMIN.TENANT_UPDATED", () => {
