@@ -89,3 +89,8 @@ pre-commit
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Graphify Knowledge Graph
+graphify-out/
+.opencode/
+.opencode.backup/
